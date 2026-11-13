@@ -1,0 +1,16 @@
+[package]
+name = "share-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+[[bin]]
+name = "share-server"
+path = "src/main.rs"
+[dependencies]
+share-domain = { path = "../../crates/domain" }
+share-http = { path = "../../crates/http" }
+clap.workspace = true
+tokio.workspace = true
+[dev-dependencies]
+tempfile.workspace = true
