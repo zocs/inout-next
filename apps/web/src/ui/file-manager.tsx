@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import productDefaults from "@/generated/product.json";
 import { featureRegistry } from "@/features/registry";
 import { ApiError, FileApi } from "@/lib/api";
-import type { Entry, Product, ServerContext, ServerStatus } from "@/lib/contracts";
+import type { Entry, EntryList, Product, ServerContext, ServerStatus } from "@/lib/contracts";
 import { formatBytes, formatDate } from "@/lib/format";
 import { activeModules, ModuleProviders, ModuleSlot, type ModuleRuntime } from "./modules";
 
@@ -17,12 +17,19 @@ export default function FileManager() {
   const [context, setContext] = useState<ServerContext | null>(null);
   const [phase, setPhase] = useState<"loading" | "unlock" | "ready" | "error">("loading");
   const [path, setPath] = useState("");
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [selected, select] = useState<Entry | null>(null);
+  const [listing, setListing] = useState<EntryList | null>(null);
+  const [folderFailure, setFolderFailure] = useState<{ path: string; text: string } | null>(null);
+  const [selection, setSelection] = useState<Entry | null>(null);
+  const [selectionChanged, setSelectionChanged] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
   const [message, setMessage] = useState<Message>(null);
   const product = context?.product ?? status?.product ?? productDefaults;
+  const folderError = folderFailure?.path === path ? folderFailure.text : null;
+  const folderReady = listing?.path === path && !folderError;
+  const entries = folderReady ? listing.entries : [];
+  const selected = folderReady ? selection : null;
+  const select = useCallback((entry: Entry | null) => { setSelection(entry); setSelectionChanged(true); }, []);
   const refresh = useCallback(() => setRefreshToken((value) => value + 1), []);
   const notify = useCallback((text: string, kind: "success" | "error" = "success") => setMessage({ text, kind }), []);
 
@@ -43,22 +50,24 @@ export default function FileManager() {
     const onBack = () => { setPath(new URLSearchParams(window.location.search).get("path") ?? ""); select(null); };
     window.addEventListener("popstate", onBack);
     return () => window.removeEventListener("popstate", onBack);
-  }, [connect]);
+  }, [connect, select]);
 
   useEffect(() => { document.title = path ? `${path.split("/").at(-1)} · ${product.name}` : product.name; }, [path, product.name]);
 
   useEffect(() => {
     if (!context || phase !== "ready") return;
-    if (!context.permissions.list || !context.modules.includes("files")) { setEntries([]); setLoading(false); return; }
+    if (!context.permissions.list || !context.modules.includes("files")) { setListing(null); setSelection(null); setLoading(false); return; }
     const controller = new AbortController();
-    setLoading(true);
+    setLoading(true); setFolderFailure(null);
     api.entries(path, controller.signal).then((listing) => {
-      setEntries(listing.entries);
-      select((current) => current ? listing.entries.find((entry) => entry.path === current.path) ?? null : null);
+      if (controller.signal.aborted) return;
+      setListing(listing);
+      setSelection((current) => current ? listing.entries.find((entry) => entry.path === current.path) ?? null : null);
     }).catch((error) => {
       if (controller.signal.aborted) return;
+      setListing(null); setSelection(null);
       if (error instanceof ApiError && error.status === 401) { setContext(null); setPhase("unlock"); }
-      else notify(error instanceof Error ? error.message : "Could not list this folder.", "error");
+      else setFolderFailure({ path, text: error instanceof Error ? error.message : "Could not list this folder." });
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [api, context, path, phase, refreshToken, notify]);
@@ -76,7 +85,9 @@ export default function FileManager() {
   }
 
   const modules = useMemo(() => context ? activeModules(featureRegistry, context) : [], [context]);
-  const runtime: ModuleRuntime | null = context ? { context, api, path, entries, selected, select, loading, navigate, refresh, notify } : null;
+  const runtime: ModuleRuntime | null = context ? { context, api, path, entries, selected, select,
+    loading: loading || (!folderReady && !folderError && context.permissions.list && context.modules.includes("files")),
+    navigate, refresh, notify } : null;
   return <>
     <Header product={product} context={context} canLock={phase === "ready" && !!status?.auth_required} lock={() => void logout()} />
     {phase === "unlock" ? <Unlock api={api} product={product} unlocked={(next) => { setContext(next); setPhase("ready"); setMessage(null); }} />
@@ -93,15 +104,18 @@ export default function FileManager() {
               {path.split("/").filter(Boolean).map((part, index, parts) => <span key={index}><ChevronRight size={14} aria-hidden="true" /><button aria-current={index === parts.length - 1 ? "page" : undefined} onClick={() => navigate(parts.slice(0, index + 1).join("/"))} title={part}>{part}</button></span>)}
             </nav>
             <div className="folder-heading"><div><h2>{path.split("/").at(-1) || context?.root_label || "Shared files"}</h2><p>Browse and transfer files from this device.</p></div>
-              <div className="toolbar" role="toolbar" aria-label="Folder actions"><ModuleSlot modules={modules} slot="Toolbar" runtime={runtime} /><button className="icon-button refresh-button" aria-label="Refresh folder" title="Refresh folder" onClick={refresh} disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button></div>
+              <div className="toolbar" role="toolbar" aria-label="Folder actions">{folderReady && <ModuleSlot modules={modules} slot="Toolbar" runtime={runtime} />}<button className="icon-button refresh-button" aria-label="Refresh folder" title="Refresh folder" onClick={refresh} disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button></div>
             </div>
             {message && <div className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}><span>{message.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setMessage(null)}><X size={16} aria-hidden="true" /></button></div>}
-            <div className={`content-layout ${selected || modules.some((module) => module.Panel) ? "with-panels" : ""}`}>
-              <div className="views">{modules.some((module) => module.View) ? <ModuleSlot modules={modules} slot="View" runtime={runtime} /> : <div className="empty-state"><h3>File browsing is unavailable</h3><p>The sharing device has not enabled file access.</p></div>}</div>
+            <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{selected ? `Selected ${selected.name}.` : selectionChanged ? "Selection cleared." : ""}</p>
+            <div className={`content-layout ${selected || modules.some((module) => module.SelectionPanel || module.Panel) ? "with-panels" : ""}`}>
+              <div className="views">{folderError ? <section className="empty-state" aria-label="Folder unavailable"><h3>Could not open this folder</h3><p role="alert">{folderError}</p><button className="button button-secondary" onClick={refresh}>Retry folder</button></section>
+                : modules.some((module) => module.View) ? <ModuleSlot modules={modules} slot="View" runtime={runtime} /> : <div className="empty-state"><h3>File browsing is unavailable</h3><p>The sharing device has not enabled file access.</p></div>}</div>
               <aside className="tools-column" aria-label="Folder tools">
                 {selected && <section className="selection-panel" aria-label="Selected entry"><div className="panel-heading"><h3>Selected entry</h3><button className="icon-button" aria-label="Clear selection" onClick={() => select(null)}><X size={16} aria-hidden="true" /></button></div><h4 title={selected.name}>{selected.name}</h4><dl><div><dt>Size</dt><dd>{formatBytes(selected.size)}</dd></div><div><dt>Modified</dt><dd>{formatDate(selected.modified)}</dd></div><div><dt>Path</dt><dd className="entry-path">{selected.path}</dd></div></dl>
                   {selected.kind === "file" && context?.permissions.download && <a className="button button-secondary selection-download" href={api.downloadUrl(selected.path)} download={selected.name} aria-label={`Download selected ${selected.name}`}><Download size={17} aria-hidden="true" />Download</a>}
                 </section>}
+                {folderReady && <ModuleSlot modules={modules} slot="SelectionPanel" runtime={runtime} />}
                 <ModuleSlot modules={modules} slot="Panel" runtime={runtime} />
               </aside>
             </div>

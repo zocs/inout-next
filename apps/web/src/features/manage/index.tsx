@@ -116,5 +116,5 @@ function DeleteDialog({ entry, runtime, close }: ModuleProps & { entry: Entry; c
 
 export const manageModule: FeatureModule = {
   id: "manage", requires: ["files"], enabled: (context) => context.permissions.manage,
-  Provider: ManageProvider, Toolbar: ManageToolbar, Panel: ManagePanel,
+  Provider: ManageProvider, Toolbar: ManageToolbar, SelectionPanel: ManagePanel,
 };

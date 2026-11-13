@@ -8,7 +8,8 @@ test.describe("native host entry", () => {
     // The operating-system dialog and IPC are unavailable in Chromium. Keep the
     // exported app and asset server real, and replace only that native boundary.
     await page.addInitScript(({ managerUrl }) => {
-      const state = { root: null as string | null, running: false, managerUrl: null as string | null, addresses: [] as string[] };
+      const state = { root: null as string | null, running: false, managerUrl: null as string | null, addresses: [] as string[],
+        activeSettings: null as { network: boolean; port: number; uploads: boolean; manage: boolean; authRequired: boolean } | null };
       const calls: { command: string; args: unknown }[] = [];
       Object.assign(window, {
         nativeCalls: calls,
@@ -21,9 +22,14 @@ test.describe("native host entry", () => {
                 if (args && Object.keys(args).length) throw new Error("Folder selection accepts no path from JavaScript");
                 state.root = "/folder-from-native-dialog"; return { ...state };
               case "create_access_key": return "fixture-native-key-64-characters-for-browser-interface-verification";
-              case "start_service":
-                state.running = true; state.managerUrl = managerUrl; state.addresses = ["http://192.168.1.20:5000"]; return { ...state };
-              case "stop_service": state.running = false; state.managerUrl = null; state.addresses = []; return { ...state };
+              case "start_service": {
+                const options = args?.options as { network: boolean; port: number; uploads: boolean; manage: boolean; key: string | null };
+                state.running = true; state.managerUrl = managerUrl; state.addresses = ["http://192.168.1.20:5000"];
+                state.activeSettings = { network: options.network, port: options.port, uploads: options.uploads,
+                  manage: options.manage, authRequired: options.key !== null };
+                return { ...state };
+              }
+              case "stop_service": state.running = false; state.managerUrl = null; state.addresses = []; state.activeSettings = null; return { ...state };
               case "open_manager": return null;
               default: throw new Error("Unexpected native command: " + command);
             }

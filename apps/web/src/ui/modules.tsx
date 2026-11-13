@@ -25,6 +25,7 @@ export interface FeatureModule {
   Provider?: ComponentType<ModuleProviderProps>;
   View?: ComponentType<ModuleProps>;
   Toolbar?: ComponentType<ModuleProps>;
+  SelectionPanel?: ComponentType<ModuleProps>;
   Panel?: ComponentType<ModuleProps>;
 }
 
@@ -33,7 +34,7 @@ export function activeModules(registry: readonly FeatureModule[], context: Serve
     && feature.requires.every((id) => context.modules.includes(id)) && feature.enabled(context));
 }
 
-export function ModuleSlot({ modules, slot, runtime }: { modules: FeatureModule[]; slot: "View" | "Toolbar" | "Panel"; runtime: ModuleRuntime }) {
+export function ModuleSlot({ modules, slot, runtime }: { modules: FeatureModule[]; slot: "View" | "Toolbar" | "SelectionPanel" | "Panel"; runtime: ModuleRuntime }) {
   return <>{modules.map((feature) => {
     const Component = feature[slot];
     return Component ? <Component key={feature.id} runtime={runtime} /> : null;

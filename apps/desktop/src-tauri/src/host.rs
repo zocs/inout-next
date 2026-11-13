@@ -16,6 +16,16 @@ pub struct StartOptions {
     pub key: Option<String>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveSettings {
+    pub network: bool,
+    pub port: u16,
+    pub uploads: bool,
+    pub manage: bool,
+    pub auth_required: bool,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HostStatus {
@@ -23,6 +33,7 @@ pub struct HostStatus {
     pub running: bool,
     pub manager_url: Option<String>,
     pub addresses: Vec<String>,
+    pub active_settings: Option<ActiveSettings>,
 }
 
 #[derive(Default)]
@@ -30,6 +41,7 @@ struct HostState {
     root: Option<PathBuf>,
     running: Option<RunningServer>,
     addresses: Vec<String>,
+    active_settings: Option<ActiveSettings>,
 }
 
 impl HostState {
@@ -45,6 +57,7 @@ impl HostState {
                 .as_ref()
                 .map(|server| format!("http://127.0.0.1:{}", server.address().port())),
             addresses: self.addresses.clone(),
+            active_settings: self.active_settings.clone(),
         }
     }
 }
@@ -98,6 +111,7 @@ impl HostController {
         ));
         let mut config = ServerConfig::new(root, listen);
         config.web_dir = Some(self.web_dir.clone());
+        let auth_required = options.key.is_some();
         config.key = options.key;
         config.writable = options.uploads || options.manage;
         config.modules = vec!["files".into()];
@@ -118,6 +132,13 @@ impl HostController {
         } else {
             Vec::new()
         };
+        state.active_settings = Some(ActiveSettings {
+            network: options.network,
+            port: running.address().port(),
+            uploads: options.uploads,
+            manage: options.manage,
+            auth_required,
+        });
         state.running = Some(running);
         Ok(state.status())
     }
@@ -125,6 +146,7 @@ impl HostController {
     pub async fn stop(&self) -> Result<HostStatus, String> {
         let mut state = self.state.lock().await;
         state.addresses.clear();
+        state.active_settings = None;
         if let Some(running) = state.running.take() {
             running.request_stop();
             running

@@ -228,3 +228,139 @@ async fn keyed_upload_and_manage_modes_enforce_auth_and_enable_only_requested_mo
     assert!(!root.join("blocked.txt").exists());
     host.stop().await.unwrap();
 }
+
+#[tokio::test]
+async fn active_settings_report_the_real_bound_service_without_returning_a_key() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("files");
+    let web = temp.path().join("web");
+    std::fs::create_dir(&root).unwrap();
+    create_assets(&web);
+    let host = HostController::new(web);
+    host.select_root(root.clone()).await.unwrap();
+    let key = "active-settings-native-secret";
+    let status = host
+        .start(StartOptions {
+            network: true,
+            port: 0,
+            uploads: true,
+            manage: true,
+            key: Some(key.into()),
+        })
+        .await
+        .unwrap();
+    let serialized = serde_json::to_value(&status).unwrap();
+    let url = status.manager_url.as_deref().unwrap();
+    let port: u16 = url.rsplit(':').next().unwrap().parse().unwrap();
+    assert_ne!(port, 0);
+    assert_eq!(
+        serialized["activeSettings"],
+        serde_json::json!({"network":true,"port":port,"uploads":true,"manage":true,"authRequired":true})
+    );
+    assert_eq!(serialized.as_object().unwrap().len(), 5);
+    assert!(!serialized.to_string().contains(key));
+    assert!(!serialized.to_string().contains("\"key\""));
+    assert_eq!(
+        serde_json::to_value(host.status().await).unwrap()["activeSettings"],
+        serialized["activeSettings"]
+    );
+    assert!(status
+        .addresses
+        .iter()
+        .all(|address| address.ends_with(&format!(":{port}"))));
+    assert!(request(url, "GET", "/api/v1/status", "", "")
+        .await
+        .contains("\"auth_required\":true"));
+    assert!(request(url, "GET", "/api/v1/context", "", "")
+        .await
+        .starts_with("HTTP/1.1 401"));
+    let auth = format!("Authorization: Bearer {key}\r\n");
+    let context = request(url, "GET", "/api/v1/context", &auth, "").await;
+    assert!(context.starts_with("HTTP/1.1 200"));
+    assert!(context.contains("\"upload\":true"));
+    assert!(context.contains("\"manage\":true"));
+    let stopped = serde_json::to_value(host.stop().await.unwrap()).unwrap();
+    assert_eq!(stopped["activeSettings"], serde_json::Value::Null);
+    assert_eq!(stopped["running"], false);
+    assert_eq!(stopped["root"], root.to_str().unwrap());
+    assert_eq!(stopped["managerUrl"], serde_json::Value::Null);
+    assert_eq!(stopped["addresses"], serde_json::json!([]));
+    assert!(
+        tokio::net::TcpStream::connect(url.strip_prefix("http://").unwrap())
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn active_settings_stay_null_after_failed_starts_and_match_readonly_restarts() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("files");
+    let web = temp.path().join("web");
+    std::fs::create_dir(&root).unwrap();
+    create_assets(&web);
+    let host = HostController::new(web);
+    let initial = serde_json::to_value(host.status().await).unwrap();
+    assert_eq!(
+        initial.get("activeSettings"),
+        Some(&serde_json::Value::Null)
+    );
+    assert!(host.start(StartOptions::default()).await.is_err());
+    host.select_root(root).await.unwrap();
+    assert!(host
+        .start(StartOptions {
+            uploads: true,
+            ..Default::default()
+        })
+        .await
+        .is_err());
+    assert_eq!(
+        serde_json::to_value(host.status().await).unwrap()["activeSettings"],
+        serde_json::Value::Null
+    );
+    let occupied = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    assert!(host
+        .start(StartOptions {
+            port: occupied.local_addr().unwrap().port(),
+            ..Default::default()
+        })
+        .await
+        .is_err());
+    assert_eq!(
+        serde_json::to_value(host.status().await).unwrap()["activeSettings"],
+        serde_json::Value::Null
+    );
+    for key in [None, Some("readonly-native-secret")] {
+        let status = host
+            .start(StartOptions {
+                key: key.map(str::to_owned),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        let url = status.manager_url.as_deref().unwrap();
+        let port: u16 = url.rsplit(':').next().unwrap().parse().unwrap();
+        let serialized = serde_json::to_value(&status).unwrap();
+        assert_eq!(
+            serialized["activeSettings"],
+            serde_json::json!({"network":false,"port":port,"uploads":false,"manage":false,"authRequired":key.is_some()})
+        );
+        assert_eq!(serialized["addresses"], serde_json::json!([]));
+        assert!(!serialized.to_string().contains("readonly-native-secret"));
+        let auth = key
+            .map(|key| format!("Authorization: Bearer {key}\r\n"))
+            .unwrap_or_default();
+        let context = request(url, "GET", "/api/v1/context", &auth, "").await;
+        assert!(context.starts_with("HTTP/1.1 200"));
+        assert!(context.contains("\"upload\":false"));
+        assert!(context.contains("\"manage\":false"));
+        assert_eq!(
+            serde_json::to_value(host.stop().await.unwrap()).unwrap()["activeSettings"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            serde_json::to_value(host.stop().await.unwrap()).unwrap()["activeSettings"],
+            serde_json::Value::Null
+        );
+    }
+}

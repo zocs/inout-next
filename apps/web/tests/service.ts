@@ -12,6 +12,7 @@ export interface ServiceOptions {
   modules?: string;
   maxUploadBytes?: number;
   alternateProduct?: boolean;
+  productName?: string;
 }
 
 interface Service {
@@ -34,10 +35,13 @@ export const test = base.extend<{ service: Service; serviceOptions: ServiceOptio
     if (serviceOptions.writable !== false) args.push("--writable", "--key-file", keyFile);
     if (serviceOptions.modules) args.push("--modules", serviceOptions.modules);
     if (serviceOptions.maxUploadBytes !== undefined) args.push("--max-upload-bytes", String(serviceOptions.maxUploadBytes));
-    if (serviceOptions.alternateProduct) {
+    if (serviceOptions.alternateProduct || serviceOptions.productName) {
       const product = JSON.parse(readFileSync(join(projectRoot, "product.json"), "utf8"));
       const productFile = join(directory, "product.json");
-      writeFileSync(productFile, JSON.stringify({ ...product, name: "Harbor", slug: "harbor" }));
+      writeFileSync(productFile, JSON.stringify({ ...product,
+        name: serviceOptions.productName ?? "Harbor",
+        slug: serviceOptions.alternateProduct ? "harbor" : product.slug,
+      }));
       args.push("--product-file", productFile);
     }
     const executable = process.env.SHARE_SERVER_BINARY
