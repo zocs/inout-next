@@ -16,3 +16,6 @@ tempfile.workspace = true
 
 [target.'cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios"))'.dependencies]
 rustix = { version = "1", features = ["fs"] }
+
+[target.'cfg(windows)'.dependencies]
+winapi-util = "0.1"

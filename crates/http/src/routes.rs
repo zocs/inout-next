@@ -141,7 +141,7 @@ async fn context(
     let permissions = state.registry.permissions(state.writable);
     Ok(Json(
         json!({"product":state.product,"root_label":"Shared files","modules":state.registry.enabled(),
-        "capabilities":{"directory_move":permissions.manage && state.store.directory_move_supported(), "directory_copy":false},
+        "capabilities":{"file_move":permissions.manage && state.store.file_move_supported(), "directory_move":permissions.manage && state.store.directory_move_supported(), "directory_copy":false},
         "permissions":permissions,"limits":{"max_upload_bytes":state.max_upload_bytes}}),
     ))
 }
@@ -382,7 +382,12 @@ async fn operation(
     let source = RelativePath::parse(&request.source, false)?;
     let destination = RelativePath::parse(&request.destination, false)?;
     let entry = match request.action.as_str() {
-        "rename" | "move" => state.store.move_entry(&source, &destination).await?,
+        "rename" | "move" => {
+            if !state.store.file_move_supported() && !state.store.directory_move_supported() {
+                return Err(Error::Unsupported.into());
+            }
+            state.store.move_entry(&source, &destination).await?
+        }
         "copy" => state.store.copy(&source, &destination).await?,
         _ => return Err(Error::Unsupported.into()),
     };

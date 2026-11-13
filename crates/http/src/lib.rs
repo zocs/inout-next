@@ -1,15 +1,20 @@
 //! Independent HTTP host. Applications may inject any [`FileStore`] through
 //! [`start_with_store`] or [`router_with_store`] without exposing ambient roots.
+mod assets;
 mod auth;
 mod routes;
 
-use axum::{extract::DefaultBodyLimit, Router};
+use axum::{
+    extract::{DefaultBodyLimit, Request, State},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    Router,
+};
 use share_domain::{Error, ModuleRegistry, Product};
 use share_storage::{FileStore, FsStore};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
-use tower_http::services::ServeDir;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 pub struct ServerConfig {
     pub root: PathBuf,
@@ -54,12 +59,15 @@ pub enum ServerError {
     Io(#[source] std::io::Error),
     #[error("Server task failed")]
     Task,
+    #[error("Shutdown did not drain pending requests")]
+    Shutdown,
 }
 
 pub struct RunningServer {
     address: SocketAddr,
     cancellation: CancellationToken,
     task: Option<JoinHandle<Result<(), std::io::Error>>>,
+    requests: TaskTracker,
 }
 impl RunningServer {
     pub fn address(&self) -> SocketAddr {
@@ -67,19 +75,25 @@ impl RunningServer {
     }
     pub fn request_stop(&self) {
         self.cancellation.cancel();
+        self.requests.close();
     }
-    /// Drain active requests for at most two seconds, then release the listener.
+    /// Cancel and drain requests for at most two seconds, then release the
+    /// listener. A missed deadline returns Shutdown rather than false success.
     pub async fn stop(mut self) -> Result<(), ServerError> {
         self.request_stop();
         if let Some(mut task) = self.task.take() {
-            match tokio::time::timeout(Duration::from_secs(2), &mut task).await {
+            let drained = async {
+                self.requests.wait().await;
+                (&mut task).await
+            };
+            match tokio::time::timeout(Duration::from_secs(2), drained).await {
                 Ok(Ok(Ok(()))) => Ok(()),
                 Ok(Ok(Err(error))) => Err(ServerError::Io(error)),
                 Ok(Err(_)) => Err(ServerError::Task),
                 Err(_) => {
                     task.abort();
                     let _ = task.await;
-                    Ok(())
+                    Err(ServerError::Shutdown)
                 }
             }
         } else {
@@ -89,7 +103,7 @@ impl RunningServer {
 }
 impl Drop for RunningServer {
     fn drop(&mut self) {
-        self.cancellation.cancel();
+        self.request_stop();
         if let Some(task) = self.task.take() {
             task.abort();
         }
@@ -120,7 +134,8 @@ pub async fn start_with_store(
     store: Arc<dyn FileStore>,
 ) -> Result<RunningServer, ServerError> {
     let cancellation = CancellationToken::new();
-    let router = build_router(&config, store, cancellation.clone())?;
+    let requests = TaskTracker::new();
+    let router = build_router(&config, store, cancellation.clone(), requests.clone())?;
     let listener = tokio::net::TcpListener::bind(config.listen)
         .await
         .map_err(ServerError::Io)?;
@@ -135,6 +150,7 @@ pub async fn start_with_store(
         address,
         cancellation,
         task: Some(task),
+        requests,
     })
 }
 
@@ -143,15 +159,28 @@ pub fn router_with_store(
     config: &ServerConfig,
     store: Arc<dyn FileStore>,
 ) -> Result<Router, ServerError> {
-    build_router(config, store, CancellationToken::new())
+    build_router(config, store, CancellationToken::new(), TaskTracker::new())
 }
 fn build_router(
     config: &ServerConfig,
     store: Arc<dyn FileStore>,
     cancellation: CancellationToken,
+    requests: TaskTracker,
 ) -> Result<Router, ServerError> {
+    let registry = config.validate()?;
+    let public_assets = if let Some(web_dir) = &config.web_dir {
+        Some(assets::Assets::new(
+            store.web_assets(web_dir).map_err(ServerError::Domain)?,
+        ))
+    } else {
+        None
+    };
+    let request_control = RequestControl {
+        cancellation: cancellation.clone(),
+        requests,
+    };
     let state = AppState {
-        registry: config.validate()?,
+        registry,
         store,
         product: config.product.clone(),
         writable: config.writable,
@@ -165,9 +194,37 @@ fn build_router(
     let router = Router::new()
         .nest("/api/v1", api)
         .fallback(routes::not_found);
-    Ok(if let Some(web_dir) = &config.web_dir {
-        router.fallback_service(ServeDir::new(web_dir).append_index_html_on_directories(true))
+    let router = if let Some(assets) = public_assets {
+        router.fallback(move |request: Request| {
+            let assets = assets.clone();
+            async move { assets.serve(request) }
+        })
     } else {
         router
-    })
+    };
+    Ok(router.layer(middleware::from_fn_with_state(
+        request_control,
+        cancel_requests,
+    )))
+}
+
+#[derive(Clone)]
+struct RequestControl {
+    cancellation: CancellationToken,
+    requests: TaskTracker,
+}
+
+async fn cancel_requests(
+    State(control): State<RequestControl>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let _tracked = control.requests.token();
+    // Dropping next.run drops body extractors, provider futures and any staging
+    // guards they own. Bias cancellation so stopped requests cannot start work.
+    tokio::select! {
+        biased;
+        _ = control.cancellation.cancelled() => routes::ApiError::from(Error::Conflict).into_response(),
+        response = next.run(request) => response,
+    }
 }

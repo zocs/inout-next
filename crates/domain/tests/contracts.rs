@@ -22,6 +22,11 @@ fn portable_paths_preserve_unicode_and_reject_escape_and_windows_special_names()
         "a/NUL.txt",
         "a. ",
         ".inout-stage-hidden",
+        ".INOUT-STAGE-hidden",
+        "dir/.InOuT-StAgE-hidden",
+        "INOUTTMP",
+        "dir/inouttmp/secret",
+        "INOUTS~1.BIN",
     ] {
         assert_eq!(
             RelativePath::parse(path, false),

@@ -66,6 +66,20 @@ async fn upload_list_open_and_copy_move_preserve_bytes_and_metadata() {
         .copy(&path("docs/a.txt"), &path("copy.txt"))
         .await
         .unwrap();
+    if !store.file_move_supported() {
+        assert!(matches!(
+            store
+                .move_entry(&path("copy.txt"), &path("moved.txt"))
+                .await,
+            Err(Error::Unsupported)
+        ));
+        assert_eq!(
+            std::fs::read(root.path().join("copy.txt")).unwrap(),
+            b"abcdef"
+        );
+        assert!(!root.path().join("moved.txt").exists());
+        return;
+    }
     store
         .move_entry(&path("copy.txt"), &path("moved.txt"))
         .await
@@ -165,4 +179,155 @@ async fn symlinks_are_neither_listed_read_nor_followed_for_writes() {
         b"private"
     );
     assert!(!outside.path().join("new").exists());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn internal_stage_files_are_inaccessible_through_filesystem_identity_aliases() {
+    use std::sync::Arc;
+    let root = tempfile::tempdir().unwrap();
+    let store = Arc::new(FsStore::new(root.path()).unwrap());
+    let (mut writer, reader) = tokio::io::duplex(16);
+    use tokio::io::AsyncWriteExt;
+    writer.write_all(b"unfinished").await.unwrap();
+    let uploading = store.clone();
+    let task = tokio::spawn(async move {
+        uploading
+            .upload(&path("final"), Box::pin(reader), 100)
+            .await
+    });
+    let staged = tokio::time::timeout(std::time::Duration::from_secs(1), async {
+        loop {
+            let mut files = Vec::new();
+            for entry in std::fs::read_dir(root.path()).unwrap() {
+                let entry = entry.unwrap();
+                if entry.file_type().unwrap().is_file() {
+                    files.push(entry.path());
+                }
+                if entry.file_type().unwrap().is_dir() {
+                    files.extend(
+                        std::fs::read_dir(entry.path())
+                            .unwrap()
+                            .map(|child| child.unwrap().path()),
+                    );
+                }
+            }
+            if let Some(file) = files.into_iter().next() {
+                break file;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    std::fs::hard_link(staged, root.path().join("ordinary-alias")).unwrap();
+    assert!(matches!(
+        store.open(&path("ordinary-alias"), 0).await,
+        Err(Error::Forbidden)
+    ));
+    assert!(matches!(
+        store.copy(&path("ordinary-alias"), &path("copied")).await,
+        Err(Error::Forbidden)
+    ));
+    assert!(matches!(
+        store
+            .move_entry(&path("ordinary-alias"), &path("moved"))
+            .await,
+        Err(Error::Forbidden)
+    ));
+    assert_eq!(
+        store.remove(&path("ordinary-alias"), false).await,
+        Err(Error::Forbidden)
+    );
+    assert!(store.list(&path("")).await.unwrap().is_empty());
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    std::fs::remove_file(root.path().join("ordinary-alias")).unwrap();
+    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn file_move_is_observed_as_one_native_rename_without_link_unlink_window() {
+    use rustix::fs::inotify;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("source"), b"original").unwrap();
+    let store = FsStore::new(root.path()).unwrap();
+    let fd = inotify::init(inotify::CreateFlags::NONBLOCK | inotify::CreateFlags::CLOEXEC).unwrap();
+    inotify::add_watch(
+        &fd,
+        root.path(),
+        inotify::WatchFlags::MOVED_FROM
+            | inotify::WatchFlags::MOVED_TO
+            | inotify::WatchFlags::CREATE
+            | inotify::WatchFlags::DELETE,
+    )
+    .unwrap();
+    store
+        .move_entry(&path("source"), &path("destination"))
+        .await
+        .unwrap();
+    let mut buffer = [std::mem::MaybeUninit::uninit(); 4096];
+    let mut reader = inotify::Reader::new(&fd, &mut buffer);
+    let mut events = Vec::new();
+    while let Ok(event) = reader.next() {
+        events.push((
+            event.events(),
+            event.cookie(),
+            event.file_name().unwrap().to_str().unwrap().to_owned(),
+        ));
+    }
+    assert_eq!(events.len(), 2);
+    assert!(events[0].0.contains(inotify::ReadFlags::MOVED_FROM));
+    assert!(events[1].0.contains(inotify::ReadFlags::MOVED_TO));
+    assert_ne!(events[0].1, 0);
+    assert_eq!(events[0].1, events[1].1);
+    assert_eq!(events[0].2, "source");
+    assert_eq!(events[1].2, "destination");
+    assert_eq!(
+        std::fs::read(root.path().join("destination")).unwrap(),
+        b"original"
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn cross_volume_native_move_preserves_source_and_creates_no_destination() {
+    use std::os::unix::fs::MetadataExt;
+    let source = tempfile::tempdir().unwrap();
+    let Ok(destination) = tempfile::tempdir_in("/dev/shm") else {
+        return;
+    };
+    if source.path().metadata().unwrap().dev() == destination.path().metadata().unwrap().dev() {
+        return;
+    }
+    std::fs::write(source.path().join("source"), b"original").unwrap();
+    let store = FsStore::new("/").unwrap();
+    let from = path(
+        source
+            .path()
+            .join("source")
+            .to_str()
+            .unwrap()
+            .strip_prefix('/')
+            .unwrap(),
+    );
+    let to = path(
+        destination
+            .path()
+            .join("target")
+            .to_str()
+            .unwrap()
+            .strip_prefix('/')
+            .unwrap(),
+    );
+    assert!(matches!(
+        store.move_entry(&from, &to).await,
+        Err(Error::Unsupported)
+    ));
+    assert_eq!(
+        std::fs::read(source.path().join("source")).unwrap(),
+        b"original"
+    );
+    assert!(!destination.path().join("target").exists());
 }

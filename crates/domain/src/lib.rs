@@ -49,7 +49,11 @@ impl RelativePath {
                 || component == "."
                 || component == ".."
                 || component.ends_with(['.', ' '])
-                || component.starts_with(".inout-stage-")
+                || component.to_ascii_lowercase().starts_with(".inout-stage-")
+                || component.eq_ignore_ascii_case("INOUTTMP")
+                // DOS short-name aliases contain a tilde followed by a digit.
+                // Conservatively reserve that shape across all platforms.
+                || component.as_bytes().windows(2).any(|pair| pair[0] == b'~' && pair[1].is_ascii_digit())
                 || component.chars().any(|c| {
                     c.is_control() || matches!(c, '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*')
                 })

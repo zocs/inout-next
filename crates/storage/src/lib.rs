@@ -5,6 +5,16 @@ use cap_std::fs::{Dir, File, Metadata, OpenOptions};
 use share_domain::{Entry, EntryKind, Error, RelativePath};
 use std::{io::Write, path::Path, pin::Pin, sync::Arc};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
+mod assets;
+mod identity;
+mod protected;
+use protected::{ProtectedObjects, Protection};
+
+/// A provider-validated immutable public asset; no live user-file paths remain.
+pub struct WebAsset {
+    pub path: String,
+    pub bytes: Vec<u8>,
+}
 
 pub type Reader = Pin<Box<dyn AsyncRead + Send + Unpin>>;
 pub struct OpenFile {
@@ -13,7 +23,17 @@ pub struct OpenFile {
 }
 
 #[async_trait]
+/// Operation futures must own their work and release resources when dropped.
+/// Providers must not detach writes or publish after a cancelled future ends.
 pub trait FileStore: Send + Sync {
+    /// Providers must prove separation from their actual share. Unknown providers
+    /// reject public assets rather than opening an unrelated config.root.
+    fn web_assets(&self, _: &Path) -> Result<Vec<WebAsset>, Error> {
+        Err(Error::Unsupported)
+    }
+    fn file_move_supported(&self) -> bool {
+        false
+    }
     /// Providers report support independently of mounted HTTP modules.
     fn directory_move_supported(&self) -> bool {
         false
@@ -36,23 +56,30 @@ pub trait FileStore: Send + Sync {
 pub struct FsStore {
     root: Arc<Dir>,
     mutations: tokio::sync::Mutex<()>,
+    protected: Arc<ProtectedObjects>,
+    root_path: std::path::PathBuf,
 }
 impl FsStore {
     pub fn new(root: impl AsRef<Path>) -> Result<Self, Error> {
-        let root = Dir::open_ambient_dir(root, cap_std::ambient_authority()).map_err(io_error)?;
+        let root_path = std::fs::canonicalize(root.as_ref()).map_err(io_error)?;
+        let root = Dir::open_ambient_dir(root_path.clone(), cap_std::ambient_authority())
+            .map_err(io_error)?;
         Ok(Self {
             root: Arc::new(root),
             mutations: tokio::sync::Mutex::new(()),
+            protected: Arc::new(ProtectedObjects::default()),
+            root_path,
         })
     }
     fn directory(&self, path: &str) -> Result<Dir, Error> {
         let mut dir = self.root.try_clone().map_err(io_error)?;
         if !path.is_empty() {
             for part in path.split('/') {
-                if !Self::metadata(&dir, part)?.is_dir() {
+                if !self.metadata(&dir, part)?.is_dir() {
                     return Err(Error::Unsupported);
                 }
                 dir = dir.open_dir_nofollow(part).map_err(io_error)?;
+                self.protected.check_dir(&dir)?;
             }
         }
         Ok(dir)
@@ -67,7 +94,7 @@ impl FsStore {
             .unwrap_or(("", path.as_str()));
         Ok((self.directory(parent)?, name.to_owned()))
     }
-    fn metadata(dir: &Dir, name: &str) -> Result<Metadata, Error> {
+    fn metadata(&self, dir: &Dir, name: &str) -> Result<Metadata, Error> {
         let metadata = dir.symlink_metadata(name).map_err(io_error)?;
         if metadata.file_type().is_symlink() {
             return Err(Error::Forbidden);
@@ -75,6 +102,7 @@ impl FsStore {
         if !metadata.is_file() && !metadata.is_dir() {
             return Err(Error::Unsupported);
         }
+        self.protected.check_entry(dir, name, &metadata)?;
         Ok(metadata)
     }
     fn absent(dir: &Dir, name: &str) -> Result<(), Error> {
@@ -139,14 +167,39 @@ fn entry(path: &RelativePath, metadata: &Metadata) -> Entry {
 /// before unlinking, including on Windows. No asynchronous writes outlive the guard.
 struct Stage {
     dir: Dir,
+    destination: Dir,
     name: String,
     file: Option<File>,
+    _protection: Protection,
+    published: bool,
 }
 impl Stage {
-    fn new(dir: &Dir) -> Result<Self, Error> {
+    fn new(destination: &Dir, protected: &Arc<ProtectedObjects>) -> Result<Self, Error> {
+        const CONTAINER: &str = "INOUTTMP";
+        // This is an exact 8.3 directory name, so native short-name generation
+        // cannot introduce a second spelling for the staging namespace.
+        match destination.create_dir(CONTAINER) {
+            Ok(()) => (),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                let canonical_name_exists = destination.entries().map_err(io_error)?.any(|item| {
+                    item.ok().is_some_and(|entry| {
+                        entry
+                            .file_name()
+                            .to_str()
+                            .is_some_and(|name| name.eq_ignore_ascii_case(CONTAINER))
+                    })
+                });
+                if !canonical_name_exists {
+                    return Err(Error::Forbidden);
+                }
+            }
+            Err(error) => return Err(io_error(error)),
+        }
+        let dir = destination.open_dir_nofollow(CONTAINER).map_err(io_error)?;
         let cleanup_dir = dir.try_clone().map_err(io_error)?;
+        let destination = destination.try_clone().map_err(io_error)?;
         for _ in 0..8 {
-            let name = format!(".inout-stage-{:032x}", rand::random::<u128>());
+            let name = format!("{:08x}", rand::random::<u32>());
             let mut options = OpenOptions::new();
             options
                 .write(true)
@@ -154,11 +207,23 @@ impl Stage {
                 .follow(FollowSymlinks::No);
             match dir.open_with(&name, &options) {
                 Ok(file) => {
+                    let protection = match protected.register(&dir, &file) {
+                        Ok(protection) => protection,
+                        Err(error) => {
+                            drop(file);
+                            let _ = cleanup_dir.remove_file(&name);
+                            let _ = destination.remove_dir(CONTAINER);
+                            return Err(error);
+                        }
+                    };
                     return Ok(Self {
                         dir: cleanup_dir,
+                        destination,
                         name,
                         file: Some(file),
-                    })
+                        _protection: protection,
+                        published: false,
+                    });
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(error) => return Err(io_error(error)),
@@ -178,28 +243,52 @@ impl Stage {
             .sync_all()
             .map_err(io_error)?;
         self.file.take();
-        // link creation is exclusive even when another process creates the destination.
-        self.dir
-            .hard_link(&self.name, &self.dir, destination)
-            .map_err(io_error)
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "macos",
+            target_os = "ios"
+        ))]
+        {
+            move_exclusively(&self.dir, &self.name, &self.destination, destination)?;
+            self.published = true;
+            Ok(())
+        }
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "macos",
+            target_os = "ios"
+        )))]
+        {
+            // Publication of app-owned internal data remains exclusive. This is
+            // never used to emulate a user-file move or roll back user entries.
+            self.dir
+                .hard_link(&self.name, &self.destination, destination)
+                .map_err(io_error)
+        }
     }
 }
 impl Drop for Stage {
     fn drop(&mut self) {
         self.file.take();
-        let _ = self.dir.remove_file(&self.name);
+        if !self.published {
+            let _ = self.dir.remove_file(&self.name);
+        }
+        let _ = self.destination.remove_dir("INOUTTMP");
     }
 }
 
 #[async_trait]
 impl FileStore for FsStore {
+    fn web_assets(&self, web_dir: &Path) -> Result<Vec<WebAsset>, Error> {
+        assets::snapshot(self, web_dir)
+    }
+    fn file_move_supported(&self) -> bool {
+        native_move_supported()
+    }
     fn directory_move_supported(&self) -> bool {
-        cfg!(any(
-            target_os = "linux",
-            target_os = "android",
-            target_os = "macos",
-            target_os = "ios"
-        ))
+        native_move_supported()
     }
     async fn list(&self, path: &RelativePath) -> Result<Vec<Entry>, Error> {
         let dir = self.directory(path.as_str())?;
@@ -217,7 +306,7 @@ impl FileStore for FsStore {
             let Ok(relative) = RelativePath::parse(&joined, false) else {
                 continue;
             };
-            match Self::metadata(&dir, &name) {
+            match self.metadata(&dir, &name) {
                 Ok(metadata) => result.push(entry(&relative, &metadata)),
                 Err(Error::Forbidden | Error::Unsupported | Error::NotFound) => continue,
                 Err(error) => return Err(error),
@@ -228,12 +317,13 @@ impl FileStore for FsStore {
     }
     async fn open(&self, path: &RelativePath, offset: u64) -> Result<OpenFile, Error> {
         let (dir, name) = self.parent(path)?;
-        if !Self::metadata(&dir, &name)?.is_file() {
+        if !self.metadata(&dir, &name)?.is_file() {
             return Err(Error::Unsupported);
         }
         let mut options = OpenOptions::new();
         options.read(true).follow(FollowSymlinks::No);
         let file = dir.open_with(&name, &options).map_err(io_error)?;
+        self.protected.check_file(&file)?;
         let metadata = file.metadata().map_err(io_error)?;
         if !metadata.is_file() {
             return Err(Error::Unsupported);
@@ -258,7 +348,7 @@ impl FileStore for FsStore {
     ) -> Result<Entry, Error> {
         let (dir, name) = self.parent(path)?;
         Self::absent(&dir, &name)?;
-        let mut stage = Stage::new(&dir)?;
+        let mut stage = Stage::new(&dir, &self.protected)?;
         let mut buffer = vec![0_u8; 64 * 1024];
         let mut written = 0_u64;
         loop {
@@ -278,14 +368,16 @@ impl FileStore for FsStore {
                 .map_err(io_error)?;
         }
         stage.publish(&name)?;
-        Ok(entry(path, &Self::metadata(&dir, &name)?))
+        // Published inode remains protected until the guard leaves this scope.
+        drop(stage);
+        Ok(entry(path, &self.metadata(&dir, &name)?))
     }
     async fn mkdir(&self, path: &RelativePath) -> Result<Entry, Error> {
         let _lock = self.mutations.lock().await;
         let (dir, name) = self.parent(path)?;
         Self::absent(&dir, &name)?;
         dir.create_dir(&name).map_err(io_error)?;
-        Ok(entry(path, &Self::metadata(&dir, &name)?))
+        Ok(entry(path, &self.metadata(&dir, &name)?))
     }
     async fn move_entry(
         &self,
@@ -301,25 +393,18 @@ impl FileStore for FsStore {
         }
         let (source_dir, source_name) = self.parent(source)?;
         let (destination_dir, destination_name) = self.parent(destination)?;
-        let metadata = Self::metadata(&source_dir, &source_name)?;
+        self.metadata(&source_dir, &source_name)?;
         Self::absent(&destination_dir, &destination_name)?;
-        if metadata.is_dir() {
-            move_directory(
-                &source_dir,
-                &source_name,
-                &destination_dir,
-                &destination_name,
-            )?;
-        } else {
-            source_dir
-                .hard_link(&source_name, &destination_dir, &destination_name)
-                .map_err(io_error)?;
-            if let Err(error) = source_dir.remove_file(&source_name) {
-                let _ = destination_dir.remove_file(&destination_name);
-                return Err(io_error(error));
-            }
-        }
-        Ok(entry(destination, &metadata))
+        move_exclusively(
+            &source_dir,
+            &source_name,
+            &destination_dir,
+            &destination_name,
+        )?;
+        Ok(entry(
+            destination,
+            &self.metadata(&destination_dir, &destination_name)?,
+        ))
     }
     async fn copy(
         &self,
@@ -332,7 +417,7 @@ impl FileStore for FsStore {
     async fn remove(&self, path: &RelativePath, recursive: bool) -> Result<(), Error> {
         let _lock = self.mutations.lock().await;
         let (dir, name) = self.parent(path)?;
-        let metadata = Self::metadata(&dir, &name)?;
+        let metadata = self.metadata(&dir, &name)?;
         if metadata.is_dir() {
             if recursive {
                 dir.remove_dir_all(&name).map_err(io_error)
@@ -351,7 +436,7 @@ impl FileStore for FsStore {
     target_os = "macos",
     target_os = "ios"
 ))]
-fn move_directory(
+fn move_exclusively(
     source: &Dir,
     source_name: &str,
     destination: &Dir,
@@ -377,6 +462,15 @@ fn move_directory(
     target_os = "macos",
     target_os = "ios"
 )))]
-fn move_directory(_: &Dir, _: &str, _: &Dir, _: &str) -> Result<(), Error> {
+fn move_exclusively(_: &Dir, _: &str, _: &Dir, _: &str) -> Result<(), Error> {
     Err(Error::Unsupported)
+}
+
+fn native_move_supported() -> bool {
+    cfg!(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "macos",
+        target_os = "ios"
+    ))
 }

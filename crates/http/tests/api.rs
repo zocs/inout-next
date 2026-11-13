@@ -173,6 +173,7 @@ async fn public_status_private_context_and_server_side_policy() {
     );
     assert_eq!(context["capabilities"]["directory_copy"], false);
     assert_eq!(context["capabilities"]["directory_move"], false);
+    assert_eq!(context["capabilities"]["file_move"], false);
     assert!(!context
         .to_string()
         .contains(fixture.root.path().to_str().unwrap()));
@@ -393,7 +394,15 @@ async fn paths_decode_once_and_upload_limits_and_manage_operations_work() {
             r#"{"action":"rename","source":"dir/copied","destination":"dir/renamed"}"#,
         )
         .await;
-    assert_eq!(moved.status(), 200);
+    let context = json_body(fixture.request("GET", "/api/v1/context", &BEARER, "").await).await;
+    assert_eq!(
+        moved.status(),
+        if context["capabilities"]["file_move"] == true {
+            200
+        } else {
+            501
+        }
+    );
     assert_eq!(
         fixture
             .request("DELETE", "/api/v1/entries?path=dir", &BEARER, "")
