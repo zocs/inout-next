@@ -24,6 +24,34 @@ impl NativeState {
             Ok(())
         }
     }
+
+    #[cfg(any(desktop, test))]
+    async fn pick_folder<F, Fut>(&self, picker: F) -> Result<HostStatus, String>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = Result<Option<std::path::PathBuf>, String>>,
+    {
+        {
+            let _transition = self.transition.lock().await;
+            self.require_active()?;
+            if self.host.status().await.running {
+                return Err("Stop the service before choosing another folder".into());
+            }
+        }
+        // User-driven dialog completion must never hold the shutdown lock.
+        let selection = picker().await?;
+        let _transition = self.transition.lock().await;
+        self.require_active()?;
+        match selection {
+            Some(path) => self.host.select_root(path).await,
+            None => Ok(self.host.status().await),
+        }
+    }
+
+    async fn stop_for_shutdown(&self) -> Result<HostStatus, String> {
+        let _transition = self.transition.lock().await;
+        self.host.stop().await
+    }
 }
 
 fn require_host_label(label: &str) -> Result<(), String> {
@@ -64,32 +92,28 @@ async fn choose_folder(
     state: State<'_, Arc<NativeState>>,
 ) -> Result<HostStatus, String> {
     require_host_label(window.label())?;
-    let _transition = state.transition.lock().await;
-    state.require_active()?;
-    if state.host.status().await.running {
-        return Err("Stop the service before choosing another folder".into());
-    }
     #[cfg(desktop)]
     {
-        let (sender, receiver) = tokio::sync::oneshot::channel();
-        app.dialog()
-            .file()
-            .set_parent(&window)
-            .pick_folder(move |folder| {
-                let _ = sender.send(folder);
-            });
-        match receiver
+        state
+            .pick_folder(|| async {
+                let (sender, receiver) = tokio::sync::oneshot::channel();
+                app.dialog()
+                    .file()
+                    .set_parent(&window)
+                    .pick_folder(move |folder| {
+                        let _ = sender.send(folder);
+                    });
+                receiver
+                    .await
+                    .map_err(|_| "The folder dialog could not complete".to_owned())?
+                    .map(|folder| {
+                        folder
+                            .into_path()
+                            .map_err(|_| "The selected folder is unavailable".to_owned())
+                    })
+                    .transpose()
+            })
             .await
-            .map_err(|_| "The folder dialog could not complete")?
-        {
-            Some(folder) => {
-                let path = folder
-                    .into_path()
-                    .map_err(|_| "The selected folder is unavailable")?;
-                state.host.select_root(path).await
-            }
-            None => Ok(state.host.status().await),
-        }
     }
     #[cfg(not(desktop))]
     {
@@ -197,9 +221,8 @@ fn begin_shutdown(app: &AppHandle) {
     let state = Arc::clone(&state);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let _transition = state.transition.lock().await;
         // stop awaits the shared core's bounded request drain before exit.
-        let _ = state.host.stop().await;
+        let _ = state.stop_for_shutdown().await;
         let _ = close_manager(&app);
         state.shutdown_completed.store(true, Ordering::Release);
         app.exit(0);
@@ -279,6 +302,9 @@ pub(crate) fn run() {
         _ => {}
     });
 }
+
+#[cfg(test)]
+mod picker_tests;
 
 #[cfg(test)]
 mod tests {
