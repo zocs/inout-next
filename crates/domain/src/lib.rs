@@ -42,9 +42,15 @@ impl RelativePath {
                 .unwrap_or_default()
                 .to_ascii_uppercase();
             let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-                || (stem.len() == 4
-                    && (stem.starts_with("COM") || stem.starts_with("LPT"))
-                    && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+                || stem
+                    .strip_prefix("COM")
+                    .or_else(|| stem.strip_prefix("LPT"))
+                    .is_some_and(|suffix| {
+                        matches!(
+                            suffix,
+                            "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+                        )
+                    });
             if component.is_empty()
                 || component == "."
                 || component == ".."

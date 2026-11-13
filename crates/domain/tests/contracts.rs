@@ -37,6 +37,33 @@ fn portable_paths_preserve_unicode_and_reject_escape_and_windows_special_names()
 }
 
 #[test]
+fn portable_paths_reject_all_superscript_com_lpt_devices_in_each_component() {
+    for prefix in ["COM", "LPT", "cOm", "lPt"] {
+        for digit in ['¹', '²', '³'] {
+            for path in [
+                format!("{prefix}{digit}"),
+                format!("{prefix}{digit}.txt"),
+                format!("目录/{prefix}{digit}.txt/child"),
+            ] {
+                assert_eq!(
+                    RelativePath::parse(&path, false),
+                    Err(Error::InvalidPath),
+                    "{path:?}"
+                );
+            }
+        }
+    }
+    for path in [
+        "文档/数字¹²³.txt",
+        "COM10",
+        "LPT10.txt",
+        "目录/cOm10/lPt10.txt",
+    ] {
+        assert_eq!(RelativePath::parse(path, false).unwrap().as_str(), path);
+    }
+}
+
+#[test]
 fn module_dependencies_and_permissions_are_enforced() {
     let modules = ModuleRegistry::new(&["files".into(), "uploads".into()]).unwrap();
     assert!(modules.permissions(true).upload);

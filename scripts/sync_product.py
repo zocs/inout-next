@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import sys
 from urllib.parse import urlsplit
+from uuid import UUID
 
 
 FIELDS = {"name", "slug", "description", "version", "application_id", "repository"}
@@ -33,10 +34,41 @@ def load_product(root: Path) -> dict:
     return product
 
 
-def generated_files(product: dict) -> dict[str, dict]:
+def load_native_identity(root: Path, product: dict) -> dict:
+    path = root / "config/native-identity.json"
+    try:
+        identity = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise ValueError("native-identity.json must contain valid JSON") from error
+    if not isinstance(identity, dict) or set(identity) != {
+        "application_id", "product_name", "wix_upgrade_code",
+    }:
+        raise ValueError("native-identity.json must contain exactly the three native identity fields")
+    if any(not isinstance(value, str) or not value.strip() for value in identity.values()):
+        raise ValueError("native identity fields must be nonempty strings")
+    if identity["application_id"] != product["application_id"]:
+        raise ValueError("native identity application_id must match product.json; changes require an explicit migration")
+    name = identity["product_name"]
+    stem = name.split(".")[0].upper()
+    if (len(name) > 80 or name != name.strip() or name.endswith(".")
+            or any(ord(c) < 32 or ord(c) == 127 or c in '\\/:<>"|?*' for c in name)
+            or stem in {"CON", "PRN", "AUX", "NUL"}
+            or re.fullmatch(r"(?:COM|LPT)[1-9¹²³]", stem)):
+        raise ValueError("native product_name must be a portable installation name of at most 80 characters")
+    code = identity["wix_upgrade_code"]
+    try:
+        upgrade = UUID(code)
+    except ValueError as error:
+        raise ValueError("native wix_upgrade_code must be an explicit nonzero canonical UUID") from error
+    if not upgrade.int or str(upgrade) != code.lower():
+        raise ValueError("native wix_upgrade_code must be an explicit nonzero canonical UUID")
+    return identity
+
+
+def generated_files(product: dict, identity: dict) -> dict[str, dict]:
     native = {
         "$schema": "https://schema.tauri.app/config/2",
-        "productName": product["name"],
+        "productName": identity["product_name"],
         "version": product["version"],
         "identifier": product["application_id"],
         "build": {
@@ -61,7 +93,10 @@ def generated_files(product: dict) -> dict[str, dict]:
             "category": "Utility",
             "resources": {"../../web/out/": "web/"},
             "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
-            "windows": {"webviewInstallMode": {"type": "downloadBootstrapper"}},
+            "windows": {
+                "webviewInstallMode": {"type": "downloadBootstrapper"},
+                "wix": {"upgradeCode": identity["wix_upgrade_code"]},
+            },
         },
     }
     distribution = {
@@ -85,7 +120,8 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="Report stale generated files without changing them")
     args = parser.parse_args()
     try:
-        files = generated_files(load_product(args.root))
+        product = load_product(args.root)
+        files = generated_files(product, load_native_identity(args.root, product))
         stale = []
         for relative, value in files.items():
             path = args.root / relative
