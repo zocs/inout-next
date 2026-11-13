@@ -17,7 +17,7 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 | Endpoint | Request / response |
 | --- | --- |
 | `GET /status` | Public `{product, auth_required}` |
-| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, limits: {max_upload_bytes}}` |
+| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, capabilities: {directory_move: boolean, directory_copy: boolean}, limits: {max_upload_bytes}}` |
 | `POST /session` | JSON `{key}`; 204 and HttpOnly SameSite=Strict cookie after verification |
 | `DELETE /session` | 204, revoke session and clear cookie |
 | `GET /entries?path=` | `{path, entries: Entry[]}` |
@@ -28,6 +28,8 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 | `DELETE /entries?path=&recursive=false` | 204; root deletion forbidden; nonempty directories need explicit recursion |
 
 Authentication may use `Authorization: Bearer <access-key>` or the issued session. Session-authenticated mutations require a same-origin request; JSON session creation checks any supplied Origin. All operations also enforce server permissions and enabled modules. Writable configuration requires a key. Missing, unauthorized or disabled capabilities do not become active because a client crafts a request.
+
+Storage capabilities are separate from permissions. The initial filesystem provider supports directory move/rename through exclusive native rename on Linux, Android and macOS; it reports that capability as false elsewhere. Directory copy is not yet implemented. Clients hide unsupported directory actions while keeping supported file actions available. Providers must still reject unsupported operations server-side.
 
 Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and correct `Content-Length`; unsatisfiable ranges 416 with `bytes */size`; HEAD returns full metadata and zero body. Multiple ranges may be ignored in this first version. User files are attachment responses with `nosniff`; active HTML/SVG are not served as same-origin previews.
 

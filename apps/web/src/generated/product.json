@@ -1,0 +1,8 @@
+{
+  "name": "Inout Next",
+  "slug": "inout-next",
+  "description": "Local file sharing across your devices",
+  "version": "0.1.0",
+  "application_id": "io.github.zocs.inoutnext",
+  "repository": "https://github.com/zocs/inout-next"
+}
