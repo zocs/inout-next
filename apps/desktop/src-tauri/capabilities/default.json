@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "host-window",
+  "description": "Native controls are available only to the local host window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-host-status",
+    "allow-choose-folder",
+    "allow-start-service",
+    "allow-stop-service",
+    "allow-open-manager",
+    "allow-create-access-key"
+  ]
+}
