@@ -48,6 +48,14 @@ const BEARER: [(&str, &str); 1] = [("authorization", "Bearer test-access-key")];
 async fn json_body(response: http::Response<Body>) -> Value {
     serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap()
 }
+fn assert_only_empty_staging_container(root: &std::path::Path) {
+    let names: Vec<_> = std::fs::read_dir(root)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert_eq!(names, ["INOUTTMP"]);
+    assert_eq!(std::fs::read_dir(root.join("INOUTTMP")).unwrap().count(), 0);
+}
 
 #[tokio::test]
 async fn authenticated_upload_collision_and_exact_ranges() {
@@ -357,7 +365,7 @@ async fn paths_decode_once_and_upload_limits_and_manage_operations_work() {
         .request("PUT", "/api/v1/content?path=huge", &BEARER, "12345")
         .await;
     assert_eq!(too_large.status(), 413);
-    assert_eq!(std::fs::read_dir(fixture.root.path()).unwrap().count(), 0);
+    assert_only_empty_staging_container(fixture.root.path());
     assert_eq!(
         fixture
             .request("PUT", "/api/v1/content?path=%252e%252e", &BEARER, "x")
@@ -557,7 +565,12 @@ async fn unknown_length_oversize_failed_and_cancelled_bodies_leave_no_staging() 
     )
     .await
     .is_err());
-    assert_eq!(std::fs::read_dir(fixture.root.path()).unwrap().count(), 0);
+    assert_only_empty_staging_container(fixture.root.path());
+    let listed = fixture
+        .request("GET", "/api/v1/entries?path=", &BEARER, "")
+        .await;
+    assert_eq!(listed.status(), 200);
+    assert_eq!(json_body(listed).await["entries"], json!([]));
 }
 
 #[tokio::test]
@@ -573,7 +586,9 @@ async fn stopping_active_upload_cleans_stage_and_releases_port() {
     connection.write_all(b"PUT /api/v1/content?path=incomplete HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer test-access-key\r\nContent-Length: 1000\r\n\r\npartial").await.unwrap();
     tokio::time::timeout(Duration::from_secs(1), async {
         loop {
-            if std::fs::read_dir(root.path()).unwrap().count() > 0 {
+            if std::fs::read_dir(root.path().join("INOUTTMP"))
+                .is_ok_and(|entries| entries.count() > 0)
+            {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
@@ -586,16 +601,7 @@ async fn stopping_active_upload_cleans_stage_and_releases_port() {
         .await
         .unwrap()
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(1), async {
-        loop {
-            if std::fs::read_dir(root.path()).unwrap().count() == 0 {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .unwrap();
+    assert_only_empty_staging_container(root.path());
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     drop(listener);
 }

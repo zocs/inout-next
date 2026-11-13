@@ -121,11 +121,18 @@ async fn collisions_never_overwrite_and_failed_streams_remove_staging() {
         std::fs::read(root.path().join("keep")).unwrap(),
         b"original"
     );
-    let names: Vec<_> = std::fs::read_dir(root.path())
+    let mut names: Vec<_> = std::fs::read_dir(root.path())
         .unwrap()
         .map(|e| e.unwrap().file_name())
         .collect();
-    assert_eq!(names, ["keep"]);
+    names.sort();
+    assert_eq!(names, ["INOUTTMP", "keep"]);
+    assert_eq!(
+        std::fs::read_dir(root.path().join("INOUTTMP"))
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 #[tokio::test]
@@ -243,7 +250,13 @@ async fn internal_stage_files_are_inaccessible_through_filesystem_identity_alias
     task.abort();
     assert!(task.await.unwrap_err().is_cancelled());
     std::fs::remove_file(root.path().join("ordinary-alias")).unwrap();
-    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+    assert_eq!(
+        std::fs::read_dir(root.path().join("INOUTTMP"))
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 #[cfg(target_os = "linux")]
@@ -330,4 +343,112 @@ async fn cross_volume_native_move_preserves_source_and_creates_no_destination() 
         b"original"
     );
     assert!(!destination.path().join("target").exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn independent_providers_publish_parallel_uploads_and_preserve_collision_winners() {
+    use std::sync::Arc;
+    const PAYLOADS: [&[u8]; 8] = [
+        b"first", b"second", b"third", b"fourth", b"fifth", b"sixth", b"seventh", b"eighth",
+    ];
+    let root = tempfile::tempdir().unwrap();
+    let stores: Vec<_> = (0..8)
+        .map(|_| Arc::new(FsStore::new(root.path()).unwrap()))
+        .collect();
+    for round in 0..16 {
+        let barrier = Arc::new(tokio::sync::Barrier::new(8));
+        let mut tasks = Vec::new();
+        for (worker, store) in stores.iter().enumerate() {
+            let store = store.clone();
+            let barrier = barrier.clone();
+            tasks.push(tokio::spawn(async move {
+                let name = format!("distinct-{round}-{worker}");
+                barrier.wait().await;
+                let entry = store
+                    .upload(&path(&name), bytes(PAYLOADS[worker]), 100)
+                    .await
+                    .expect("distinct upload failed during another provider's cleanup");
+                (name, entry.size, worker)
+            }));
+        }
+        for task in tasks {
+            let (name, size, worker) = task.await.unwrap();
+            assert_eq!(size, Some(PAYLOADS[worker].len() as u64));
+            assert_eq!(
+                std::fs::read(root.path().join(name)).unwrap(),
+                PAYLOADS[worker]
+            );
+        }
+        let barrier = Arc::new(tokio::sync::Barrier::new(8));
+        let mut tasks = Vec::new();
+        for (worker, store) in stores.iter().enumerate() {
+            let store = store.clone();
+            let barrier = barrier.clone();
+            tasks.push(tokio::spawn(async move {
+                barrier.wait().await;
+                (
+                    worker,
+                    store
+                        .upload(
+                            &path(&format!("collision-{round}")),
+                            bytes(PAYLOADS[worker]),
+                            100,
+                        )
+                        .await,
+                )
+            }));
+        }
+        let mut winner = None;
+        for task in tasks {
+            let (worker, result) = task.await.unwrap();
+            match result {
+                Ok(_) => {
+                    assert!(
+                        winner.replace(worker).is_none(),
+                        "multiple collision winners"
+                    );
+                }
+                Err(error) => assert_eq!(error, Error::TargetExists),
+            }
+        }
+        assert_eq!(
+            std::fs::read(root.path().join(format!("collision-{round}"))).unwrap(),
+            PAYLOADS[winner.unwrap()]
+        );
+    }
+    assert_eq!(stores[0].list(&path("")).await.unwrap().len(), 144);
+    assert_eq!(
+        std::fs::read_dir(root.path().join("INOUTTMP"))
+            .unwrap()
+            .count(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn nonrecursive_delete_removes_an_otherwise_empty_user_folder_with_internal_container() {
+    let root = tempfile::tempdir().unwrap();
+    let store = FsStore::new(root.path()).unwrap();
+    store.mkdir(&path("user-folder")).await.unwrap();
+    store
+        .upload(&path("user-folder/file"), bytes(b"original"), 100)
+        .await
+        .unwrap();
+    assert!(root.path().join("user-folder/INOUTTMP").is_dir());
+    assert_eq!(
+        store.remove(&path("user-folder"), false).await,
+        Err(Error::NotEmpty)
+    );
+    assert!(root.path().join("user-folder/INOUTTMP").is_dir());
+    assert_eq!(
+        std::fs::read(root.path().join("user-folder/file")).unwrap(),
+        b"original"
+    );
+    store
+        .remove(&path("user-folder/file"), false)
+        .await
+        .unwrap();
+    assert!(store.list(&path("user-folder")).await.unwrap().is_empty());
+    store.remove(&path("user-folder"), false).await.unwrap();
+    assert!(!root.path().join("user-folder").exists());
 }

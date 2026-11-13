@@ -292,7 +292,22 @@ async fn check_pending_shutdown(mode: Mode, drop_server: bool) {
     drop(writer);
     assert!(!root.path().join("copied").exists());
     assert!(!root.path().join("made").exists());
-    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+    let mut names: Vec<_> = std::fs::read_dir(root.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    names.sort();
+    if mode == Mode::Copy {
+        assert_eq!(names, ["INOUTTMP", "source"]);
+        assert_eq!(
+            std::fs::read_dir(root.path().join("INOUTTMP"))
+                .unwrap()
+                .count(),
+            0
+        );
+    } else {
+        assert_eq!(names, ["source"]);
+    }
 }
 
 #[tokio::test]

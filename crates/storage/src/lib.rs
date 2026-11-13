@@ -7,6 +7,8 @@ use std::{io::Write, path::Path, pin::Pin, sync::Arc};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
 mod assets;
 mod identity;
+#[cfg(test)]
+mod lifecycle_tests;
 mod protected;
 use protected::{ProtectedObjects, Protection};
 
@@ -212,7 +214,6 @@ impl Stage {
                         Err(error) => {
                             drop(file);
                             let _ = cleanup_dir.remove_file(&name);
-                            let _ = destination.remove_dir(CONTAINER);
                             return Err(error);
                         }
                     };
@@ -275,7 +276,9 @@ impl Drop for Stage {
         if !self.published {
             let _ = self.dir.remove_file(&self.name);
         }
-        let _ = self.destination.remove_dir("INOUTTMP");
+        // Keep the empty reserved container attached. Another provider/process
+        // may have opened it for setup but not yet created a staging file.
+        // Eager removal here would invalidate that provider's capability.
     }
 }
 
@@ -422,6 +425,28 @@ impl FileStore for FsStore {
             if recursive {
                 dir.remove_dir_all(&name).map_err(io_error)
             } else {
+                let user_dir = dir.open_dir_nofollow(&name).map_err(io_error)?;
+                let entries: Vec<_> = user_dir
+                    .entries()
+                    .map_err(io_error)?
+                    .take(2)
+                    .collect::<Result<_, _>>()
+                    .map_err(io_error)?;
+                if let Some(internal) = entries.iter().find(|item| {
+                    item.file_name()
+                        .to_str()
+                        .is_some_and(|name| name.eq_ignore_ascii_case("INOUTTMP"))
+                }) {
+                    // Never remove the container while another public child
+                    // makes this a nonempty user folder. Empty retained staging
+                    // alone must not make an empty folder undeletable.
+                    if entries.len() != 1 {
+                        return Err(Error::NotEmpty);
+                    }
+                    user_dir
+                        .remove_dir(internal.file_name())
+                        .map_err(io_error)?;
+                }
                 dir.remove_dir(&name).map_err(io_error)
             }
         } else {
