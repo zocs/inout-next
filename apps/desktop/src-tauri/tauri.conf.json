@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Inout Next",
+  "version": "0.1.0",
+  "identifier": "io.github.zocs.inoutnext",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../web run dev -- --port 3100",
+    "devUrl": "http://localhost:3100",
+    "beforeBuildCommand": "npm --prefix ../web run build",
+    "frontendDist": "../../web/out"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Inout Next",
+        "width": 1060,
+        "height": 760,
+        "minWidth": 360,
+        "minHeight": 560
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data:; object-src 'none'; base-uri 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "shortDescription": "Local file sharing across your devices",
+    "category": "Utility",
+    "resources": {
+      "../../web/out/": "web/"
+    },
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
+  }
+}

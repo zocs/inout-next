@@ -1,0 +1,309 @@
+name: Verify and package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A single repository-wide queue: do not overlap even different refs or triggers.
+concurrency:
+  group: inout-next-verification
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_BUILD_JOBS: '2'
+  CARGO_TARGET_DIR: ${{ github.workspace }}/target
+  APPIMAGE_EXTRACT_AND_RUN: '1'
+  CI: 'true'
+
+jobs:
+  linux:
+    name: Linux checks, browser flows and packages
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    outputs:
+      product_slug: ${{ steps.product.outputs.slug }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: '1.99.1'
+          components: rustfmt, clippy
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/desktop/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+      - name: Linux native prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+      - name: Product and portable packaging checks
+        id: product
+        run: |
+          python3 scripts/sync_product.py --check
+          python3 -m unittest discover -s tests -v
+          python3 - <<'PY'
+          import json, os
+          with open('product.json') as stream:
+              product = json.load(stream)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write('slug=' + product['slug'] + '\n')
+          if os.environ.get('GITHUB_REF_TYPE') == 'tag':
+              version = product['version']
+              if os.environ['GITHUB_REF_NAME'] != 'v' + version:
+                  raise SystemExit('Tag must match product.json version')
+          PY
+      - name: Build local web assets
+        run: |
+          npm ci --prefix apps/web
+          npm ci --prefix apps/desktop
+          npm --prefix apps/web run typecheck
+          npm --prefix apps/web run build
+      - name: Rust core and native host verification
+        run: |
+          cargo fmt --all -- --check
+          cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check
+          cargo test --workspace --locked
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+          cargo build -p share-cli --locked
+      - name: Real browser interactions
+        working-directory: apps/web
+        run: |
+          npx playwright install --with-deps chromium
+          env -u NO_COLOR npm run test:e2e
+      - name: Streamed runtime probe
+        run: python3 scripts/verify_runtime.py --mib 128 --report .local/verification/runtime-128mib.json
+      - name: Build server and Linux native bundles
+        run: |
+          cargo build -p share-cli --release --locked
+          python3 scripts/package_portable.py --binary target/release/share-server --target linux-x64 --output .local/packages
+          npm --prefix apps/desktop run tauri -- build --target x86_64-unknown-linux-gnu --bundles appimage,deb --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked --test host asset_lookup_prefers_packaged_mapping_and_rejects_partial_folders
+      - name: Verify relocated Linux portable server
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, sys, tempfile, zipfile
+          project = pathlib.Path.cwd()
+          sys.path.insert(0, str(project / 'scripts'))
+          from verify_runtime import verify
+          with open('product.json') as stream:
+              product = json.load(stream)
+          archive = project / '.local/packages' / f'{product["slug"]}-{product["version"]}-linux-x64-server.zip'
+          declared = archive.with_suffix('.zip.sha256').read_text().split()[0]
+          with archive.open('rb') as stream:
+              if hashlib.file_digest(stream, 'sha256').hexdigest() != declared:
+                  raise SystemExit('Portable archive checksum differs')
+          with tempfile.TemporaryDirectory(prefix='relocated-server-') as directory:
+              relocated = pathlib.Path(directory)
+              with zipfile.ZipFile(archive) as bundle:
+                  bundle.extractall(relocated)
+                  for entry in bundle.infolist():
+                      (relocated / entry.filename).chmod((entry.external_attr >> 16) & 0o777)
+              if json.loads((relocated / 'product.json').read_text()) != product:
+                  raise SystemExit('Portable product metadata differs')
+              os.chdir(relocated)
+              report = verify(relocated / 'share-server', relocated / 'web', 8 * 1024 * 1024)
+          os.chdir(project)
+          output = project / '.local/verification/portable-relocation.json'
+          output.write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report, indent=2))
+          PY
+      - name: Preserve tested web export for later native builds
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: web-export
+          path: apps/web/out/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Linux distribution artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ steps.product.outputs.slug }}-linux-x64
+          path: |
+            .local/packages/*
+            target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+      - name: Validation records
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-verification
+          path: |
+            .local/verification/browser/results.json
+            .local/verification/runtime-128mib.json
+            .local/verification/portable-relocation.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  windows:
+    name: Windows ${{ matrix.name }} tests and packages
+    needs: linux
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      RUSTFLAGS: '-C target-feature=+crt-static'
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        include:
+          - name: x86
+            target: i686-pc-windows-msvc
+            portable: windows-x86
+          - name: x64
+            target: x86_64-pc-windows-msvc
+            portable: windows-x64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: '1.99.1'
+          components: clippy
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: web-export
+          path: apps/web/out
+      - name: Target tests and warnings
+        run: |
+          npm ci --prefix apps/desktop
+          cargo test --workspace --locked --target ${{ matrix.target }}
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked --target ${{ matrix.target }}
+          cargo clippy --workspace --all-targets --locked --target ${{ matrix.target }} -- -D warnings
+          cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked --target ${{ matrix.target }} -- -D warnings
+      - name: Target server and native bundles
+        run: |
+          cargo build -p share-cli --release --locked --target ${{ matrix.target }}
+          python3 scripts/package_portable.py --binary target/${{ matrix.target }}/release/share-server.exe --target ${{ matrix.portable }} --output .local/packages
+          npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --bundles nsis --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+      - name: Verify native PE architecture and GUI subsystem
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, struct
+          path = pathlib.Path('target/${{ matrix.target }}/release/share-desktop.exe')
+          data = path.read_bytes()
+          if data[:2] != b'MZ':
+              raise SystemExit('Native artifact is not a PE executable')
+          pe = struct.unpack_from('<I', data, 0x3c)[0]
+          if data[pe:pe + 4] != b'PE\0\0':
+              raise SystemExit('Native artifact has no PE header')
+          machine = struct.unpack_from('<H', data, pe + 4)[0]
+          subsystem = struct.unpack_from('<H', data, pe + 24 + 68)[0]
+          expected = 0x14c if '${{ matrix.name }}' == 'x86' else 0x8664
+          if machine != expected or subsystem != 2:
+              raise SystemExit('Native artifact must have the declared architecture and Windows GUI subsystem')
+          report = {'architecture': '${{ matrix.name }}', 'machine': hex(machine), 'subsystem': subsystem}
+          output = pathlib.Path('.local/verification/native-pe-${{ matrix.portable }}.json')
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}
+          path: |
+            .local/packages/*
+            target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            .local/verification/native-pe-*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS ${{ matrix.name }} checks and packages
+    needs: [linux, windows]
+    runs-on: macos-14
+    timeout-minutes: 45
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        include:
+          - name: arm64
+            target: aarch64-apple-darwin
+            portable: macos-arm64
+          - name: x64
+            target: x86_64-apple-darwin
+            portable: macos-x64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: '1.99.1'
+          components: clippy
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: web-export
+          path: apps/web/out
+      - name: macOS host tests and warnings
+        run: |
+          npm ci --prefix apps/desktop
+          cargo test --workspace --locked
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Target server and native bundles
+        run: |
+          cargo build -p share-cli --release --locked --target ${{ matrix.target }}
+          python3 scripts/package_portable.py --binary target/${{ matrix.target }}/release/share-server --target ${{ matrix.portable }} --output .local/packages
+          npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --bundles app,dmg --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}
+          path: |
+            .local/packages/*
+            target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
