@@ -48,12 +48,17 @@ export default function DiagnosticPanel({ serviceRunning, onClose }: { serviceRu
     let active = true;
     revision.current += 1;
     const version = revision.current;
+    // A session change releases the old action immediately. Its reply and
+    // finalizer no longer own this revision, including any new busy action.
+    busy.current = false;
+    setPending(false); setTesting(false); setClosing(false);
+    setError(""); setNotice(""); setBuffer("128");
     setStatus(null);
     void (async () => {
       try {
         const next = await invoke<DiagnosticStatus>(serviceRunning ? "set_diagnostic_mode" : "diagnostic_status", serviceRunning ? { enabled: true } : undefined);
         if (mounted.current && active && version === revision.current) { setStatus(next); setBuffer(String(next.bufferKib)); }
-      } catch (error) { if (mounted.current && active) setError(message(error)); }
+      } catch (error) { if (mounted.current && active && version === revision.current) setError(message(error)); }
     })();
     const timer = window.setInterval(() => void refresh(), 1_000);
     return () => { active = false; window.clearInterval(timer); };
@@ -62,45 +67,49 @@ export default function DiagnosticPanel({ serviceRunning, onClose }: { serviceRu
   async function settings(command: "set_download_buffer" | "reset_diagnostic_settings") {
     if (busy.current) return;
     busy.current = true; revision.current += 1; setPending(true); setError(""); setNotice("");
+    const version = revision.current;
     try {
       const next = await invoke<DiagnosticStatus>(command, command === "set_download_buffer" ? { kib: Number(buffer) } : undefined);
-      if (mounted.current) { setStatus(next); setBuffer(String(next.bufferKib)); setNotice(command === "set_download_buffer" ? "Buffer applied to subsequent requests." : "Default buffer restored."); }
-    } catch (error) { if (mounted.current) setError(message(error)); }
-    finally { busy.current = false; if (mounted.current) setPending(false); }
+      if (mounted.current && version === revision.current) { setStatus(next); setBuffer(String(next.bufferKib)); setNotice(command === "set_download_buffer" ? "Buffer applied to subsequent requests." : "Default buffer restored."); }
+    } catch (error) { if (mounted.current && version === revision.current) setError(message(error)); }
+    finally { if (mounted.current && version === revision.current) { busy.current = false; setPending(false); } }
   }
 
   async function run(event: FormEvent) {
     event.preventDefault();
     if (busy.current || !path || !status?.enabled) return;
     busy.current = true; revision.current += 1; setTesting(true); setError(""); setNotice("");
+    const version = revision.current;
     setStatus((current) => current ? { ...current, running: true, probeState: "running", result: null } : current);
     try {
       const result = await invoke<DiagnosticReport>("run_diagnostic_test", { path, connections: Number(connections) });
-      if (mounted.current) setStatus((current) => current ? { ...current, result, running: false, probeState: "idle" } : current);
+      if (mounted.current && version === revision.current) setStatus((current) => current ? { ...current, result, running: false, probeState: "idle" } : current);
     } catch (error) {
-      if (mounted.current) {
+      if (mounted.current && version === revision.current) {
         const text = message(error);
         if (text === "Local test canceled") setNotice(text); else setError(text);
         setStatus((current) => current ? { ...current, running: false, probeState: "idle" } : current);
       }
-    } finally { busy.current = false; if (mounted.current) setTesting(false); }
+    } finally { if (mounted.current && version === revision.current) { busy.current = false; setTesting(false); } }
   }
 
   async function cancel() {
+    const version = revision.current;
     setPending(true); setError("");
     try { await invoke("cancel_diagnostic_test"); }
-    catch (error) { if (mounted.current) setError(message(error)); }
-    finally { if (mounted.current) setPending(false); }
+    catch (error) { if (mounted.current && version === revision.current) setError(message(error)); }
+    finally { if (mounted.current && version === revision.current) setPending(false); }
   }
 
   async function close() {
     if (closing) return;
     setClosing(true); revision.current += 1;
+    const version = revision.current;
+    busy.current = true; setPending(false); setTesting(false);
     try {
       await invoke("set_diagnostic_mode", { enabled: false });
-      didClose.current = true;
-      if (mounted.current) onClose();
-    } catch (error) { if (mounted.current) { setError(message(error)); setClosing(false); } }
+      if (mounted.current && version === revision.current) { didClose.current = true; onClose(); }
+    } catch (error) { if (mounted.current && version === revision.current) { busy.current = false; setError(message(error)); setClosing(false); } }
   }
 
   const running = testing || !!status?.running;
@@ -135,7 +144,7 @@ export default function DiagnosticPanel({ serviceRunning, onClose }: { serviceRu
       <div><dt>Local throughput</dt><dd>{result.mibPerSecond.toFixed(2)} MiB/s</dd></div>
       <div><dt>Bytes read</dt><dd>{result.bytes.toLocaleString()}</dd></div>
       <div><dt>Duration</dt><dd>{result.durationMs.toFixed(1)} ms</dd></div>
-      <div><dt>Sample settings</dt><dd>{result.bufferKib} KiB · {result.connections} connections</dd></div>
+      <div><dt>Sample settings</dt><dd>{result.bufferKib} KiB buffer with {result.connections} connections</dd></div>
     </dl></div>}
   </section>;
 }

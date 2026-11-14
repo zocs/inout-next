@@ -35,6 +35,7 @@ export async function installNativeBoundary(page: Page, managerUrl: string, opti
   const calls: { command: string; args: unknown }[] = [];
   const diagnostic = { enabled: false, running: false, bufferKib: 128, defaultBufferKib: 128, probeState: "idle", result: null as null | {bytes:number;durationMs:number;mibPerSecond:number;bufferKib:number;connections:number} };
   let applyReply: (() => void) | undefined;
+  const completedReplies = new Map<string, (() => void)[]>();
   const statusReplies: (() => void)[] = [];
   const hostStatusReplies: (() => void)[] = [];
   let releaseInitialStatus: (() => void) | undefined;
@@ -42,6 +43,9 @@ export async function installNativeBoundary(page: Page, managerUrl: string, opti
   let firstStatus = true;
   const boundary = {
     state, calls,
+    holdCompletedReplies: new Set<string>(),
+    completedReplyCount: (command: string) => completedReplies.get(command)?.length ?? 0,
+    releaseCompletedReply: (command: string) => completedReplies.get(command)?.shift()?.(),
     releaseInitialStatus: () => releaseInitialStatus?.(),
     holdHostStatus: false,
     releaseHostStatus: () => { for (const reply of hostStatusReplies.splice(0)) reply(); },
@@ -52,8 +56,7 @@ export async function installNativeBoundary(page: Page, managerUrl: string, opti
     probeOutcome: "success" as "success" | "error" | "pending",
   };
   let rejectProbe: ((error: Error) => void) | undefined;
-  await page.exposeBinding("fixtureNativeInvoke", async (_, command: string, args?: { options?: StartOptions; enabled?: boolean; kib?: number; path?: string; connections?: number }) => {
-    calls.push({ command, args });
+  async function nativeInvoke(command: string, args?: { options?: StartOptions; enabled?: boolean; kib?: number; path?: string; connections?: number }) {
     switch (command) {
       case "diagnostic_status": {
         const snapshot = structuredClone(diagnostic);
@@ -123,11 +126,33 @@ export async function installNativeBoundary(page: Page, managerUrl: string, opti
       default: throw new Error("Unexpected native command: " + command);
     }
     return structuredClone(state);
+  }
+  async function holdCompletedReply(command: string) {
+    if (!boundary.holdCompletedReplies.has(command)) return;
+    // The operation and its cleanup have already completed. Only delivery of
+    // this immutable IPC outcome waits; Stop still resets the native state.
+    await new Promise<void>((resolve) => {
+      const replies = completedReplies.get(command) ?? [];
+      replies.push(resolve);
+      completedReplies.set(command, replies);
+    });
+  }
+  await page.exposeBinding("fixtureNativeInvoke", async (_, command: string, args?: Parameters<typeof nativeInvoke>[1]) => {
+    calls.push({ command, args });
+    let outcome: unknown;
+    try { outcome = await nativeInvoke(command, args); }
+    catch (error) { await holdCompletedReply(command); throw error; }
+    await holdCompletedReply(command);
+    return outcome;
   });
   await page.addInitScript(() => {
     const fixtureWindow = window as unknown as { fixtureNativeInvoke: (command: string, args?: unknown) => Promise<unknown> };
-    Object.assign(window, { __TAURI_INTERNALS__: {
-      invoke: (command: string, args?: unknown) => fixtureWindow.fixtureNativeInvoke(command, args),
+    const delivered: string[] = [];
+    Object.assign(window, { fixtureDeliveredReplies: delivered, __TAURI_INTERNALS__: {
+      invoke: async (command: string, args?: unknown) => {
+        try { return await fixtureWindow.fixtureNativeInvoke(command, args); }
+        finally { delivered.push(command); }
+      },
     } });
   });
   await page.route("http://tauri.localhost/**", async (route) => {

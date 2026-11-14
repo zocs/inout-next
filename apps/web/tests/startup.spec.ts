@@ -148,6 +148,44 @@ test.describe("readiness-driven web startup", () => {
     expect(await resources(page)).toEqual({ keys: 0, media: 0, timeouts: 0 });
   });
 
+  for (const { token, duration } of [{ token: "360ms", duration: 360 }, { token: "0.04s", duration: 40 }]) {
+    test(`CSS motion override ${token} owns actual startup effects and event-independent removal`, async ({ page, service }) => {
+      const gate = await holdContext(page);
+      await freezeClock(page);
+      await observeStartupResources(page);
+      await page.goto(service.url);
+      await gate.requested;
+      await expect(page.getByRole("status", { name: "Opening inout", exact: true })).toBeVisible();
+      await page.evaluate((value) => {
+        document.documentElement.style.setProperty("--duration-state", value);
+        // Cleanup must survive lost transition events, rather than depending
+        // on an event handler firing after the compositor finishes.
+        document.addEventListener("transitionend", (event) => event.stopImmediatePropagation(), true);
+        document.addEventListener("transitioncancel", (event) => event.stopImmediatePropagation(), true);
+      }, token);
+      await observeExit(page);
+      gate.release();
+      await expect(page.getByRole("table", { name: "Shared files" })).toBeVisible();
+      const startup = page.locator(".startup-screen");
+      await expect(startup).toHaveAttribute("aria-hidden", "true");
+      expect(await startup.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+      await page.getByRole("button", { name: "Refresh folder", exact: true }).click();
+      const evidence = await exitEvidence(page);
+      expect(evidence.effects).toHaveLength(2);
+      for (const effect of evidence.effects) {
+        expect(effect.duration).toBe(duration);
+        expect(effect.iterations).toBe(1);
+        for (const property of effect.properties) expect(["opacity", "transform"]).toContain(property);
+      }
+      await test.info().attach(`startup-override-${duration}.json`, { body: Buffer.from(JSON.stringify(evidence, null, 2)), contentType: "application/json" });
+      await page.clock.fastForward(duration - 1);
+      await expect(startup).toHaveCount(1);
+      await page.clock.fastForward(1);
+      await expect(startup).toHaveCount(0);
+      expect(await resources(page)).toEqual({ keys: 0, media: 0, timeouts: 0 });
+    });
+  }
+
   test("a real connection failure releases recovery without waiting for motion", async ({ page, service }) => {
     const gate = await holdContext(page);
     await freezeClock(page);
