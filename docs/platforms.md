@@ -2,6 +2,8 @@
 
 The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview.
 
+The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The new buffer, diagnostic and startup changes have their own test/build evidence. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
+
 | Target | Verified scope | Remaining work |
 | --- | --- | --- |
 | Linux x64 | Ubuntu22.04 core/native/browser checks; CLI ZIP, AppImage/deb, emitted identity and exported-resource/ELF inspection | Native GUI/device/installation and signing |
@@ -40,3 +42,5 @@ The [official-source requirements checked2026-11-14](distribution/store-readines
 | Mac App Store | Independent sandbox/signing/provision profile, directory/bookmark scope, network grants, signed app/pkg and disclosures | Separate from direct-distribution DMGs; no store candidate |
 
 SDK/policy requirements are rechecked before submission. Build/runtime readiness, signing continuity and store acceptance remain distinct.
+
+Different Android package IDs can share FileInfra's signing certificate and install independently. No Android candidate or certificate-continuity check exists for this preview; [signing guidance](distribution/signing.md) separates certificate reuse, aliases, Play/F-Droid channels and Apple/Windows/Linux identities.

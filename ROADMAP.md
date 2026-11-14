@@ -5,7 +5,9 @@
 - Rust domain, capability-based storage, HTTP modules and CLI with shared lifecycle.
 - Static Next.js file manager with authentication, browsing, streamed uploads/downloads and capability-aware management.
 - Replaceable display branding, stable native identity and compiled feature/provider interfaces.
+- Single-word **inout** display name, reusable dot-matrix wordmark and readiness-driven startup with reduced-motion support.
 - Tauri desktop host with native directory selection, isolated manager and controlled start/stop.
+- Bounded 128 KiB default download streaming, same-handle filesystem ranges and temporary native-only diagnostic tuning/tests.
 - Real filesystem/browser tests, transfer hashes, identity/resource verification and serial Linux/Windows/macOS CI.
 - Public API, architecture, design-system and distribution documentation.
 
@@ -15,6 +17,7 @@ These foundations are implemented. The current0.1.0 is experimental; a successfu
 
 - Actual Linux/macOS GUI, installation and device verification after current native target builds.
 - Windows32bit operating-system verification, installation/uninstall/upgrade and signing.
+- Separate human-visible native installer/package labels from stable resource/install identities, with emitted-package and installed-upgrade checks before changing the retained `Inout Next` labels.
 - Offline Windows WebView2 distribution with explicit runtime/architecture requirements.
 - Reduce Linux native runtime-packaging cost while retaining required libraries and truthful compatibility.
 - Safe Windows move/rename and directory copy where storage guarantees permit them.
@@ -31,7 +34,7 @@ These foundations are implemented. The current0.1.0 is experimental; a successfu
 
 ## 4. Transfer reliability and optional modules
 
-- Tune download streaming/read buffers and seek behavior using matched core measurements.
+- Extend matched core buffer/range measurements to physical LAN, slow clients, real disks and target devices; keep runtime tuning bounded and optional.
 - Persistent resumable uploads, cancellation/retry/crash recovery and multi-GiB/slow-client/concurrency measurements.
 - Archives, previews, editor and search through independently registered modules.
 - Lightweight old-browser fallback and additional storage providers.

@@ -1,14 +1,15 @@
-# Inout Next
+# inout
 
-独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面宿主。一台设备选择共享目录，其他设备通过浏览器访问。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。
+独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面宿主。一台设备选择共享目录，其他设备通过浏览器访问。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-目前是实验性 **0.1.0 preview**。[CI](https://github.com/zocs/inout-next/actions) 已通过 Linux x64、Windows x86/x64、macOS ARM64/x64 的构建与测试，包含真实浏览器文件操作和原生打包。安装、签名、离线分发和移动平台分别验收，具体见[平台状态](docs/platforms.md)。尚无正式发布版本。
+目前是实验性 **0.1.0 preview**。[CI](https://github.com/zocs/inout-next/actions) 覆盖 Linux x64、Windows x86/x64、macOS ARM64/x64 的构建与测试，包含真实浏览器文件操作和原生打包。安装、签名、离线分发和移动平台分别验收，具体见[平台状态](docs/platforms.md)。尚无正式发布版本。
 
 - [English README](README.md)
 - [需求](docs/requirements.md) · [路线图](ROADMAP.md) · [平台状态](docs/platforms.md)
 - [架构](docs/architecture.md) · [API v1](contracts/api-v1.md) · [模块](docs/modules.md)
 - [品牌与身份](docs/branding.md) · [设计系统](DESIGN.md) · [包体积与运行依赖](docs/distribution/size-and-runtime.md)
 - [应用商店前期准备](docs/distribution/store-readiness.md) · [隐私数据清单](docs/distribution/privacy-data-inventory.md)
+- [签名复用与应用身份](docs/distribution/signing.md)
 
 ## 启动文件服务
 
@@ -46,6 +47,10 @@ npm --prefix apps/desktop run dev
 
 通过系统对话框选择目录，设置仅本机或局域网访问、上传和管理权限、访问密钥，再启动服务并打开文件管理窗口。页面重载后显示实际运行设置，状态接口不会返回访问密钥。关闭文件管理窗口会停止共享。Android 的存储适配和前台服务仍需独立实现。
 
+保留可复用的点阵字标，随产品配置更名。启动呈现使用轻量过渡，跟随实际就绪状态结束，没有强制等待，并尊重系统“减少动态效果”设置。
+
+在原生宿主内，五秒内激活应用名称按钮五次可打开临时诊断面板；键盘操作同样可用。下载缓冲可在 16–128 KiB 间按 16 KiB 调整，默认 128 KiB，只影响后续下载。面板可对相对共享文件路径进行一次只读本机回环测速，选择 1/2/4/8 个连接，最多读取文件前 64 MiB，整体超时 30 秒；测试文件必须非空，且每个连接至少分到一个字节。可取消测试，关闭诊断或停止共享会恢复默认值。结果反映共享设备上的本机采样，不能代表另一台设备的网络速度；HTTP 文件管理窗口没有原生诊断权限。
+
 Linux 原生生产编译：
 
 ```sh
@@ -57,11 +62,14 @@ npm --prefix apps/desktop run tauri -- build --no-bundle -- --locked
 ```sh
 python3 scripts/sync_product.py --check
 python3 -m unittest discover -s tests -v
-cargo fmt --all -- --check
-cargo test --workspace --locked
-cargo clippy --workspace --all-targets --locked -- -D warnings
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
+cargo fmt --all -- --check
+cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+cargo test --workspace --locked
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo build -p share-cli --locked
 npm --prefix apps/web run test:e2e
 python3 scripts/verify_runtime.py --mib 128
@@ -91,4 +99,4 @@ ZIP 包含固定名称的服务程序、构建好的 `web/`、产品配置、许
 
 传输完成或取消后，磁盘上保留空的内部 `INOUTTMP` 目录，避免并发上传竞争临时目录清理。公共列表隐藏该目录，取消操作仍会移除未发布文件；进程或系统崩溃后的恢复仍待实现。
 
-公共网页资源必须经过存储提供者确认隔离，启动时生成不可变快照，上限 128 MiB、10,000 个资源文件、128 层目录，并最多扫描 100,000 个共享条目检查重叠及身份别名。过大或无法证明隔离的目录会拒绝网页启动；CLI 可省略 `--web-dir` 仅提供 API。范围下载目前线性读取前缀，部分文件系统操作同步执行，会话保存在进程内，HTTPS 反向代理的来源策略仍待设计。支持范围见[平台状态](docs/platforms.md)。
+公共网页资源必须经过存储提供者确认隔离，启动时生成不可变快照，上限 128 MiB、10,000 个资源文件、128 层目录，并最多扫描 100,000 个共享条目检查重叠及身份别名。过大或无法证明隔离的目录会拒绝网页启动；CLI 可省略 `--web-dir` 仅提供 API。文件系统范围下载在原句柄上定位，纯流式提供者保留向前读取支持；完整 ETag/If-Range 验证和持久续传尚未实现。部分文件系统操作同步执行，会话保存在进程内，HTTPS 反向代理的来源策略仍待设计。支持范围见[平台状态](docs/platforms.md)。

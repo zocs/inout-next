@@ -1,5 +1,5 @@
 ---
-name: Inout Next
+name: inout
 description: A household inventory notebook for local file sharing.
 colors:
   paper: "#f6f4ef"
@@ -98,13 +98,13 @@ components:
   delete-dialog: {backgroundColor: "{colors.surface}", textColor: "{colors.ink}", rounded: "{rounded.dialog}", padding: "28px", width: "calc(100% - 32px)"}
 ---
 
-# Design System: Inout Next
+# Design System: inout
 
 ## Overview
 
 **Creative North Star: "Household inventory notebook"**
 
-The household inventory notebook gives Inout Next warm paper, dark ink and restrained evergreen accents. Familiar file controls, compact rows and quiet tonal surfaces make names, access settings and transfer states easy to scan. System typography keeps the interface local and readable.
+The household inventory notebook gives inout warm paper, dark ink and restrained evergreen accents. Familiar file controls, compact rows and quiet tonal surfaces make names, access settings and transfer states easy to scan. System typography keeps the interface local and readable.
 
 The built system uses color and borders to separate working surfaces; controls have modest curved corners and explicit keyboard focus. Full names remain available through accessible labels, titles and wrapped detail paths. A saved check acknowledges confirmed publication, while sending and saving retain their own text states.
 
@@ -155,7 +155,7 @@ Eight-step tonal previews are illustrative documentation, not additional project
 ### Hierarchy
 
 - **Headline**: folder/host headings; headline-mobile is the folder override at the mobile breakpoint, and dialog-title is the modal override.
-- **Brand**: compact product identification with slight negative tracking and wrapping inside its flex allocation.
+- **Brand**: compact product identification with a reusable dot-matrix wordmark. Its ordinary-text fallback uses slight negative tracking and wraps inside the same flex allocation.
 - **Title / selection-title**: section headings and selected-entry names.
 - **Body / body-small**: default copy and smaller context/input text. Paragraphs default to a maximum 70ch; host introduction uses 65ch and empty-state text uses 45ch.
 - **Label / control**: stronger labels and button text, with mixed case retained from product copy.
@@ -173,7 +173,7 @@ At a maximum width of 760px, the rail is hidden, the main inset becomes 18px 16p
 
 Use the 24 retained spacing entries in frontmatter and matching `--space-*` root properties. The four-pixel unit remains, with nonuniform built gaps/insets explicitly tokenized; all prior nonzero authored padding/margin/gap geometry is preserved. Buttons and downloads have a minimum 40px target; entry-name controls have a minimum 46px height. Table cells use 10px 14px padding, while the name cell reduces vertical padding to 3px around its control. The fixed table layout, ellipsized name spans, `min-width: 0` and wrapped detail paths contain long file names. Header and footer brand text wrap inside shrinkable allocations while adjacent access/footer controls preserve their width. Both `html` and `body` use `overflow-x: clip`; the table retains its own `overflow-x: auto` region.
 
-The latest comparison preserves the frozen audit geometry exactly at manager widths 320/390/760/761/1190/1440/1920 and native-browser widths 320/390/761/1440, with no page overflow. Earlier mobile 23- and 80-character accepted brand fixtures preserve a measured 16px header gap with no header/footer intersection. These bounded observations do not establish every viewport or device.
+Earlier checks of the interface before the wordmark/startup extension preserved its recorded geometry at manager widths 320/390/760/761/1190/1440/1920 and native-browser widths 320/390/761/1440, with no page overflow. Those mobile 23- and 80-character brand fixtures retained a measured 16px header gap with no header/footer intersection. New wordmark and diagnostic layouts require their own checks; historical geometry is not evidence for every current viewport or device.
 
 ## Elevation & Depth
 
@@ -193,7 +193,13 @@ Compact controls pair a minimum 40px target, 7px icon/text gap and the control t
 
 Eight additional authored active recipes retain the existing palette: danger deep error, quiet danger error wash/edge, icon and rail border fill, text deeper evergreen, header shell/shell-muted edge, entry-name/Details secondary fill and deeper evergreen. Every new recipe guards disabled state. Actual press checks preserve each control rectangle; selected-row state remains distinct from transient press feedback.
 
-All keyboard-focusable controls receive the source 2px solid evergreen outline with 3px offset; header buttons substitute shell-muted for contrast on the header. Buttons and inputs use a default cursor and 0.55 opacity when disabled. Colored button/icon/header transitions use the shared 160ms state duration and `cubic-bezier(0.16, 1, 0.3, 1)` easing. Reduced-motion preference forces transition duration to zero; there are no loading animations to infer from the static loading rows.
+All keyboard-focusable controls receive the source 2px solid evergreen outline with 3px offset; header buttons substitute shell-muted for contrast on the header. Buttons and inputs use a default cursor and 0.55 opacity when disabled. Colored button/icon/header transitions use the shared 160ms state duration and `cubic-bezier(0.16, 1, 0.3, 1)` easing. Reduced-motion preference forces these transition durations to zero. Ordinary loading rows remain static; the separate startup presentation has its own bounded motion and readiness contract.
+
+### Product Wordmark and Startup
+
+The header, footer and startup presentation use the same memoized `Wordmark` component. Local 5×7 glyphs cover ASCII uppercase/lowercase letters and digits, with an eight-character matrix limit. Each dot is static SVG geometry filled with the inherited text color. Unsupported or longer product names use wrapped ordinary text. The SVG is decorative to assistive technology; a plain-name equivalent supplies the accessible text. The native name button retains its focus outline and diagnostic activation callback, while the HTTP manager uses a noninteractive wordmark.
+
+Startup initially shows that wordmark on paper with a short opening status. The initial authentication screen, usable file-manager context, native setup/status or recoverable connection error releases it. Folder listing, later navigation and sharing Start/Stop do not replay startup. A 160ms opacity/transform exit preserves the transition while pointer and status semantics are already released; controls never wait for an animation event or minimum interval. Escape dismisses the presentation while it is waiting, without stopping sharing or consuming the key event. Reduced motion removes spatial movement and completes cleanup immediately at readiness; listeners and the removal timer are scoped to the presentation's lifetime. This design adds no downloaded fonts, animated dots, filters or motion dependency. Browser checks establish these state and layout contracts, rather than native device frame times.
 
 ### Inputs / Fields
 
@@ -222,6 +228,14 @@ Explicit Clear finished returns task-owned focus to the surviving Transfers head
 ### Native Sharing Controls
 
 The native host reuses the same forms, buttons and quiet connection container. Running settings display the sanitized effective network, bound port, upload, management and configured-key indication separately from stopped drafts. A configured key can be acknowledged after reload without returning or fabricating it; setting changes require stopping. Successful initiated Start/Stop performs a one-shot focus handoff to the resulting enabled control and updates a stable atomic polite active/stopped status. Passive status refresh and unrelated actions preserve existing focus. This documents built UI behavior; native browser boundary fixtures are not target-device IPC evidence.
+
+An initial status failure exposes Try again after startup is released. A keyboard-owned retry hands focus to the resulting folder, Stop or retry control; deliberately chosen outside focus is preserved.
+
+### Local Diagnostics
+
+Five activations of the native app-name button within five seconds reveal a lazy-loaded inline panel. Keyboard activation uses the same button; the ordinary HTTP manager has no diagnostic entry or native command authority. Opening focuses the panel heading, and explicit close returns focus to the surviving name button. Sharing controls remain available while a test runs.
+
+The panel inherits the existing fields, buttons, feedback colors and focus outlines. Its labelled buffer/connection selects and relative-path input wrap within the available width, and result values use tabular numerals. Pending, running, cancellation, stopped-service, error and closing states explain the current action. Settings are temporary, and the result is labelled as a local throughput sample with its byte count, duration and settings. Diagnostic sampling does not run while the panel is inactive. Browser fixtures check the UI boundary; real native tests separately exercise the shared Rust service and cancellation.
 
 Component recipes cover enabled/disabled controls, navigation, selection, transfers and notices through the shared UI and feature modules. Representative states do not introduce new application commands or component APIs. No chip/tag component is present in this implementation.
 

@@ -6,7 +6,7 @@
 
 Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Google Play](https://v2.tauri.app/distribute/google-play/) 和 [Apple App Store](https://v2.tauri.app/distribute/app-store/) 打包路线。商店收录需要原生平台适配、隐私资料和真实构建/运行证据。当前桌面 preview 没有完成这些条件。
 
-| 渠道 | 目标产物与用途 | inout-next 当前差距 |
+| 渠道 | 目标产物与用途 | inout 当前差距 |
 | --- | --- | --- |
 | Google Play | 签名 AAB，Play App Signing；用于正式 Android 分发 | 没有 Android 产物、SAF 提供者、原生前台服务或 Play 审核资料 |
 | F-Droid 主仓库 | 从公开源码构建 APK；可选验证并保留上游签名 | 没有已运行的 fdroiddata recipe、Android APK 或可复现验证；新项目也需满足实际用途和维护条件 |
@@ -65,7 +65,7 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 
 ### 隐私、局域网与代码完整性
 
-| 要求 | inout-next 的准备 |
+| 要求 | inout 的准备 |
 | --- | --- |
 | [Privacy labels](https://developer.apple.com/app-store/app-privacy-details/) 和 [5.1.1 隐私政策](https://developer.apple.com/app-store/review/guidelines/#privacy) | 所有提交平台都要根据实际应用和第三方数据处理填写，隐私政策有公开 URL 且应用内易访问；没有账户就不添加账号体系。以后若引入账号创建，补充应用内账号删除及对应渠道要求 |
 | [Privacy manifests](https://developer.apple.com/documentation/bundleresources/privacy-manifest-files)、[required-reason APIs](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api)、[指定第三方 SDK](https://developer.apple.com/support/third-party-SDK-requirements/) | iOS 等列明平台的实际 required-reason API 需要准确的理由和各自 bundle 内 `PrivacyInfo.xcprivacy`；文件时间、磁盘空间、UserDefaults/启动时间等是待核对类别，不能凭模板填写理由。逐项检查 Tauri、插件及间接库、资源位置和 Xcode privacy report。当前官方 required-reason 说明列明移动/设备平台，不把这条自动宣称为 macOS 相同的强制规则；macOS 数据披露和适用 SDK 要求仍需处理 |
@@ -109,6 +109,8 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 ## 已落实的早期准备与尚未通过的关卡
 
 当前落实：本报告、官方来源清单、[隐私数据清单](privacy-data-inventory.md)、需求/架构/模块/品牌/平台/路线图中的商店约束；`.gitignore` 提前排除 Apple `.p8`/`.p12`/provisioning profile、签名本机配置和商店二进制。凭据未创建。现有身份仍是 `io.github.zocs.inoutnext`，显示改名不自动更改包名、签名或安装身份。
+
+2026-11-15 产品补充：应用显示名为 **inout**，仓库/slug 保留 `inout-next`；[签名与应用身份](signing.md) 说明与 FileInfra 共用证书时的独立包名、signature 权限及渠道影响。原生临时诊断通过五秒内激活名称按钮五次开启，仅执行受限本机调参和只读回环测速，没有遥测或公开 HTTP 控制接口。按 [Apple 审核指南 2.3.1](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata)，候选版应在审核备注中明确说明入口、用途和步骤，不能以隐藏发现方式隐瞒审核功能；数据清单和候选版说明同步包含诊断行为。移动/商店构建与审核关卡仍未通过。
 
 | Gate | 要交付的可核查结果 | 当前状态 |
 | --- | --- | --- |

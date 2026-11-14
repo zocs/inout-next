@@ -42,9 +42,25 @@ The actual context includes permissions and `capabilities.file_move`, `directory
 
 `FileStore` uses neutral readers and typed metadata/errors for list/open/upload/mkdir/move/copy/remove. It reports move support and can return proven-isolated `WebAsset` snapshots; that asset method defaults to unsupported. Injection does not open `ServerConfig.root`. Providers must keep work owned by their futures so cancellation releases readers, unpublished stages and resources. FsStore closes a child inspection capability before parent-relative nonrecursive deletion, preserving Windows directory-handle semantics. Platform/provider limits are in [platforms](platforms.md).
 
+An opened download exposes `FileReader`, which preserves optional seeking on its original handle. HTTP ranges call its positioning operation; an asynchronous stream-only provider can retain forward reading without implementing a filesystem path or reopening one. Upload readers keep their existing neutral streaming interface.
+
+The shared HTTP `DownloadControl` validates 16–128 KiB buffers in 16 KiB steps, defaulting to 128 KiB. Hosts receive a clone from the running service. Each GET captures the setting once, so active transfers retain their starting buffer. This application-side control does not add a public HTTP tuning route or per-byte monitoring.
+
 Uploads use a module-owned sequential XHR queue with progress, cancellation, error, finalizing and saved states. Management owns its folder/operation forms and delete confirmation. Native host commands configure the enabled modules and consume the same HTTP lifecycle; they do not duplicate file operations or expose a JavaScript arbitrary-path setter.
 
 This is composition through stable interfaces plus configurable availability. Native ABI plugin loading, hot-unloading active transfer modules and third-party executable plugins require a separate lifecycle/security design.
+
+## Native diagnostic extension
+
+Diagnostics belong to the native host, outside the public `files`/`uploads`/`manage` registry. The optional header activation callback exists only in the native host; the HTTP manager has a plain brand. Its panel is lazy-loaded and consumes a typed IPC contract rather than shared host paths or another module's private state.
+
+The Rust module owns temporary buffer validation, a private authentication handle and one bounded read-only loopback probe. It reuses the shared file API and the running service's `DownloadControl`. Cancellation and application-wide concurrency remain native lifecycle concerns; there is no public diagnostic HTTP route, saved test file or sampling when disabled. Exact limits and data records are in [API v1](../contracts/api-v1.md).
+
+## Brand and startup presentation
+
+`Wordmark({name})` is a memoized presentation component used by the header, footer and startup. Its local 5×7 ASCII letter/digit glyphs support up to eight characters; unsupported or longer names fall back to wrapped text. It owns neither installation identity nor a diagnostic command. `Header` exposes an optional native-only activation callback with the initiating button, preserving keyboard and focus ownership independently of the rendered brand.
+
+The page owns first readiness. `FileManager.onReady(product)` reports the first usable context, authentication or recovery screen; `NativeHost.onReady()` reports initial native status or error, including setup before a service runs. These optional callbacks are independent of file-feature state and `HostStatus.running`. `Startup({ready,name})` owns bounded visual dismissal and cleanup; later navigation and service changes do not reopen it, and controls do not depend on animation completion. Product substitution needs no change to storage, feature registries or lifecycle algorithms.
 
 ## Planned Store Compositions
 

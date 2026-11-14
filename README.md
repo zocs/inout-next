@@ -1,6 +1,6 @@
-# Inout Next
+# inout
 
-An independent Rust HTTP file service, a static Next.js file manager, and a Tauri desktop host. Share a folder from one device and browse, upload, download or manage it from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces.
+An independent Rust HTTP file service, a static Next.js file manager, and a Tauri desktop host. Share a folder from one device and browse, upload, download or manage it from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
 
 This is an experimental **0.1.0 preview**. [CI](https://github.com/zocs/inout-next/actions) builds and tests Linux x64, Windows x86/x64 and macOS ARM64/x64, including real browser file operations and native packaging. Installation, signing, offline distribution and mobile support have separate milestones; see the [platform matrix](docs/platforms.md). There is no published release yet.
 
@@ -9,6 +9,7 @@ This is an experimental **0.1.0 preview**. [CI](https://github.com/zocs/inout-ne
 - [Architecture](docs/architecture.md) · [API v1](contracts/api-v1.md) · [Modules](docs/modules.md)
 - [Branding](docs/branding.md) · [Design system](DESIGN.md) · [Package size and runtime](docs/distribution/size-and-runtime.md)
 - [App store preparation](docs/distribution/store-readiness.md) · [Privacy data inventory](docs/distribution/privacy-data-inventory.md)
+- [Signing and application identity](docs/distribution/signing.md)
 
 ## Run the file service
 
@@ -46,6 +47,10 @@ npm --prefix apps/desktop run dev
 
 The host selects a folder through the native dialog, configures local or LAN access and write permissions, generates an optional access key, starts/stops the shared Rust service and opens its file manager. Reloaded controls display the effective running settings; the status never returns the access key. Closing the manager stops sharing. Android storage and foreground-service integration are later milestones.
 
+The reusable dot-matrix wordmark follows the configured product name. Startup uses a light transition driven by actual readiness, with reduced-motion support and no minimum loading delay.
+
+For temporary local diagnostics, activate the app-name button five times within five seconds in the native host. The panel tunes download buffers from 16 to 128 KiB in 16 KiB steps (default 128 KiB) and runs one read-only loopback timing sample against a relative shared-file path. Tests use 1/2/4/8 connections, read at most the first 64 MiB and time out after 30 seconds. Choose a nonempty file with at least one byte per connection. Existing downloads keep their original buffer. Cancel stops a test; closing diagnostics or stopping sharing restores defaults. These measurements describe the sharing device, rather than another device's network speed. Native diagnostics are unavailable to the HTTP file-manager window.
+
 Linux production compilation:
 
 ```sh
@@ -57,11 +62,14 @@ npm --prefix apps/desktop run tauri -- build --no-bundle -- --locked
 ```sh
 python3 scripts/sync_product.py --check
 python3 -m unittest discover -s tests -v
-cargo fmt --all -- --check
-cargo test --workspace --locked
-cargo clippy --workspace --all-targets --locked -- -D warnings
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
+cargo fmt --all -- --check
+cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+cargo test --workspace --locked
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo build -p share-cli --locked
 npm --prefix apps/web run test:e2e
 python3 scripts/verify_runtime.py --mib 128
@@ -91,4 +99,4 @@ Uploads default to a 2 GiB limit and stream continuously; resume and crash recov
 
 Empty reserved `INOUTTMP` directories persist physically after transfers to avoid races between concurrent uploads. Public listings hide them, and cancellation removes unpublished files. A process or OS crash can leave internal files; recovery is a later milestone.
 
-Public UI assets are provider-approved immutable snapshots, bounded to 128 MiB/10,000 files, depth 128, with up to 100,000 shared entries scanned for overlap/identity aliases. Startup can reject an unprovable or oversized share; API-only CLI operation can omit `--web-dir`. Range offsets currently require linear prefix reads. Some filesystem work is synchronous, sessions are process-local, and HTTPS reverse proxies need a future explicit origin policy. See [platforms](docs/platforms.md) for support boundaries.
+Public UI assets are provider-approved immutable snapshots, bounded to 128 MiB/10,000 files, depth 128, with up to 100,000 shared entries scanned for overlap/identity aliases. Startup can reject an unprovable or oversized share; API-only CLI operation can omit `--web-dir`. Filesystem ranges seek on the original opened handle; stream-only providers keep forward-reading support. Complete ETag/If-Range validation and durable resume are unfinished. Some filesystem work is synchronous, sessions are process-local, and HTTPS reverse proxies need a future explicit origin policy. See [platforms](docs/platforms.md) for support boundaries.

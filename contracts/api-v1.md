@@ -33,6 +33,8 @@ Storage capabilities are separate from permissions. The initial filesystem provi
 
 Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and correct `Content-Length`; unsatisfiable ranges 416 with `bytes */size`; HEAD returns full metadata and zero body. Multiple ranges may be ignored in this first version. User files are attachment responses with `nosniff`; active HTML/SVG are not served as same-origin previews.
 
+The filesystem provider positions a range on the original opened handle; stream-only providers use a bounded forward-read fallback. Download buffers default to 128 KiB and can be tuned by a native host for subsequent requests. There is no HTTP tuning endpoint. Concurrent single-range requests are supported, but complete ETag/If-Range validation, multi-range responses and durable transfer resume are not promised.
+
 Uploads reject collisions, publish only after successful completion, enforce the streamed byte limit and clean unfinished staging files. The protocol does not claim resumability.
 
 ## Native desktop command boundary
@@ -51,5 +53,24 @@ This is a Tauri IPC contract for the local `main` window, separate from HTTP API
 | `stop_service` | No arguments; `HostStatus` after controlled shutdown |
 | `open_manager` | No arguments; open/reuse the exact loopback-origin manager |
 | `create_access_key` | No arguments; fresh OS-random key, never added to status |
+
+The main native window also exposes temporary diagnostics. Five app-name activations within five seconds reveal its UI; the gesture does not authorize any command. Every command retains the main-window and active-application checks. No HTTP route or external manager capability grants these controls.
+
+`DiagnosticReport`: `{bytes: number, durationMs: number, mibPerSecond: number, bufferKib: number, connections: number}`.
+
+`DiagnosticStatus`: `{enabled: boolean, running: boolean, bufferKib: number, defaultBufferKib: number, probeState: "idle" | "running", result: DiagnosticReport | null}`. `running` and `probeState` describe the owned test; service state remains in `HostStatus`. These records contain no access key or absolute path.
+
+| Diagnostic command | Arguments / result |
+| --- | --- |
+| `diagnostic_status` | No arguments; `DiagnosticStatus` |
+| `set_diagnostic_mode` | `{enabled: boolean}`; `DiagnosticStatus` |
+| `set_download_buffer` | `{kib: number}`; `DiagnosticStatus`, accepting 16–128 in steps of 16 |
+| `reset_diagnostic_settings` | No arguments; `DiagnosticStatus`, restoring the default 128 KiB |
+| `run_diagnostic_test` | `{path: string, connections: 1 | 2 | 4 | 8}`; `DiagnosticReport` |
+| `cancel_diagnostic_test` | No arguments; `DiagnosticStatus` |
+
+Settings require enabled diagnostics and a running service; invalid values preserve the current buffer. Changing settings during a test is rejected. Each download retains its buffer at request entry. Mode disable and service Stop cancel the probe, clear its result and restore defaults.
+
+The test requests a nonempty root-relative file from the active service's IPv4 loopback endpoint using normal authentication and protected-file checks. The path is bounded to 4,096 UTF-8 bytes. It sends HEAD followed by single-range GETs, partitioning at most the first 64 MiB among the selected number of nonempty ranges; files shorter than the chosen connection count are rejected. Responses must match the expected status, range and length. Content is drained without saving it, one application-wide test permit prevents overlap across service restarts, and the whole operation is bounded to 30 seconds. Cancellation and caller drop release owned network work. The report is a local timing sample rather than a checksum, version-consistency guarantee or external network measurement.
 
 The UI keeps stopped setup drafts separate from running settings. After a reload it displays the effective status and whether a key is configured; it does not recover or persist the key through browser storage. A pending folder dialog must not block application shutdown or apply a late root selection after exit begins.

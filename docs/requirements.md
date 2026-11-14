@@ -1,6 +1,6 @@
 # Requirements
 
-Status: experimental0.1.0 preview, 2026-11-14, with no published release. Product/repository name: **inout-next**. Display name is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md).
+Status: experimental0.1.0 preview, 2026-11-15, with no published release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md).
 
 ## Product goal
 
@@ -9,6 +9,10 @@ One device starts a Rust HTTP file service for a chosen directory. Other devices
 ## Experience carried forward
 
 FileInfra supplies experience in native lifecycle, authentication, offline tools, Android notifications/tiles, signing, portable packaging and honest compatibility verification. The archived inout-tauri shows why bundled executable discovery, writable-directory execution and incomplete Android storage integration need redesigned boundaries. The new project implements its own service instead of retaining dufs.
+
+Retain a configurable dot-matrix product wordmark and a smooth, lightweight startup presentation. Performance and cross-platform behavior guide the module contracts: readiness releases controls immediately, reduced motion is respected, and branding introduces no downloaded font, per-dot animation loop or artificial startup delay. Display names can change while package, resource, upgrade and signing identities remain explicit.
+
+Initial readiness includes usable authentication, native setup and connection-error recovery, rather than requiring sharing to be active. Escape can dismiss the waiting presentation without stopping the service. Navigation and Start/Stop must not replay it, and cleanup must not retain startup timers/listeners. Measure real native frame times before asserting device-level smoothness.
 
 ## Initial functional requirements
 
@@ -23,6 +27,7 @@ FileInfra supplies experience in native lifecycle, authentication, offline tools
 - Explicit Clear selection must restore focus to the control that selected the file or folder, with a stable current-folder fallback if that control is unavailable. Passive listing reconciliation and management-driven clearing must not move focus to an earlier selection control.
 - Explicit inline/dialog cancellation must return keyboard focus to a surviving opener. Successful management operations, notice dismissal and finished-history clearing need an appropriate surviving task destination. Failed operations keep actionable forms, and an async completion must preserve unrelated focus that the user deliberately chose while waiting.
 - Native reload must display actual running network/port/permission settings and whether a key is configured, without returning or persisting that key. Selection-associated actions must remain adjacent to the inspector even with long transfer history.
+- A hidden native diagnostic entry uses five app-name activations within five seconds and remains keyboard accessible. It adds temporary validated download-buffer tuning and a bounded read-only local test. Hidden discovery does not grant authority: every diagnostic command remains restricted to the active application's main native window, with no HTTP tuning endpoint.
 
 ## Modularity and renaming
 
@@ -42,7 +47,11 @@ The filesystem provider reserves case-insensitive `INOUTTMP`, legacy `.inout-sta
 
 Public web resources must be isolated from the actual provider's shared storage, including filesystem aliases, and remain immutable for the server lifetime. The initial filesystem snapshot is bounded to 128 MiB, 10,000 files and depth 128, with 100,000 shared entries scanned. Unknown providers reject web assets by default. Provider injection must never open the configuration's advisory `root` path.
 
-Stopping cancels the whole request future, including body extraction, provider calls, copies and range-prefix reads. Explicit stop drains tracked requests within two seconds or returns a shutdown error. Providers own their operations and release them when futures are dropped; detached writes and permanently blocking polls violate that contract.
+Stopping cancels the whole request future, including body extraction, provider calls, copies and range positioning. Explicit stop drains tracked requests within two seconds or returns a shutdown error. Providers own their operations and release them when futures are dropped; detached writes and permanently blocking polls violate that contract.
+
+Download buffers accept 16–128 KiB in 16 KiB increments and default to 128 KiB after a bounded buffer comparison. Capture the setting once per request; existing downloads retain their starting buffer. Filesystem ranges position on the original opened object without reopening a pathname, while asynchronous read-only providers retain a bounded forward-read fallback.
+
+Diagnostic tests use only the active service's IPv4 loopback address and actual port, normal authorization and protected-file checks. A HEAD plus 1/2/4/8 nonempty single ranges reads at most the first 64 MiB without saving content. Permit one test at a time, validate response ranges/lengths, reject settings changes during a test and bound the whole test to 30 seconds. Cancel, disable, Stop, exit and dropping the future release owned connection/request work without holding lifecycle locks across network awaits. Close/Stop restore defaults. Diagnostic status/results contain no key or absolute path; no telemetry, background sampler or Node/Python runtime is added.
 
 Default upload limit is 2 GiB, configurable. The initial release promises continuous streamed upload, not resumable sessions. Resume requires a later persisted-offset/session protocol with concurrency and crash-recovery verification. Preview, archives, WebDAV, recursive indexing and arbitrary native plugin loading are separate milestones.
 
