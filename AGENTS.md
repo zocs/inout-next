@@ -4,7 +4,7 @@ This is an independent Rust file service, Next.js static UI and Tauri applicatio
 
 ## Boundaries
 
-- Keep product branding in `product.json`. Internal package/module identifiers stay independent of the displayed name. Display-name changes must not silently change application IDs or signing identity.
+- Keep product branding in `product.json` and stable native installation values in `config/native-identity.json`. Internal package/module identifiers stay independent of the displayed name. Display-name changes must preserve native package/resource/install/upgrade identifiers and must not silently change application IDs or signing identity.
 - Keep filesystem operations behind the storage interface; HTTP modules and the UI must not open host paths directly.
 - Register feature modules through their manifests/interfaces. A disabled module must have no active API routes and must not appear as an available UI action.
 - Server-side authorization, permissions, root containment, safe publication and transfer limits are required for every applicable API. UI visibility is not authorization.
