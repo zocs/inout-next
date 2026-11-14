@@ -306,12 +306,16 @@ jobs:
         run: |
           cargo build -p share-cli --release --locked --target ${{ matrix.target }}
           python3 scripts/package_portable.py --binary target/${{ matrix.target }}/release/share-server --target ${{ matrix.portable }} --output .local/packages
-          npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --bundles app,dmg --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+          npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --no-bundle --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+          python3 scripts/bundle_macos.py --report .local/verification/native-bundle-${{ matrix.portable }}.json -- \
+            npm --prefix apps/desktop run tauri -- bundle --ci --target ${{ matrix.target }} --bundles app,dmg
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}
           path: |
             .local/packages/*
             target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            .local/verification/native-bundle-${{ matrix.portable }}.json
+            .local/verification/native-bundle-${{ matrix.portable }}/*
           if-no-files-found: error
           retention-days: 14
