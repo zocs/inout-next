@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use axum::body::Body;
 use http::Request;
+#[cfg(unix)]
 use http_body_util::BodyExt;
 use share_domain::{Entry, EntryKind, Error, RelativePath};
 use share_http::{router_with_store, start, start_with_store, ServerConfig};

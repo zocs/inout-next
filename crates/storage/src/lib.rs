@@ -447,6 +447,9 @@ impl FileStore for FsStore {
                         .remove_dir(internal.file_name())
                         .map_err(io_error)?;
                 }
+                // Windows directory capabilities deny delete sharing; close
+                // the inspected child before removing it through its parent.
+                drop(user_dir);
                 dir.remove_dir(&name).map_err(io_error)
             }
         } else {
