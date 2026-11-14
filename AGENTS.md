@@ -13,6 +13,8 @@ This is an independent Rust file service, Next.js static UI and Tauri applicatio
 
 ## Documentation after every major update
 
-Update all affected current documents before completion: `README.md`, `README_zh.md`, `docs/requirements.md`, `ROADMAP.md`, `docs/handoff.md`, `docs/architecture.md`, `docs/branding.md`, `docs/modules.md`, `docs/platforms.md`, `CHANGELOG.md` and validation/review records. Preserve historical snapshots and record what actually builds/runs on each platform.
+Update affected public product documents before completion: `README.md`, `README_zh.md`, `docs/requirements.md`, `ROADMAP.md`, `docs/architecture.md`, `docs/branding.md`, `docs/modules.md`, `docs/platforms.md`, `CHANGELOG.md` and distribution/design guidance. Record what actually builds/runs and distinguish target compilation from installation/device/signing clearance.
+
+Keep handoff, execution plans, full review reports, detailed validation/debug evidence and design-tool sidecars local under their ignored paths. Preserve original records locally; never force-add them or embed their machine paths, process/session details, raw logs or internal chronology into public documents. Public documentation contains usage, contracts, architecture, current limitations, roadmap and concise measured facts.
 
 Update `docs/handoff.md` through targeted patches only. Never replace it with shell redirection, sed, awk or Python whole-file writes. Include current commits, remaining tasks, exact verification results and known limitations so another session can continue without repeating completed work.

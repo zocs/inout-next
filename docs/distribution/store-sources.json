@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "checkedDate": "2026-11-14",
+  "project": "inout-next",
+  "scope": "Public official documentation; relevant policy sections reviewed. No store-console/account/target-device verification. Policy changes must be rechecked before submission.",
+  "sources": [
+    {
+      "id": "play-target",
+      "title": "Target API level requirements for Google Play apps",
+      "url": "https://support.google.com/googleplay/android-developer/answer/11926878?hl=en"
+    },
+    {
+      "id": "android-page-sizes",
+      "title": "Support 16 KB page sizes",
+      "url": "https://developer.android.com/guide/practices/page-sizes"
+    },
+    {
+      "id": "android-fgs-types",
+      "title": "Foreground service types",
+      "url": "https://developer.android.com/develop/background-work/services/fgs/service-types"
+    },
+    {
+      "id": "play-all-files",
+      "title": "Use of All files access permission",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10467955?hl=en"
+    },
+    {
+      "id": "play-testing",
+      "title": "App testing requirements for new personal developer accounts",
+      "url": "https://support.google.com/googleplay/android-developer/answer/14151465?hl=en"
+    },
+    {
+      "id": "play-data-safety",
+      "title": "Provide information for Google Play Data safety",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en"
+    },
+    {
+      "id": "play-user-data",
+      "title": "User Data policy",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10144311?hl=en"
+    },
+    {
+      "id": "apple-submission",
+      "title": "Upcoming Requirements",
+      "url": "https://developer.apple.com/news/upcoming-requirements/"
+    },
+    {
+      "id": "apple-guidelines",
+      "title": "App Review Guidelines",
+      "url": "https://developer.apple.com/app-store/review/guidelines/"
+    },
+    {
+      "id": "fdroid-inclusion",
+      "title": "Inclusion Policy",
+      "url": "https://f-droid.org/en/docs/Inclusion_Policy/"
+    },
+    {
+      "id": "fdroid-reproducible",
+      "title": "Reproducible Builds",
+      "url": "https://f-droid.org/en/docs/Reproducible_Builds/"
+    },
+    {
+      "id": "fdroid-build-metadata",
+      "title": "Build Metadata Reference",
+      "url": "https://f-droid.org/en/docs/Build_Metadata_Reference/"
+    },
+    {
+      "id": "play-fgs-policy",
+      "title": "Foreground service and full-screen intent requirements",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13392821?hl=en"
+    },
+    {
+      "id": "android-fgs-timeout",
+      "title": "Foreground service timeouts",
+      "url": "https://developer.android.com/develop/background-work/services/fgs/timeout"
+    },
+    {
+      "id": "android-saf",
+      "title": "Access documents and other files from shared storage",
+      "url": "https://developer.android.com/training/data-storage/shared/documents-files"
+    },
+    {
+      "id": "android-local-network",
+      "title": "Local network permission",
+      "url": "https://developer.android.com/privacy-and-security/local-network-permission"
+    },
+    {
+      "id": "android-verification",
+      "title": "Android developer verification",
+      "url": "https://developer.android.com/developer-verification"
+    },
+    {
+      "id": "android-signing",
+      "title": "Sign your app",
+      "url": "https://developer.android.com/studio/publish/app-signing"
+    },
+    {
+      "id": "android-app-bundle",
+      "title": "Android App Bundle",
+      "url": "https://developer.android.com/guide/app-bundle"
+    },
+    {
+      "id": "apple-privacy-details",
+      "title": "App privacy details",
+      "url": "https://developer.apple.com/app-store/app-privacy-details/"
+    },
+    {
+      "id": "apple-third-party-sdk",
+      "title": "Third-party SDK requirements",
+      "url": "https://developer.apple.com/support/third-party-SDK-requirements/"
+    },
+    {
+      "id": "apple-local-network",
+      "title": "TN3179 Understanding local network privacy",
+      "url": "https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/technotes/tn3179-understanding-local-network-privacy.json"
+    },
+    {
+      "id": "apple-privacy-json",
+      "title": "Privacy manifest files",
+      "url": "https://developer.apple.com/documentation/bundleresources/privacy-manifest-files",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/bundleresources/privacy-manifest-files.json"
+    },
+    {
+      "id": "apple-required-reasons",
+      "title": "Describing use of required reason API",
+      "url": "https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/bundleresources/describing-use-of-required-reason-api.json"
+    },
+    {
+      "id": "apple-sandbox",
+      "title": "App Sandbox",
+      "url": "https://developer.apple.com/documentation/security/app-sandbox",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/security/app-sandbox.json"
+    },
+    {
+      "id": "apple-encryption",
+      "title": "Overview of export compliance",
+      "url": "https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance/"
+    },
+    {
+      "id": "fdroid-server",
+      "title": "Build Server Setup",
+      "url": "https://f-droid.org/en/docs/Build_Server_Setup/"
+    },
+    {
+      "id": "fdroid-scan",
+      "title": "FAQ - App Developers",
+      "url": "https://f-droid.org/en/docs/FAQ_-_App_Developers/"
+    },
+    {
+      "id": "fdroid-metadata",
+      "title": "Descriptions, graphics and screenshots",
+      "url": "https://f-droid.org/en/docs/All_About_Descriptions_Graphics_and_Screenshots/"
+    },
+    {
+      "id": "fdroid-index",
+      "title": "Documentation index",
+      "url": "https://f-droid.org/en/docs/"
+    },
+    {
+      "id": "fdroid-quick-start",
+      "title": "Submitting to F-Droid Quick Start Guide",
+      "url": "https://f-droid.org/en/docs/Submitting_to_F-Droid_Quick_Start_Guide/"
+    },
+    {
+      "id": "fdroid-contributing",
+      "title": "Contributing to F-Droid Data",
+      "url": "https://gitlab.com/fdroid/fdroiddata/-/blob/master/CONTRIBUTING.md",
+      "retrievalUrl": "https://gitlab.com/fdroid/fdroiddata/-/raw/master/CONTRIBUTING.md"
+    },
+    {
+      "id": "tauri-play",
+      "title": "Tauri Google Play distribution",
+      "url": "https://v2.tauri.app/distribute/google-play/"
+    },
+    {
+      "id": "tauri-apple",
+      "title": "Tauri App Store distribution",
+      "url": "https://v2.tauri.app/distribute/app-store/"
+    },
+    {
+      "id": "play-registration",
+      "title": "Get started with Play Console",
+      "url": "https://support.google.com/googleplay/android-developer/answer/6112435?hl=en"
+    },
+    {
+      "id": "apple-enrollment",
+      "title": "Apple Developer Program enrollment",
+      "url": "https://developer.apple.com/programs/enroll/"
+    },
+    {
+      "id": "android-64-bit",
+      "title": "Support 64-bit architectures",
+      "url": "https://developer.android.com/google/play/requirements/64-bit"
+    },
+    {
+      "id": "apple-user-files",
+      "title": "Accessing files from the macOS App Sandbox",
+      "url": "https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/security/accessing-files-from-the-macos-app-sandbox.json"
+    },
+    {
+      "id": "apple-ios-directories",
+      "title": "Providing access to directories",
+      "url": "https://developer.apple.com/documentation/uikit/providing-access-to-directories",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/uikit/providing-access-to-directories.json"
+    },
+    {
+      "id": "apple-network-server",
+      "title": "Incoming network connections entitlement",
+      "url": "https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.network.server",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/bundleresources/entitlements/com.apple.security.network.server.json"
+    },
+    {
+      "id": "apple-ats-local",
+      "title": "NSAllowsLocalNetworking",
+      "url": "https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking",
+      "retrievalUrl": "https://developer.apple.com/tutorials/data/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking.json"
+    }
+  ]
+}
