@@ -318,7 +318,10 @@ async fn real_core_rejects_an_alias_of_a_protected_inflight_upload_inode() {
         loop {
             if let Ok(entries) = std::fs::read_dir(fixture.root.join("INOUTTMP")) {
                 for entry in entries.flatten() {
-                    if entry.metadata().unwrap().len() > 0 {
+                    // Windows directory entries can cache zero length while the writer is open.
+                    // Query a file handle so the in-flight upload remains incomplete.
+                    let file = std::fs::File::open(entry.path()).unwrap();
+                    if file.metadata().unwrap().len() > 0 {
                         return entry.path();
                     }
                 }

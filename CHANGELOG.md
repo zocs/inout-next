@@ -9,6 +9,7 @@
 - Use a measured 128 KiB default download buffer with validated 16–128 KiB host tuning, and position filesystem ranges on the original opened handle.
 - Add hidden, keyboard-accessible native diagnostics: temporary buffer controls, bounded read-only loopback tests, cancellation and reset on close/Stop, with no HTTP control route or telemetry.
 - Guard diagnostic replies/errors/finalizers across Stop/restart so obsolete actions cannot replace results or unlock newer work.
+- Use current file-handle metadata in the Windows protected-upload alias regression so an open writer's cached directory size does not prevent the safety check.
 - Derive startup removal from actual CSS transition timing with a one-second ceiling and immediate reduced-motion cleanup, preserving usable controls throughout the exit.
 - Enforce root containment, portable path validation, collision-safe publication, immutable public resources and bounded shutdown.
 - Add native folder selection, effective sharing settings, an isolated manager and shutdown independent of pending dialogs.
