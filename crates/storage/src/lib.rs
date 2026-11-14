@@ -10,7 +10,9 @@ mod identity;
 #[cfg(test)]
 mod lifecycle_tests;
 mod protected;
+mod reader;
 use protected::{ProtectedObjects, Protection};
+pub use reader::FileReader;
 
 /// A provider-validated immutable public asset; no live user-file paths remain.
 pub struct WebAsset {
@@ -21,7 +23,7 @@ pub struct WebAsset {
 pub type Reader = Pin<Box<dyn AsyncRead + Send + Unpin>>;
 pub struct OpenFile {
     pub entry: Entry,
-    pub reader: Reader,
+    pub reader: FileReader,
 }
 
 #[async_trait]
@@ -340,7 +342,7 @@ impl FileStore for FsStore {
         }
         Ok(OpenFile {
             entry: entry(path, &metadata),
-            reader: Box::pin(reader),
+            reader: FileReader::seekable(reader),
         })
     }
     async fn upload(
@@ -415,7 +417,8 @@ impl FileStore for FsStore {
         destination: &RelativePath,
     ) -> Result<Entry, Error> {
         let opened = self.open(source, 0).await?;
-        self.upload(destination, opened.reader, u64::MAX).await
+        self.upload(destination, opened.reader.into(), u64::MAX)
+            .await
     }
     async fn remove(&self, path: &RelativePath, recursive: bool) -> Result<(), Error> {
         let _lock = self.mutations.lock().await;

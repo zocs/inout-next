@@ -169,7 +169,7 @@ impl FileStore for PendingStore {
                     size: Some(6),
                     modified: None,
                 },
-                reader: self.reader.lock().await.take().unwrap(),
+                reader: self.reader.lock().await.take().unwrap().into(),
             });
         }
         self.actual.open(path, offset).await

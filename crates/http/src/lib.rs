@@ -2,7 +2,10 @@
 //! [`start_with_store`] or [`router_with_store`] without exposing ambient roots.
 mod assets;
 mod auth;
+mod download;
 mod routes;
+
+pub use download::{DownloadBufferError, DownloadControl, DEFAULT_DOWNLOAD_BUFFER_KIB};
 
 use axum::{
     extract::{DefaultBodyLimit, Request, State},
@@ -25,6 +28,7 @@ pub struct ServerConfig {
     pub modules: Vec<String>,
     pub max_upload_bytes: u64,
     pub product: Product,
+    pub download_control: DownloadControl,
 }
 impl ServerConfig {
     pub fn new(root: PathBuf, listen: SocketAddr) -> Self {
@@ -37,6 +41,7 @@ impl ServerConfig {
             modules: vec!["files".into(), "uploads".into(), "manage".into()],
             max_upload_bytes: 2147483648,
             product: Product::default(),
+            download_control: DownloadControl::default(),
         }
     }
     fn validate(&self) -> Result<ModuleRegistry, ServerError> {
@@ -68,10 +73,14 @@ pub struct RunningServer {
     cancellation: CancellationToken,
     task: Option<JoinHandle<Result<(), std::io::Error>>>,
     requests: TaskTracker,
+    download_control: DownloadControl,
 }
 impl RunningServer {
     pub fn address(&self) -> SocketAddr {
         self.address
+    }
+    pub fn download_control(&self) -> DownloadControl {
+        self.download_control.clone()
     }
     pub fn request_stop(&self) {
         self.cancellation.cancel();
@@ -119,6 +128,7 @@ struct AppState {
     max_upload_bytes: u64,
     auth: Arc<auth::Auth>,
     cancellation: CancellationToken,
+    download_control: DownloadControl,
 }
 
 pub async fn start(config: ServerConfig) -> Result<RunningServer, ServerError> {
@@ -133,6 +143,7 @@ pub async fn start_with_store(
     config: ServerConfig,
     store: Arc<dyn FileStore>,
 ) -> Result<RunningServer, ServerError> {
+    let download_control = config.download_control.clone();
     let cancellation = CancellationToken::new();
     let requests = TaskTracker::new();
     let router = build_router(&config, store, cancellation.clone(), requests.clone())?;
@@ -151,6 +162,7 @@ pub async fn start_with_store(
         cancellation,
         task: Some(task),
         requests,
+        download_control,
     })
 }
 
@@ -187,6 +199,7 @@ fn build_router(
         max_upload_bytes: config.max_upload_bytes,
         auth: Arc::new(auth::Auth::new(config.key.as_deref())),
         cancellation,
+        download_control: config.download_control.clone(),
     };
     let api = routes::mount(&state)
         .layer(DefaultBodyLimit::max(64 * 1024))

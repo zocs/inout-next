@@ -134,6 +134,40 @@ async fn authenticated_upload_collision_and_exact_ranges() {
 }
 
 #[tokio::test]
+async fn large_downloads_use_bounded_batches() {
+    let fixture = Fixture::new(false, &["files"], 100);
+    let expected: Vec<u8> = (0..2 * 1024 * 1024 + 37)
+        .map(|index| (index % 251) as u8)
+        .collect();
+    std::fs::write(fixture.root.path().join("large.bin"), &expected).unwrap();
+    let response = fixture
+        .request("GET", "/api/v1/content?path=large.bin", &BEARER, "")
+        .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers()["content-length"],
+        expected.len().to_string()
+    );
+    let mut body = response.into_body();
+    let mut downloaded = Vec::new();
+    let mut batches = 0;
+    while let Some(frame) = body.frame().await {
+        let data = frame.unwrap().into_data().unwrap();
+        assert!(
+            data.len() <= 256 * 1024,
+            "a download must not buffer the whole file"
+        );
+        downloaded.extend_from_slice(&data);
+        batches += 1;
+    }
+    assert_eq!(downloaded, expected);
+    assert!(
+        batches <= 129,
+        "excessive per-batch I/O and dispatch: {batches} batches for 2 MiB"
+    );
+}
+
+#[tokio::test]
 async fn empty_files_and_zero_suffix_have_correct_range_behavior() {
     let fixture = Fixture::new(true, &["files", "uploads"], 10);
     assert_eq!(

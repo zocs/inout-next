@@ -197,6 +197,7 @@ async fn content(
         return Err(Error::Forbidden.into());
     }
     let path = query_path(query, false)?;
+    let download_buffer = state.download_control.buffer_bytes();
     let mut opened = state.store.open(&path, 0).await?;
     let size = opened.entry.size.ok_or(Error::Unsupported)?;
     let range = if method == Method::HEAD {
@@ -217,22 +218,14 @@ async fn content(
         .map(|(start, end)| (start, end - start + 1))
         .unwrap_or((0, size));
     if start != 0 {
-        // Retain the opened object for coherent metadata/content even if a host
-        // concurrently replaces its pathname. Providers need only AsyncRead.
-        let copied = tokio::io::copy(
-            &mut (&mut opened.reader).take(start),
-            &mut tokio::io::sink(),
-        )
-        .await
-        .map_err(|_| Error::Io)?;
-        if copied != start {
-            return Err(Error::Conflict.into());
-        }
+        // Position the original handle so metadata and content remain coherent
+        // when its pathname is replaced. Storage retains a stream-only fallback.
+        opened.reader.advance(start).await?;
     }
     let body = if method == Method::HEAD {
         Body::empty()
     } else {
-        let stream = ReaderStream::new(opened.reader.take(length))
+        let stream = ReaderStream::with_capacity(opened.reader.take(length), download_buffer)
             .take_until(state.cancellation.cancelled_owned());
         Body::from_stream(stream)
     };
