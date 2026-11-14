@@ -5,6 +5,7 @@ import { Eye, EyeOff, FolderOpen, Play, Square } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import product from "@/generated/product.json";
 import { Header } from "./file-manager";
+import { Wordmark } from "./branding";
 
 const DiagnosticPanel = lazy(() => import("@/features/diagnostics/panel"));
 
@@ -26,7 +27,7 @@ function nativeError(error: unknown): string {
   return typeof error === "string" ? error : error instanceof Error ? error.message : "The native action failed. Try again.";
 }
 
-export default function NativeHost() {
+export default function NativeHost({ onReady }: { onReady?: () => void }) {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const activations = useRef<number[]>([]);
   const diagnosticOrigin = useRef<HTMLButtonElement | null>(null);
@@ -52,12 +53,24 @@ export default function NativeHost() {
   const [showKey, setShowKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const readinessReported = useRef(false);
   const inFlight = useRef(false);
   const revision = useRef(0);
   const mounted = useRef(true);
+  const folderControl = useRef<HTMLButtonElement>(null);
+  const retryControl = useRef<HTMLButtonElement>(null);
   const startControl = useRef<HTMLButtonElement>(null);
   const stopControl = useRef<HTMLButtonElement>(null);
   const focusAfterChange = useRef<"start" | "stop" | null>(null);
+  const retryFocus = useRef<{ origin: HTMLButtonElement; destination: "folder" | "stop" | "retry" } | null>(null);
+
+  useEffect(() => {
+    // A stopped host (including no selected folder) is usable setup. An initial
+    // IPC failure must expose recovery rather than hold the startup screen.
+    if ((!status && !error) || readinessReported.current) return;
+    readinessReported.current = true;
+    onReady?.();
+  }, [status, error, onReady]);
 
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
@@ -89,12 +102,35 @@ export default function NativeHost() {
     focusAfterChange.current = null;
   }, [busy, status?.running]);
 
+  useEffect(() => {
+    const task = retryFocus.current;
+    if (busy || !task) return;
+    retryFocus.current = null;
+    if (document.activeElement !== document.body && !task.origin.contains(document.activeElement)) return;
+    const control = task.destination === "folder" ? folderControl : task.destination === "stop" ? stopControl : retryControl;
+    control.current?.focus();
+  }, [busy, status, error]);
+
   async function act(action: () => Promise<void>) {
     if (inFlight.current) return;
     inFlight.current = true; revision.current += 1; setBusy(true); setError("");
     try { await action(); }
     catch (error) { if (mounted.current) setError(nativeError(error)); }
     finally { inFlight.current = false; if (mounted.current) setBusy(false); }
+  }
+
+  async function retry(origin: HTMLButtonElement) {
+    if (inFlight.current) return;
+    const owned = origin.contains(document.activeElement);
+    await act(async () => {
+      let destination: "folder" | "stop" | "retry" = "retry";
+      try {
+        const next = await invoke<HostStatus>("host_status");
+        if (mounted.current) { setStatus(next); destination = next.running ? "stop" : "folder"; }
+      } finally {
+        if (owned && mounted.current) retryFocus.current = { origin, destination };
+      }
+    });
   }
 
   async function change(command: "choose_folder" | "stop_service") {
@@ -143,11 +179,12 @@ export default function NativeHost() {
       <div className="host-heading"><h2>Share a folder</h2><p>Choose the files this device makes available, then open the file manager or connect from another device.</p></div>
       <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{status ? status.running ? "Sharing is active." : "Sharing is stopped." : ""}</p>
       {error && <p className="notice error" role="alert">{error}</p>}
-      {!status ? <p role="status">Connecting to native controls…</p> : <div className="host-layout">
+      {!status ? <>{error || busy ? <button ref={retryControl} type="button" className="button button-secondary" disabled={busy} onClick={(event) => void retry(event.currentTarget)}>{busy ? "Connecting…" : "Try again"}</button>
+        : <p role="status">Connecting to native controls…</p>}</> : <div className="host-layout">
         <form className="host-settings" onSubmit={start}>
           <section className="host-section" aria-labelledby="host-folder-title"><h3 id="host-folder-title">Shared folder</h3>
             <p className="host-root">{status.root ?? "No folder selected"}</p>
-            <button type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />Choose folder</button>
+            <button ref={folderControl} type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />Choose folder</button>
             {status.running && <p className="muted">Stop sharing to change the folder or access settings.</p>}
           </section>
           <fieldset className="host-section host-options" disabled={busy || status.running}><legend>Access settings</legend>
@@ -182,6 +219,6 @@ export default function NativeHost() {
       </div>}
       {diagnosticsOpen && <Suspense fallback={<p role="status">Loading local diagnostics…</p>}><DiagnosticPanel serviceRunning={!!status?.running} onClose={closeDiagnostics} /></Suspense>}
     </main>
-    <footer className="app-footer"><span>{product.name} {product.version}</span><span>Local file sharing</span></footer>
+    <footer className="app-footer"><span><Wordmark name={product.name} /> {product.version}</span><span>Local file sharing</span></footer>
   </>;
 }

@@ -19,6 +19,7 @@ interface Service {
   url: string;
   root: string;
   key: string;
+  stop: () => Promise<void>;
 }
 
 export const test = base.extend<{ service: Service; serviceOptions: ServiceOptions }>({
@@ -49,19 +50,22 @@ export const test = base.extend<{ service: Service; serviceOptions: ServiceOptio
     const child = spawn(executable, args, { stdio: ["ignore", "pipe", "pipe"] });
     try {
       const url = await waitForAddress(child);
-      await use({ url, root, key: fixtureKey });
+      await use({ url, root, key: fixtureKey, stop: () => stopService(child) });
     } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill(process.platform === "win32" ? "SIGTERM" : "SIGINT");
-        await new Promise<void>((resolveExit) => {
-          const timer = setTimeout(() => { child.kill("SIGKILL"); resolveExit(); }, 5_000);
-          child.once("exit", () => { clearTimeout(timer); resolveExit(); });
-        });
-      }
+      await stopService(child);
       rmSync(directory, { recursive: true, force: true });
     }
   },
 });
+
+async function stopService(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill(process.platform === "win32" ? "SIGTERM" : "SIGINT");
+  await new Promise<void>((resolveExit) => {
+    const timer = setTimeout(() => { child.kill("SIGKILL"); resolveExit(); }, 5_000);
+    child.once("exit", () => { clearTimeout(timer); resolveExit(); });
+  });
+}
 
 function waitForAddress(child: ChildProcess): Promise<string> {
   return new Promise((resolveAddress, reject) => {

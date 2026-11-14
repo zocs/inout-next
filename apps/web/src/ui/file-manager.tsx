@@ -10,14 +10,16 @@ import type { Entry, EntryList, Product, ServerContext, ServerStatus } from "@/l
 import { formatBytes, formatDate } from "@/lib/format";
 import { activeModules, ModuleProviders, ModuleSlot, type ModuleRuntime } from "./modules";
 import { captureTaskFocus } from "./focus";
+import { Wordmark } from "./branding";
 
 type Message = { text: string; kind: "success" | "error" } | null;
 
-export default function FileManager() {
+export default function FileManager({ onReady }: { onReady?: (product: Product) => void }) {
   const [api] = useState(() => new FileApi());
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [context, setContext] = useState<ServerContext | null>(null);
   const [phase, setPhase] = useState<"loading" | "unlock" | "ready" | "error">("loading");
+  const readinessReported = useRef(false);
   const [path, setPath] = useState("");
   const [listing, setListing] = useState<EntryList | null>(null);
   const [folderFailure, setFolderFailure] = useState<{ path: string; text: string } | null>(null);
@@ -29,6 +31,13 @@ export default function FileManager() {
   const [refreshToken, setRefreshToken] = useState(0);
   const [message, setMessage] = useState<Message>(null);
   const product = context?.product ?? status?.product ?? productDefaults;
+  useEffect(() => {
+    // Authentication and recovery are usable first outcomes, too. Subsequent
+    // folder loads or reconnections never restart the opening presentation.
+    if (phase === "loading" || readinessReported.current) return;
+    readinessReported.current = true;
+    onReady?.(product);
+  }, [phase, product, onReady]);
   const folderError = folderFailure?.path === path ? folderFailure.text : null;
   const folderReady = listing?.path === path && !folderError;
   const entries = folderReady ? listing.entries : [];
@@ -135,12 +144,12 @@ export default function FileManager() {
           </main>
         </div>
       </ModuleProviders>}
-    <footer className="app-footer"><span>{product.name} {product.version}</span><span>Local file sharing</span></footer>
+    <footer className="app-footer"><span><Wordmark name={product.name} /> {product.version}</span><span>Local file sharing</span></footer>
   </>;
 }
 
 export function Header({ product, context, canLock, lock, onBrandActivate }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void; onBrandActivate?: (origin: HTMLButtonElement) => void }) {
-  return <header className="app-header"><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}>{product.name}</button> : product.name}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
+  return <header className="app-header"><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}><Wordmark name={product.name} /></button> : <Wordmark name={product.name} />}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
 }
 
 function Unlock({ api, product, unlocked }: { api: FileApi; product: Product; unlocked: (context: ServerContext) => void }) {

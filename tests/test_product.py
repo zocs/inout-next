@@ -34,6 +34,31 @@ class ProductSyncTests(unittest.TestCase):
             capture_output=True, text=True, check=False,
         )
 
+    def test_current_display_name_reaches_generated_consumers_with_stable_installation(self):
+        identity_path = self.root / "config/native-identity.json"
+        identity_bytes = identity_path.read_bytes()
+        result = self.sync()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        web = json.loads((self.root / "apps/web/src/generated/product.json").read_text())
+        native = json.loads((self.root / "apps/desktop/src-tauri/tauri.conf.json").read_text())
+        distribution = json.loads((self.root / "config/distribution.json").read_text())
+        self.assertEqual(web["name"], "inout")
+        self.assertEqual(native["app"]["windows"][0]["title"], "inout")
+        self.assertEqual(distribution["product"]["name"], "inout")
+        self.assertEqual(web["slug"], "inout-next")
+        self.assertEqual(web["repository"], "https://github.com/zocs/inout-next")
+        self.assertEqual(native["productName"], "Inout Next")
+        self.assertEqual(native["identifier"], "io.github.zocs.inoutnext")
+        self.assertEqual(native["bundle"]["windows"]["wix"]["upgradeCode"],
+                         "ccf507b8-b478-5af7-855b-a5e8fb9bc2d1")
+        self.assertEqual(native["bundle"]["resources"], {"../../web/out/": "web/"})
+        self.assertEqual(distribution["archive_prefix"], "inout-next")
+        self.assertEqual(distribution["server_binary"], "share-server")
+        self.assertEqual(distribution["desktop_binary"], "share-desktop")
+        self.assertEqual(distribution["web_directory"], "web")
+        self.assertEqual(identity_path.read_bytes(), identity_bytes)
+        self.assertEqual(self.sync("--check").returncode, 0)
+
     def test_alternate_brand_updates_consumers_without_changing_identity(self):
         self.assertEqual(self.sync().returncode, 0)
         native_path = self.root / "apps/desktop/src-tauri/tauri.conf.json"
@@ -57,7 +82,7 @@ class ProductSyncTests(unittest.TestCase):
                          "ccf507b8-b478-5af7-855b-a5e8fb9bc2d1")
         self.assertEqual(native["bundle"]["windows"]["wix"], baseline["bundle"]["windows"]["wix"])
         self.assertEqual(native["app"]["windows"][0]["title"], "Harbor")
-        self.assertEqual(baseline["app"]["windows"][0]["title"], "Inout Next")
+        self.assertEqual(baseline["app"]["windows"][0]["title"], "inout")
         self.assertEqual(native["bundle"]["shortDescription"], "Files on your network")
         self.assertEqual(distribution["archive_prefix"], "harbor")
         self.assertEqual(native["build"]["frontendDist"], "../../web/out")

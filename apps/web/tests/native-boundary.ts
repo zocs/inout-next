@@ -27,13 +27,30 @@ export const generatedKey = "fixture-native-key-64-characters-for-browser-interf
 // Chromium cannot invoke a native dialog or Tauri IPC. Only this boundary is
 // replaced; the exported app and its Rust static server remain real. Keeping
 // state outside the document models a service that survives a page reload.
-export async function installNativeBoundary(page: Page, managerUrl: string) {
+export async function installNativeBoundary(page: Page, managerUrl: string, options: {
+  holdInitialStatus?: boolean;
+  initialStatusError?: string;
+} = {}) {
   const state: Status = { root: null, running: false, managerUrl: null, addresses: [], activeSettings: null };
   const calls: { command: string; args: unknown }[] = [];
   const diagnostic = { enabled: false, running: false, bufferKib: 128, defaultBufferKib: 128, probeState: "idle", result: null as null | {bytes:number;durationMs:number;mibPerSecond:number;bufferKib:number;connections:number} };
   let applyReply: (() => void) | undefined;
   const statusReplies: (() => void)[] = [];
-  const boundary = { state, calls, holdBufferApply: false, holdDiagnosticStatus: false, releaseApply: () => applyReply?.(), releaseStatus: () => { for (const reply of statusReplies.splice(0)) reply(); }, probeOutcome: "success" as "success" | "error" | "pending" };
+  const hostStatusReplies: (() => void)[] = [];
+  let releaseInitialStatus: (() => void) | undefined;
+  const initialStatus = options.holdInitialStatus ? new Promise<void>((resolve) => { releaseInitialStatus = resolve; }) : undefined;
+  let firstStatus = true;
+  const boundary = {
+    state, calls,
+    releaseInitialStatus: () => releaseInitialStatus?.(),
+    holdHostStatus: false,
+    releaseHostStatus: () => { for (const reply of hostStatusReplies.splice(0)) reply(); },
+    holdBufferApply: false,
+    holdDiagnosticStatus: false,
+    releaseApply: () => applyReply?.(),
+    releaseStatus: () => { for (const reply of statusReplies.splice(0)) reply(); },
+    probeOutcome: "success" as "success" | "error" | "pending",
+  };
   let rejectProbe: ((error: Error) => void) | undefined;
   await page.exposeBinding("fixtureNativeInvoke", async (_, command: string, args?: { options?: StartOptions; enabled?: boolean; kib?: number; path?: string; connections?: number }) => {
     calls.push({ command, args });
@@ -70,7 +87,14 @@ export async function installNativeBoundary(page: Page, managerUrl: string) {
           return structuredClone(diagnostic.result);
         } finally { diagnostic.running = false; diagnostic.probeState = "idle"; rejectProbe = undefined; }
       }
-      case "host_status": break;
+      case "host_status":
+        if (firstStatus) {
+          firstStatus = false;
+          await initialStatus;
+          if (options.initialStatusError) throw new Error(options.initialStatusError);
+        }
+        if (boundary.holdHostStatus) await new Promise<void>((resolve) => hostStatusReplies.push(resolve));
+        break;
       case "choose_folder":
         if (args && Object.keys(args).length) throw new Error("Folder selection accepts no path from JavaScript");
         state.root = "/folder-from-native-dialog";

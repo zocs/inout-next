@@ -1,9 +1,10 @@
 import { expect } from "@playwright/test";
 import { test } from "./service";
 import { installNativeBoundary } from "./native-boundary";
+import product from "../src/generated/product.json";
 
 async function openDiagnostics(page: import("@playwright/test").Page, keyboard = false) {
-  const brand = page.getByRole("button", { name: "Inout Next", exact: true });
+  const brand = page.getByRole("button", { name: product.name, exact: true });
   for (let index = 0; index < 5; index++) {
     if (keyboard) { await brand.focus(); await brand.press(index % 2 ? "Space" : "Enter"); }
     else await brand.click();
@@ -18,7 +19,7 @@ test.describe("native local diagnostics", () => {
     await installNativeBoundary(page,service.url);
     await page.goto("http://tauri.localhost");
     await expect(page.getByRole("region", { name: "Local diagnostics", exact: true })).toHaveCount(0);
-    const brand = page.getByRole("button", { name: "Inout Next", exact: true });
+    const brand = page.getByRole("button", { name: product.name, exact: true });
     for (let index=0; index<4; index++) await brand.click();
     await expect(page.getByRole("region", { name: "Local diagnostics", exact: true })).toHaveCount(0);
     await brand.click();
@@ -67,7 +68,7 @@ test.describe("native local diagnostics", () => {
     const boundary = await installNativeBoundary(page,service.url);
     await page.clock.install();
     await page.goto("http://tauri.localhost");
-    const brand = page.getByRole("button",{name:"Inout Next",exact:true});
+    const brand = page.getByRole("button",{name:product.name,exact:true});
     for (let index=0; index<4; index++) await brand.click();
     await page.clock.fastForward(5_001);
     await brand.click();
@@ -144,7 +145,7 @@ test.describe("native local diagnostics", () => {
     await page.addInitScript(() => Object.assign(window,{__TAURI_INTERNALS__:{invoke:()=>{throw new Error("Remote manager cannot use native controls");}}}));
     await page.goto(service.url);
     await expect(page.getByRole("table",{name:"Shared files"})).toBeVisible();
-    await expect(page.getByRole("button",{name:"Inout Next",exact:true})).toHaveCount(0);
+    await expect(page.getByRole("button",{name:product.name,exact:true})).toHaveCount(0);
     await expect(page.getByRole("region",{name:"Local diagnostics",exact:true})).toHaveCount(0);
   });
 });
