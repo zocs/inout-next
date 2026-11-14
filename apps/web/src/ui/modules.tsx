@@ -13,6 +13,7 @@ export interface ModuleRuntime {
   navigate: (path: string) => void;
   refresh: () => void;
   notify: (message: string, kind?: "success" | "error") => void;
+  focusCurrentFolder: () => void;
 }
 
 export interface ModuleProps { runtime: ModuleRuntime }

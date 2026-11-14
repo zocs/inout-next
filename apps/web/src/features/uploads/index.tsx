@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ApiError, sendFile } from "@/lib/api";
 import { formatBytes, joinPath } from "@/lib/format";
 import type { FeatureModule, ModuleProps, ModuleProviderProps } from "@/ui/modules";
+import { captureTaskFocus } from "@/ui/focus";
 
 type Phase = "queued" | "sending" | "finalizing" | "saved" | "error" | "canceled";
 interface Job { id: number; file: File; path: string; phase: Phase; percent: number; error?: string }
@@ -106,8 +107,9 @@ const phaseLabels: Record<Phase, string> = { queued: "Queued", sending: "Uploadi
 
 function UploadPanel({ runtime }: ModuleProps) {
   const { jobs, cancel, clear } = useUploads();
+  const heading = useRef<HTMLHeadingElement>(null);
   return <section className="transfer-panel" aria-label="Transfers">
-    <div className="panel-heading"><h3>Transfers</h3>{jobs.some((job) => ["saved", "error", "canceled"].includes(job.phase)) && <button className="text-button" onClick={clear}>Clear finished</button>}</div>
+    <div className="panel-heading"><h3 ref={heading} tabIndex={-1}>Transfers</h3>{jobs.some((job) => ["saved", "error", "canceled"].includes(job.phase)) && <button className="text-button" onClick={(event) => { const finishFocus = captureTaskFocus(event.currentTarget); clear(); finishFocus(() => heading.current?.focus()); }}>Clear finished</button>}</div>
     {jobs.length === 0 ? <p className="muted">Upload up to {formatBytes(runtime.context.limits.max_upload_bytes)} per file. Files are saved after the device confirms the transfer.</p>
       : <ul className="transfer-list">{jobs.map((job) => <li key={job.id}>
         <div className="transfer-name"><span title={job.path}>{job.file.name}</span>{job.phase === "saved" ? <Check className="saved-mark" size={18} aria-hidden="true" />

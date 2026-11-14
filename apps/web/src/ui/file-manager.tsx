@@ -8,6 +8,7 @@ import { ApiError, FileApi } from "@/lib/api";
 import type { Entry, EntryList, Product, ServerContext, ServerStatus } from "@/lib/contracts";
 import { formatBytes, formatDate } from "@/lib/format";
 import { activeModules, ModuleProviders, ModuleSlot, type ModuleRuntime } from "./modules";
+import { captureTaskFocus } from "./focus";
 
 type Message = { text: string; kind: "success" | "error" } | null;
 
@@ -41,6 +42,7 @@ export default function FileManager() {
     (origin?.isConnected ? origin : currentFolderControl.current)?.focus();
   }, [select]);
   const refresh = useCallback(() => setRefreshToken((value) => value + 1), []);
+  const focusCurrentFolder = useCallback(() => currentFolderControl.current?.focus(), []);
   const notify = useCallback((text: string, kind: "success" | "error" = "success") => setMessage({ text, kind }), []);
 
   const connect = useCallback(async () => {
@@ -97,7 +99,7 @@ export default function FileManager() {
   const modules = useMemo(() => context ? activeModules(featureRegistry, context) : [], [context]);
   const runtime: ModuleRuntime | null = context ? { context, api, path, entries, selected, select,
     loading: loading || (!folderReady && !folderError && context.permissions.list && context.modules.includes("files")),
-    navigate, refresh, notify } : null;
+    navigate, refresh, notify, focusCurrentFolder } : null;
   return <>
     <Header product={product} context={context} canLock={phase === "ready" && !!status?.auth_required} lock={() => void logout()} />
     {phase === "unlock" ? <Unlock api={api} product={product} unlocked={(next) => { setContext(next); setPhase("ready"); setMessage(null); }} />
@@ -116,7 +118,7 @@ export default function FileManager() {
             <div className="folder-heading"><div><h2>{path.split("/").at(-1) || context?.root_label || "Shared files"}</h2><p>Browse and transfer files from this device.</p></div>
               <div className="toolbar" role="toolbar" aria-label="Folder actions">{folderReady && <ModuleSlot modules={modules} slot="Toolbar" runtime={runtime} />}<button className="icon-button refresh-button" aria-label="Refresh folder" title="Refresh folder" onClick={refresh} disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button></div>
             </div>
-            {message && <div className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}><span>{message.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setMessage(null)}><X size={16} aria-hidden="true" /></button></div>}
+            {message && <div className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}><span>{message.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={(event) => { const finishFocus = captureTaskFocus(event.currentTarget); setMessage(null); finishFocus(focusCurrentFolder); }}><X size={16} aria-hidden="true" /></button></div>}
             <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{selected ? `Selected ${selected.name}.` : selectionChanged ? "Selection cleared." : ""}</p>
             <div className={`content-layout ${selected || modules.some((module) => module.SelectionPanel || module.Panel) ? "with-panels" : ""}`}>
               <div className="views">{folderError ? <section className="empty-state" aria-label="Folder unavailable"><h3>Could not open this folder</h3><p role="alert">{folderError}</p><button className="button button-secondary" onClick={refresh}>Retry folder</button></section>
