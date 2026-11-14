@@ -30,6 +30,8 @@ impl Fixture {
             shutdown_completed: AtomicBool::new(false),
         });
         state.host.select_root(root.clone()).await.unwrap();
+        let root = root.canonicalize().unwrap();
+        let other = other.canonicalize().unwrap();
         Self {
             _temp: temp,
             state,

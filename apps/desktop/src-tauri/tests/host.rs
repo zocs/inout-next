@@ -119,6 +119,7 @@ async fn root_selection_is_checked_locked_while_running_and_retained_for_restart
     assert!(host.status().await.root.is_none());
     assert!(host.select_root(temp.path().join("missing")).await.is_err());
     let selected = host.select_root(root.clone()).await.unwrap();
+    let root = root.canonicalize().unwrap();
     assert_eq!(selected.root.as_deref(), root.to_str());
     assert!(!selected.running);
     let started = host.start(StartOptions::default()).await.unwrap();
@@ -238,6 +239,7 @@ async fn active_settings_report_the_real_bound_service_without_returning_a_key()
     create_assets(&web);
     let host = HostController::new(web);
     host.select_root(root.clone()).await.unwrap();
+    let root = root.canonicalize().unwrap();
     let key = "active-settings-native-secret";
     let status = host
         .start(StartOptions {
