@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpDown, ChevronRight, Download, Folder, LockKeyhole, LogOut, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import productDefaults from "@/generated/product.json";
 import { featureRegistry } from "@/features/registry";
 import { ApiError, FileApi } from "@/lib/api";
@@ -21,6 +21,8 @@ export default function FileManager() {
   const [folderFailure, setFolderFailure] = useState<{ path: string; text: string } | null>(null);
   const [selection, setSelection] = useState<Entry | null>(null);
   const [selectionChanged, setSelectionChanged] = useState(false);
+  const selectionOrigin = useRef<HTMLElement | null>(null);
+  const currentFolderControl = useRef<HTMLButtonElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
   const [message, setMessage] = useState<Message>(null);
@@ -29,7 +31,15 @@ export default function FileManager() {
   const folderReady = listing?.path === path && !folderError;
   const entries = folderReady ? listing.entries : [];
   const selected = folderReady ? selection : null;
-  const select = useCallback((entry: Entry | null) => { setSelection(entry); setSelectionChanged(true); }, []);
+  const select = useCallback((entry: Entry | null, origin?: HTMLElement) => {
+    selectionOrigin.current = entry ? origin ?? null : null;
+    setSelection(entry); setSelectionChanged(true);
+  }, []);
+  const clearSelection = useCallback(() => {
+    const origin = selectionOrigin.current;
+    select(null);
+    (origin?.isConnected ? origin : currentFolderControl.current)?.focus();
+  }, [select]);
   const refresh = useCallback(() => setRefreshToken((value) => value + 1), []);
   const notify = useCallback((text: string, kind: "success" | "error" = "success") => setMessage({ text, kind }), []);
 
@@ -100,8 +110,8 @@ export default function FileManager() {
             <div className="rail-note"><p>On the sharing device</p><p>Files stay in the selected folder. Available actions follow its access settings.</p></div>
           </aside>
           <main className="manager-main">
-            <nav className="breadcrumbs" aria-label="Folder path"><button aria-label="Shared folder" onClick={() => navigate("")}><Folder size={16} aria-hidden="true" /><span>Shared folder</span></button>
-              {path.split("/").filter(Boolean).map((part, index, parts) => <span key={index}><ChevronRight size={14} aria-hidden="true" /><button aria-current={index === parts.length - 1 ? "page" : undefined} onClick={() => navigate(parts.slice(0, index + 1).join("/"))} title={part}>{part}</button></span>)}
+            <nav className="breadcrumbs" aria-label="Folder path"><button ref={path ? undefined : currentFolderControl} aria-label="Shared folder" onClick={() => navigate("")}><Folder size={16} aria-hidden="true" /><span>Shared folder</span></button>
+              {path.split("/").filter(Boolean).map((part, index, parts) => <span key={index}><ChevronRight size={14} aria-hidden="true" /><button ref={index === parts.length - 1 ? currentFolderControl : undefined} aria-current={index === parts.length - 1 ? "page" : undefined} onClick={() => navigate(parts.slice(0, index + 1).join("/"))} title={part}>{part}</button></span>)}
             </nav>
             <div className="folder-heading"><div><h2>{path.split("/").at(-1) || context?.root_label || "Shared files"}</h2><p>Browse and transfer files from this device.</p></div>
               <div className="toolbar" role="toolbar" aria-label="Folder actions">{folderReady && <ModuleSlot modules={modules} slot="Toolbar" runtime={runtime} />}<button className="icon-button refresh-button" aria-label="Refresh folder" title="Refresh folder" onClick={refresh} disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button></div>
@@ -112,7 +122,7 @@ export default function FileManager() {
               <div className="views">{folderError ? <section className="empty-state" aria-label="Folder unavailable"><h3>Could not open this folder</h3><p role="alert">{folderError}</p><button className="button button-secondary" onClick={refresh}>Retry folder</button></section>
                 : modules.some((module) => module.View) ? <ModuleSlot modules={modules} slot="View" runtime={runtime} /> : <div className="empty-state"><h3>File browsing is unavailable</h3><p>The sharing device has not enabled file access.</p></div>}</div>
               <aside className="tools-column" aria-label="Folder tools">
-                {selected && <section className="selection-panel" aria-label="Selected entry"><div className="panel-heading"><h3>Selected entry</h3><button className="icon-button" aria-label="Clear selection" onClick={() => select(null)}><X size={16} aria-hidden="true" /></button></div><h4 title={selected.name}>{selected.name}</h4><dl><div><dt>Size</dt><dd>{formatBytes(selected.size)}</dd></div><div><dt>Modified</dt><dd>{formatDate(selected.modified)}</dd></div><div><dt>Path</dt><dd className="entry-path">{selected.path}</dd></div></dl>
+                {selected && <section className="selection-panel" aria-label="Selected entry"><div className="panel-heading"><h3>Selected entry</h3><button className="icon-button" aria-label="Clear selection" onClick={clearSelection}><X size={16} aria-hidden="true" /></button></div><h4 title={selected.name}>{selected.name}</h4><dl><div><dt>Size</dt><dd>{formatBytes(selected.size)}</dd></div><div><dt>Modified</dt><dd>{formatDate(selected.modified)}</dd></div><div><dt>Path</dt><dd className="entry-path">{selected.path}</dd></div></dl>
                   {selected.kind === "file" && context?.permissions.download && <a className="button button-secondary selection-download" href={api.downloadUrl(selected.path)} download={selected.name} aria-label={`Download selected ${selected.name}`}><Download size={17} aria-hidden="true" />Download</a>}
                 </section>}
                 {folderReady && <ModuleSlot modules={modules} slot="SelectionPanel" runtime={runtime} />}

@@ -21,10 +21,10 @@ function FileView({ runtime }: ModuleProps) {
         <tbody>{entries.map((entry) => <tr key={entry.path} className={runtime.selected?.path === entry.path ? "selected-row" : ""}>
           <td><button className="entry-name" title={entry.name} aria-label={`${entry.kind === "directory" ? "Open" : "Select"} ${entry.name}`}
             aria-pressed={entry.kind === "file" ? runtime.selected?.path === entry.path : undefined}
-            onClick={() => entry.kind === "directory" ? runtime.navigate(entry.path) : runtime.select(entry)}>
+            onClick={(event) => entry.kind === "directory" ? runtime.navigate(entry.path) : runtime.select(entry, event.currentTarget)}>
             {entry.kind === "directory" ? <Folder size={19} aria-hidden="true" /> : <File size={19} aria-hidden="true" />}<span>{entry.name}</span>
           </button>
-          {entry.kind === "directory" && runtime.context.permissions.manage && <button className="folder-details" aria-label={`Select ${entry.name}`} aria-pressed={runtime.selected?.path === entry.path} onClick={() => runtime.select(entry)}>Details</button>}</td>
+          {entry.kind === "directory" && runtime.context.permissions.manage && <button className="folder-details" aria-label={`Select ${entry.name}`} aria-pressed={runtime.selected?.path === entry.path} onClick={(event) => runtime.select(entry, event.currentTarget)}>Details</button>}</td>
           <td className="size-column">{formatBytes(entry.size)}</td><td className="modified-column">{formatDate(entry.modified)}</td>
           <td className="download-column">{entry.kind === "file" && runtime.context.permissions.download && <a className="icon-button" href={runtime.api.downloadUrl(entry.path)} download={entry.name} aria-label={`Download ${entry.name}`} title={`Download ${entry.name}`}><Download size={18} aria-hidden="true" /></a>}</td>
         </tr>)}</tbody>

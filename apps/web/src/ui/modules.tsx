@@ -9,7 +9,7 @@ export interface ModuleRuntime {
   entries: Entry[];
   loading: boolean;
   selected: Entry | null;
-  select: (entry: Entry | null) => void;
+  select: (entry: Entry | null, origin?: HTMLElement) => void;
   navigate: (path: string) => void;
   refresh: () => void;
   notify: (message: string, kind?: "success" | "error") => void;

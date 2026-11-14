@@ -45,7 +45,7 @@ test("failed folder navigation hides stale actions and retry recovers from the r
   await expect(page.getByRole("button", { name: "Select welcome.txt", exact: true })).toBeVisible();
 });
 
-test("file and folder selection expose pressed state and polite selection clearing", async ({ page, service }) => {
+test("file and folder selection clearing restores keyboard focus and acknowledges state", async ({ page, service }) => {
   mkdirSync(join(service.root, "Projects"));
   await unlock(page, service.url, service.key);
   const file = page.getByRole("button", { name: "Select welcome.txt", exact: true });
@@ -60,7 +60,11 @@ test("file and folder selection expose pressed state and polite selection cleari
   await expect(file).toHaveAttribute("aria-pressed", "true");
   const selectedStatus = page.getByRole("status").filter({ hasText: /selected.*welcome\.txt/i });
   await expect(selectedStatus).toHaveAttribute("aria-live", "polite");
-  await page.getByRole("button", { name: "Clear selection", exact: true }).click();
+  const clear = page.getByRole("button", { name: "Clear selection", exact: true });
+  await clear.focus();
+  await page.keyboard.press("Enter");
+  await expect(clear).toHaveCount(0);
+  await expect(file).toBeFocused();
   await expect(file).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("status").filter({ hasText: /selection cleared/i })).toHaveAttribute("aria-live", "polite");
   await folder.focus();
@@ -69,6 +73,70 @@ test("file and folder selection expose pressed state and polite selection cleari
   await expect(file).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("status").filter({ hasText: /selected.*Projects/i })).toHaveAttribute("aria-live", "polite");
   expect(await openFolder.getAttribute("aria-pressed")).toBeNull();
+  await clear.focus();
+  await page.keyboard.press("Enter");
+  await expect(clear).toHaveCount(0);
+  await expect(folder).toBeFocused();
+  await expect(folder).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("status").filter({ hasText: /selection cleared/i })).toHaveAttribute("aria-live", "polite");
+});
+
+test("selection clearing falls back to the current folder when its origin is filtered out", async ({ page, service }) => {
+  mkdirSync(join(service.root, "Projects"));
+  writeFileSync(join(service.root, "Projects", "note.txt"), "A filtered selection.\n");
+  await unlock(page, service.url, service.key);
+  await page.getByRole("button", { name: "Open Projects", exact: true }).click();
+  const file = page.getByRole("button", { name: "Select note.txt", exact: true });
+  await file.focus();
+  await page.keyboard.press("Enter");
+  await expect(file).toHaveAttribute("aria-pressed", "true");
+  const search = page.getByRole("searchbox", { name: "Search this folder", exact: true });
+  await search.fill("no matching entry");
+  await expect(file).toHaveCount(0);
+  const clear = page.getByRole("button", { name: "Clear selection", exact: true });
+  await clear.focus();
+  await page.keyboard.press("Enter");
+  await expect(clear).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Projects", exact: true })).toBeFocused();
+  await expect(page.getByRole("status").filter({ hasText: /selection cleared/i })).toHaveAttribute("aria-live", "polite");
+  await search.fill("");
+  await expect(file).toHaveAttribute("aria-pressed", "false");
+});
+
+test("passive selection reconciliation preserves focus during refresh and removal", async ({ page, service }) => {
+  await unlock(page, service.url, service.key);
+  const file = page.getByRole("button", { name: "Select welcome.txt", exact: true });
+  await file.focus();
+  await page.keyboard.press("Enter");
+  const search = page.getByRole("searchbox", { name: "Search this folder", exact: true });
+  const refresh = page.getByRole("button", { name: "Refresh folder", exact: true });
+  await search.focus();
+  const refreshed = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/entries" && response.status() === 200);
+  await refresh.evaluate((button: HTMLButtonElement) => button.click());
+  await refreshed;
+  await expect(page.getByRole("table", { name: "Shared files", exact: true })).toHaveAttribute("aria-busy", "false");
+  await expect(file).toHaveAttribute("aria-pressed", "true");
+  await expect(search).toBeFocused();
+  rmSync(join(service.root, "welcome.txt"));
+  const reconciled = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/entries" && response.status() === 200);
+  await refresh.evaluate((button: HTMLButtonElement) => button.click());
+  await reconciled;
+  await expect(file).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Selected entry", exact: true })).toHaveCount(0);
+  await expect(search).toBeFocused();
+  await expect(page.getByRole("status").filter({ hasText: /selection cleared/i })).toHaveAttribute("aria-live", "polite");
+});
+
+test("management selection clearing preserves the new-folder input focus", async ({ page, service }) => {
+  await unlock(page, service.url, service.key);
+  const file = page.getByRole("button", { name: "Select welcome.txt", exact: true });
+  await file.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "New folder", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Selected entry", exact: true })).toHaveCount(0);
+  await expect(file).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("textbox", { name: "Folder name", exact: true })).toBeFocused();
 });
 
 test("management follows the selected inspector before twelve confirmed mobile uploads", async ({ page, service }) => {
