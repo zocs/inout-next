@@ -1,0 +1,13 @@
+.brandButton {
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.brandButton:hover:not(:disabled) { color: var(--color-shell-muted); }
+.brandButton:active:not(:disabled) { color: var(--color-surface); }
+.brandButton:focus-visible { outline-color: var(--color-shell-muted); }

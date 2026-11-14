@@ -10,6 +10,12 @@
     "allow-start-service",
     "allow-stop-service",
     "allow-open-manager",
-    "allow-create-access-key"
+    "allow-create-access-key",
+    "allow-diagnostic-status",
+    "allow-set-diagnostic-mode",
+    "allow-set-download-buffer",
+    "allow-reset-diagnostic-settings",
+    "allow-run-diagnostic-test",
+    "allow-cancel-diagnostic-test"
   ]
 }

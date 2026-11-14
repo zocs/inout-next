@@ -1,10 +1,15 @@
+#[path = "diagnostics.rs"]
+pub(crate) mod diagnostics;
+use diagnostics::Diagnostics;
+pub use diagnostics::{DiagnosticReport, DiagnosticStatus};
 use serde::{Deserialize, Serialize};
 use share_http::{RunningServer, ServerConfig};
+use std::sync::Arc;
 use std::{
     net::{Ipv4Addr, SocketAddr},
     path::{Path, PathBuf},
 };
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Semaphore};
 
 #[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +47,7 @@ struct HostState {
     running: Option<RunningServer>,
     addresses: Vec<String>,
     active_settings: Option<ActiveSettings>,
+    diagnostics: Option<Arc<Diagnostics>>,
 }
 
 impl HostState {
@@ -67,6 +73,7 @@ impl HostState {
 pub struct HostController {
     web_dir: PathBuf,
     state: Mutex<HostState>,
+    probe_permit: Arc<Semaphore>,
 }
 
 impl HostController {
@@ -74,6 +81,7 @@ impl HostController {
         Self {
             web_dir,
             state: Mutex::new(HostState::default()),
+            probe_permit: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -112,6 +120,7 @@ impl HostController {
         let mut config = ServerConfig::new(root, listen);
         config.web_dir = Some(self.web_dir.clone());
         let auth_required = options.key.is_some();
+        let diagnostic_key = options.key.clone();
         config.key = options.key;
         config.writable = options.uploads || options.manage;
         config.modules = vec!["files".into()];
@@ -139,12 +148,21 @@ impl HostController {
             manage: options.manage,
             auth_required,
         });
+        state.diagnostics = Some(Diagnostics::new(
+            running.address().port(),
+            diagnostic_key,
+            running.download_control(),
+            self.probe_permit.clone(),
+        ));
         state.running = Some(running);
         Ok(state.status())
     }
 
     pub async fn stop(&self) -> Result<HostStatus, String> {
         let mut state = self.state.lock().await;
+        if let Some(diagnostics) = state.diagnostics.take() {
+            diagnostics.stop();
+        }
         state.addresses.clear();
         state.active_settings = None;
         if let Some(running) = state.running.take() {
@@ -155,6 +173,70 @@ impl HostController {
                 .map_err(|_| "The service could not shut down cleanly")?;
         }
         Ok(state.status())
+    }
+
+    pub async fn diagnostic_status(&self) -> DiagnosticStatus {
+        self.state
+            .lock()
+            .await
+            .diagnostics
+            .as_ref()
+            .map(|diagnostics| diagnostics.status())
+            .unwrap_or_default()
+    }
+
+    pub async fn set_diagnostic_mode(&self, enabled: bool) -> Result<DiagnosticStatus, String> {
+        let state = self.state.lock().await;
+        match &state.diagnostics {
+            Some(diagnostics) => Ok(diagnostics.set_enabled(enabled)),
+            None if !enabled => Ok(DiagnosticStatus::default()),
+            None => Err("Start sharing before enabling local diagnostics".into()),
+        }
+    }
+
+    pub async fn set_download_buffer(&self, kib: usize) -> Result<DiagnosticStatus, String> {
+        let state = self.state.lock().await;
+        state
+            .diagnostics
+            .as_ref()
+            .ok_or("Start sharing before changing local diagnostics")?
+            .set_buffer(Some(kib))
+    }
+
+    pub async fn reset_diagnostic_settings(&self) -> Result<DiagnosticStatus, String> {
+        let state = self.state.lock().await;
+        state
+            .diagnostics
+            .as_ref()
+            .ok_or("Start sharing before changing local diagnostics")?
+            .set_buffer(None)
+    }
+
+    pub async fn cancel_diagnostic_test(&self) -> Result<DiagnosticStatus, String> {
+        Ok(self
+            .state
+            .lock()
+            .await
+            .diagnostics
+            .as_ref()
+            .map(|diagnostics| diagnostics.cancel())
+            .unwrap_or_default())
+    }
+
+    pub async fn run_diagnostic_test(
+        &self,
+        path: String,
+        connections: usize,
+    ) -> Result<DiagnosticReport, String> {
+        let probe = {
+            let state = self.state.lock().await;
+            state
+                .diagnostics
+                .as_ref()
+                .ok_or("Start sharing before running a local test")?
+                .begin(path, connections)?
+        };
+        probe.run().await
     }
 
     pub async fn status(&self) -> HostStatus {

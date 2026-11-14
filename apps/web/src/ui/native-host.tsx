@@ -2,9 +2,11 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { Eye, EyeOff, FolderOpen, Play, Square } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import product from "@/generated/product.json";
 import { Header } from "./file-manager";
+
+const DiagnosticPanel = lazy(() => import("@/features/diagnostics/panel"));
 
 interface HostStatus {
   root: string | null;
@@ -25,6 +27,21 @@ function nativeError(error: unknown): string {
 }
 
 export default function NativeHost() {
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const activations = useRef<number[]>([]);
+  const diagnosticOrigin = useRef<HTMLButtonElement | null>(null);
+  const activateBrand = useCallback((origin: HTMLButtonElement) => {
+    const now = performance.now();
+    activations.current = activations.current.filter((time) => now - time <= 5_000);
+    activations.current.push(now);
+    if (activations.current.length >= 5) {
+      activations.current = []; diagnosticOrigin.current = origin; setDiagnosticsOpen(true);
+    }
+  }, []);
+  const closeDiagnostics = useCallback(() => {
+    setDiagnosticsOpen(false);
+    diagnosticOrigin.current?.focus();
+  }, []);
   const [status, setStatus] = useState<HostStatus | null>(null);
   const [network, setNetwork] = useState(false);
   const [port, setPort] = useState("5000");
@@ -121,7 +138,7 @@ export default function NativeHost() {
   }
 
   return <>
-    <Header product={product} />
+    <Header product={product} onBrandActivate={activateBrand} />
     <main className="host-main">
       <div className="host-heading"><h2>Share a folder</h2><p>Choose the files this device makes available, then open the file manager or connect from another device.</p></div>
       <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{status ? status.running ? "Sharing is active." : "Sharing is stopped." : ""}</p>
@@ -163,6 +180,7 @@ export default function NativeHost() {
           </> : <p>Select a folder and start sharing. Files stay on this device.</p>}
         </aside>
       </div>}
+      {diagnosticsOpen && <Suspense fallback={<p role="status">Loading local diagnostics…</p>}><DiagnosticPanel serviceRunning={!!status?.running} onClose={closeDiagnostics} /></Suspense>}
     </main>
     <footer className="app-footer"><span>{product.name} {product.version}</span><span>Local file sharing</span></footer>
   </>;

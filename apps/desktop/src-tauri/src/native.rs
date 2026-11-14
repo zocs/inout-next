@@ -1,3 +1,4 @@
+use crate::host::{DiagnosticReport, DiagnosticStatus};
 use crate::{resolve_web_dir, HostController, HostStatus, StartOptions};
 use rand::{rngs::OsRng, TryRngCore};
 use std::sync::{
@@ -211,6 +212,72 @@ fn create_access_key(
     access_key()
 }
 
+#[tauri::command]
+async fn diagnostic_status(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+) -> Result<DiagnosticStatus, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    Ok(state.host.diagnostic_status().await)
+}
+
+#[tauri::command]
+async fn set_diagnostic_mode(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+    enabled: bool,
+) -> Result<DiagnosticStatus, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    state.host.set_diagnostic_mode(enabled).await
+}
+
+#[tauri::command]
+async fn set_download_buffer(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+    kib: usize,
+) -> Result<DiagnosticStatus, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    state.host.set_download_buffer(kib).await
+}
+
+#[tauri::command]
+async fn reset_diagnostic_settings(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+) -> Result<DiagnosticStatus, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    state.host.reset_diagnostic_settings().await
+}
+
+#[tauri::command]
+async fn run_diagnostic_test(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+    path: String,
+    connections: usize,
+) -> Result<DiagnosticReport, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    // The host acquires a permit under its state lock, then releases the lock
+    // before connecting. Neither native transition nor lifecycle is held here.
+    state.host.run_diagnostic_test(path, connections).await
+}
+
+#[tauri::command]
+async fn cancel_diagnostic_test(
+    window: WebviewWindow,
+    state: State<'_, Arc<NativeState>>,
+) -> Result<DiagnosticStatus, String> {
+    require_host_label(window.label())?;
+    state.require_active()?;
+    state.host.cancel_diagnostic_test().await
+}
+
 fn begin_shutdown(app: &AppHandle) {
     let Some(state) = app.try_state::<Arc<NativeState>>() else {
         return;
@@ -258,7 +325,13 @@ pub(crate) fn run() {
             start_service,
             stop_service,
             open_manager,
-            create_access_key
+            create_access_key,
+            diagnostic_status,
+            set_diagnostic_mode,
+            set_download_buffer,
+            reset_diagnostic_settings,
+            run_diagnostic_test,
+            cancel_diagnostic_test
         ])
         .build(tauri::generate_context!())
         .expect("Native application initialization failed");

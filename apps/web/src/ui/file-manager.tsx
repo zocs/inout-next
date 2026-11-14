@@ -1,5 +1,6 @@
 "use client";
 
+import diagnosticStyles from "@/features/diagnostics/activation.module.css";
 import { ArrowUpDown, ChevronRight, Download, Folder, LockKeyhole, LogOut, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import productDefaults from "@/generated/product.json";
@@ -138,8 +139,8 @@ export default function FileManager() {
   </>;
 }
 
-export function Header({ product, context, canLock, lock }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void }) {
-  return <header className="app-header"><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{product.name}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
+export function Header({ product, context, canLock, lock, onBrandActivate }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void; onBrandActivate?: (origin: HTMLButtonElement) => void }) {
+  return <header className="app-header"><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}>{product.name}</button> : product.name}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
 }
 
 function Unlock({ api, product, unlocked }: { api: FileApi; product: Product; unlocked: (context: ServerContext) => void }) {
