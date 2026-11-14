@@ -11,7 +11,7 @@
 - Real filesystem/browser tests, transfer hashes, identity/resource verification and serial Linux/Windows/macOS CI.
 - Public API, architecture, design-system and distribution documentation.
 
-These foundations are implemented. The current0.1.0 is experimental; a successful build is separate from installed/device/offline/signing readiness.
+These foundations are implemented. Current local acceptance includes 45 core, 23 native and 89 Chromium tests, production builds, streamed/relocated integrity checks and a 12-process matched core comparison. The current0.1.0 is experimental; these checks remain separate from installed/device/offline/signing readiness.
 
 ## 2. Desktop distribution and compatibility
 

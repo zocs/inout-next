@@ -8,10 +8,12 @@
 - Support read-only or keyed sharing, bearer/HttpOnly sessions, streamed upload/download, ranges and capability-aware file management.
 - Use a measured 128 KiB default download buffer with validated 16–128 KiB host tuning, and position filesystem ranges on the original opened handle.
 - Add hidden, keyboard-accessible native diagnostics: temporary buffer controls, bounded read-only loopback tests, cancellation and reset on close/Stop, with no HTTP control route or telemetry.
+- Guard diagnostic replies/errors/finalizers across Stop/restart so obsolete actions cannot replace results or unlock newer work.
+- Derive startup removal from actual CSS transition timing with a one-second ceiling and immediate reduced-motion cleanup, preserving usable controls throughout the exit.
 - Enforce root containment, portable path validation, collision-safe publication, immutable public resources and bounded shutdown.
 - Add native folder selection, effective sharing settings, an isolated manager and shutdown independent of pending dialogs.
 - Improve mobile layout, keyboard focus, navigation/error states, transfer progress/cancellation and accessibility.
 - Provide CLI ZIPs and native Linux/Windows/macOS packages with serial target CI and resource/identity checks.
-- Document architecture, API contracts, design tokens, platform limits, signing reuse and early store/privacy requirements.
+- Document architecture, API contracts, design tokens, platform limits, signing reuse, early store/privacy requirements and measured core transfer/size costs.
 
 Android/iOS native adaptation, durable resume, directory copy, Windows move/rename, older Linux compatibility, offline GUI packaging and installed/signing/store validation remain future work. This entry describes the experimental source preview; no release is published yet.

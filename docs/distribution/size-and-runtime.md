@@ -1,6 +1,19 @@
 # Package size and runtime
 
-Baseline measured on 2026-11-14 from earlier 0.1.0 experimental CI artifacts and [FileInfra 0.5.13 release](https://github.com/zocs/FileInfra/releases/tag/v0.5.13), before the download-buffer, diagnostic and wordmark extension. Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. The figures below describe that baseline, rather than the refreshed extension's packages.
+Measured on 2026-11-15 for the current experimental source, with earlier desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and the historical CI packages are identified separately below; no release is published yet.
+
+## Current local build
+
+The current Linux x64 release build uses Rust 1.99.1 and Node 26.13.1. Its export and executables were verified together, including a relocated CLI ZIP and a streamed 128 MiB runtime check.
+
+| Item | Bytes | MiB |
+| --- | ---: | ---: |
+| Static Next export, 35 files | 1,050,698 | 1.00 |
+| Uncompressed Rust CLI | 3,977,248 | 3.79 |
+| Uncompressed Tauri native executable | 15,213,808 | 14.51 |
+| CLI + static web ZIP | 1,721,866 | 1.64 |
+
+The export grew by 22,310 bytes compared with the earlier 32-file export. The CLI and pages deliver no Python or Node runtime. The native executable excludes external webview libraries and is not an AppImage-size measurement. An older local native executable has insufficient build provenance for attributing growth specifically to diagnostics or branding; total native diagnostics memory and startup frame times remain unmeasured.
 
 ## Baseline CLI delivery
 
@@ -32,20 +45,30 @@ FileInfra's Windowsx64 portable **GUI** ZIP is15.42MiB; it is not equivalent to 
 
 That Linux AppImage's earlier content-size inventory totals approximately257.38MiB before SquashFS compression. Its largest libraries are WebKitGTK85.84MiB, JavaScriptCore32.20MiB and ICU data28.12MiB; the native executable is14.17MiB. The static Next export is0.98MiB. Library packaging, compression/deduplication and compatibility strategy need independent work; shrinking a package by omitting a required runtime does not establish a working portable artifact.
 
-## Baseline core measurements
+## Current core measurements
 
-Three alternating fresh-process rounds ran on the same Linuxx64 host, using localhost HTTP,1MiB warmup and128MiB upload/download. The FileInfra input was its released `libdufs.so` hosted by a minimal C FFI driver; inout-next used its released CLI and static assets. Both used authenticated access. Actual filesystem/download SHA256 and64byte suffix Range matched in all six samples. Server PID RSS was sampled every10ms; client/observer memory was excluded.
+Three rotating rounds used a fresh process for each of four engines on one Linux x64 host: 12 processes in total. Each used authenticated localhost HTTP, a 1 MiB warmup, 128 MiB upload/full download, a 37-byte suffix, and reassembled downloads over 1/4/8 single-range connections. Deterministic indexed SHAKE-256 blocks avoided repeated aligned contents; every uploaded file, full download, suffix and reassembled range body passed integrity checks. All test processes, listeners and temporary fixtures were removed. FileInfra's released `libdufs.so` ran in a minimal C FFI host; neither Flutter nor Tauri GUI was running.
 
-| Median of3samples | inout-next Rust CLI | FileInfra bundled dufs core |
-| --- | ---: | ---: |
-|128MiB upload |0.135s |0.492s |
-|128MiB download |0.538s |0.114s |
-| Warmed baseline RSS |7.11MiB |7.17MiB |
-| Sampled peak RSS |9.59MiB |9.21MiB |
+| Median of 3 samples | Earlier 4 KiB engine | Buffer-only 128 KiB experiment | Current 128 KiB + same-handle seek | FileInfra bundled dufs |
+| --- | ---: | ---: | ---: | ---: |
+| 128 MiB upload, seconds | 0.098348 | 0.107092 | 0.107404 | 0.452953 |
+| 128 MiB full GET, seconds | 0.411646 | 0.086644 | 0.063696 | 0.094227 |
+| Full GET server CPU, seconds | 0.50 | 0.08 | 0.07 | 0.10 |
+| 37-byte suffix, seconds | 0.271843 | 0.247098 | 0.012311 | 0.012731 |
+| Warmed server RSS, MiB | 7.05 | 7.38 | 7.38 | 7.13 |
+| Sampled peak RSS, MiB | 8.83 | 12.57 | 14.88 | 10.06 |
 
-These baseline samples show comparable core memory, faster uploads and slower downloads for the earlier inout-next engine. They motivated the bounded read-buffer comparison and same-handle Range positioning. Different authentication, filesystem/publication semantics and cache conditions remain part of the implementations; three localhost samples do not establish universal throughput or durability equivalence.
+| Reassembled 128 MiB range download, seconds | Earlier engine | Buffer-only experiment | Current engine | FileInfra bundled dufs |
+| --- | ---: | ---: | ---: | ---: |
+| 1 connection | 0.526513 | 0.073184 | 0.068066 | 0.463366 |
+| 4 connections | 0.335631 | 0.259625 | 0.048639 | 0.169106 |
+| 8 connections | 0.411770 | 0.278825 | 0.036337 | 0.172940 |
 
-No Flutter GUI or Tauri WebView ran in this core benchmark. GUI startup, total application/child-webview memory, CPU, physical-LAN, slow-client, concurrency and mobile performance still need matched measurements. FileInfra's server already uses Rust; switching its Flutter shell to Tauri does not itself make the file-transfer engine faster. Feature and platform parity also remain incomplete in the preview.
+The smaller earlier read batches increased download work. Raising capacity improved full GET, but a buffer-only change still read and discarded high-offset prefixes. Positioning the original filesystem handle removes that prefix work and improves suffix/parallel ranges without reopening a pathname. Stream-only providers retain bounded forward reading. A separate 45-process sweep evaluated 16–128 KiB in 16 KiB steps plus the 4 KiB baseline before selecting the default.
+
+These are cache-warm localhost samples, not universal speed guarantees. The earlier engine is an Ubuntu 22.04 CI build; the experiment and current engine use the same local compiler/profile. Authentication and filesystem/publication semantics differ between projects. Sampled peak RSS covers the workload including eight concurrent ranges and is higher in the current engine: larger per-request buffers have a real memory cost. Matching warmed RSS for the experiment and current CLI assesses the core control path, not the native diagnostics panel's total overhead.
+
+The built-in native test separately caps reads at 64 MiB and provides a local timing sample, not this checksum-verified comparison. GUI startup, total application/child-webview memory, native IPC, physical LAN, cold disk, slow clients and mobile performance still need matched target measurements. FileInfra's server already uses Rust; replacing its Flutter shell does not itself accelerate file transfers. ETag/If-Range validation, durable resume and feature/platform parity remain incomplete.
 
 ## Python and repository language percentages
 

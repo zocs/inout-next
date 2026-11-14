@@ -2,7 +2,7 @@
 
 The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview.
 
-The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The new buffer, diagnostic and startup changes have their own test/build evidence. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
+The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The current buffer, diagnostic and startup extension passes 45 core, 23 native, 15 tool and 89 Chromium tests locally, strict Clippy, production builds, streamed/relocated integrity checks and a matched core measurement. The target-package table below describes the earlier verified CI packages until the extension's ordered target build is inspected. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
 
 | Target | Verified scope | Remaining work |
 | --- | --- | --- |

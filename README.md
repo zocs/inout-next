@@ -47,7 +47,7 @@ npm --prefix apps/desktop run dev
 
 The host selects a folder through the native dialog, configures local or LAN access and write permissions, generates an optional access key, starts/stops the shared Rust service and opens its file manager. Reloaded controls display the effective running settings; the status never returns the access key. Closing the manager stops sharing. Android storage and foreground-service integration are later milestones.
 
-The reusable dot-matrix wordmark follows the configured product name. Startup uses a light transition driven by actual readiness, with reduced-motion support and no minimum loading delay.
+The reusable dot-matrix wordmark follows the configured product name. Startup uses a light transition driven by actual readiness, with reduced-motion support and no minimum loading delay. Cleanup follows computed CSS timing with a one-second ceiling; ready controls remain usable throughout the exit.
 
 For temporary local diagnostics, activate the app-name button five times within five seconds in the native host. The panel tunes download buffers from 16 to 128 KiB in 16 KiB steps (default 128 KiB) and runs one read-only loopback timing sample against a relative shared-file path. Tests use 1/2/4/8 connections, read at most the first 64 MiB and time out after 30 seconds. Choose a nonempty file with at least one byte per connection. Existing downloads keep their original buffer. Cancel stops a test; closing diagnostics or stopping sharing restores defaults. These measurements describe the sharing device, rather than another device's network speed. Native diagnostics are unavailable to the HTTP file-manager window.
 
@@ -76,6 +76,8 @@ python3 scripts/verify_runtime.py --mib 128
 ```
 
 Browser tests use Chromium and the actual Rust service/filesystem. Native command-boundary fixtures are separate from target-device tests. Install Chromium locally or run `npx playwright install --with-deps chromium` from `apps/web`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` selects another installed binary.
+
+Current local acceptance passes 45 core, 23 native, 15 Python tool and 89 Chromium tests, both strict Clippy checks, production builds and streamed/relocated integrity checks. A checksum-verified core comparison measures the 128 KiB buffer and same-handle ranges against the earlier engine and FileInfra's shipped dufs. The [size/runtime report](docs/distribution/size-and-runtime.md) records improved download timings, higher peak memory under concurrent ranges and the limits of localhost sampling; it makes no GUI or physical-LAN performance claim.
 
 The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue. Linux verification precedes the Windows x86/x64 matrix, then the macOS arm64/x64 matrix; every matrix has `max-parallel: 1`. It creates CLI ZIPs and native bundles for implemented desktop targets. Android and offline Windows packages remain platform milestones.
 
