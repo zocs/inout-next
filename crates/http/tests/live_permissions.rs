@@ -115,6 +115,7 @@ async fn a_started_upload_finishes_after_permissions_and_the_key_change() {
     let mut config = ServerConfig::new(root.path().to_owned(), "127.0.0.1:0".parse().unwrap());
     config.writable = true;
     config.key = Some("original-key".into());
+    let transfers = config.transfer_control.clone();
     let (router, policy) =
         router_with_store_and_policy(&config, Arc::new(FsStore::new(root.path()).unwrap()))
             .unwrap();
@@ -137,17 +138,16 @@ async fn a_started_upload_finishes_after_permissions_and_the_key_change() {
         )
         .await
     });
+    // Synchronize with the admitted body's progress. Directory enumeration can
+    // expose stale file sizes while a Windows writer remains open.
     tokio::time::timeout(std::time::Duration::from_secs(2), async {
         loop {
-            let received = std::fs::read_dir(root.path().join("INOUTTMP"))
-                .ok()
-                .is_some_and(|mut entries| {
-                    entries.any(|item| {
-                        item.ok()
-                            .and_then(|item| item.metadata().ok())
-                            .is_some_and(|meta| meta.len() == 3)
-                    })
-                });
+            let received = transfers.snapshot().records.iter().any(|transfer| {
+                transfer.kind == TransferKind::Upload
+                    && transfer.path == "started.bin"
+                    && transfer.state == TransferState::Active
+                    && transfer.bytes == 3
+            });
             if received {
                 break;
             }
@@ -157,6 +157,10 @@ async fn a_started_upload_finishes_after_permissions_and_the_key_change() {
     .await
     .expect("the upload must be admitted and receive its first chunk");
     let initial = policy.status();
+    let admitted = transfers.snapshot();
+    assert_eq!(admitted.active, 1);
+    assert_eq!(admitted.records.len(), 1);
+    assert_eq!(admitted.records[0].policy_revision, initial.revision);
     let next = policy
         .update(PolicyUpdate {
             expected_revision: initial.revision,
@@ -199,6 +203,12 @@ async fn a_started_upload_finishes_after_permissions_and_the_key_change() {
         b"abcdef"
     );
     assert!(!root.path().join("new.bin").exists());
+    let finished = transfers.snapshot();
+    assert_eq!(finished.active, 0);
+    assert_eq!(finished.records.len(), 1);
+    assert_eq!(finished.records[0].state, TransferState::Published);
+    assert_eq!(finished.records[0].bytes, 6);
+    assert_eq!(finished.records[0].policy_revision, initial.revision);
 }
 
 #[tokio::test]
