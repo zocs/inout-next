@@ -99,6 +99,8 @@ The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue: L
 
 Android preview.2 comes from [CI 43704226914 at 4dd4b51](https://github.com/zocs/inout-next/actions/runs/43704226914), with all six targets passing serially. The signed arm64 APK is 15.39MiB; its [guide](docs/distribution/android-preview.md) records exact bytes/checksums, 32 native tests per desktop target, 53 tool/91 browser/seven Kotlin cases and the separate emulator runtime evidence.
 
+The unreleased localization/live-policy checkpoint passes [CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) across all six serial targets. Every desktop target passes 33 native tests; Linux also passes 53 tool and 131 browser cases, and Android passes seven Kotlin cases plus locked arm64 compilation and actual APK inspection. The five server ZIPs, six desktop packages and unsigned APK match that run's 36 tested web resources. [Platform status](docs/platforms.md) records core-test counts and remaining device gates; [package measurements](docs/distribution/size-and-runtime.md) distinguish this checkpoint from the published previews.
+
 ```sh
 cargo build -p share-cli --release --locked
 python3 scripts/package_portable.py --binary target/release/share-server \

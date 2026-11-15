@@ -6,7 +6,10 @@
 - Preserve the publication-check warning after a lost upload response; resolve actual Chinese script/region subtags without confusing private-use tokens; keep browsing usable for unrepresentable timestamps.
 - Permit explicitly enabled public uploads and supported management/rename. Keep published-entry deletion independently permissioned and authenticated; update browser action visibility and optional-key native setup.
 - Add revision-checked atomic permission/key snapshots and bounded process-local transfer observations. Already-admitted handlers/GET bodies retain admission; no public permission or history-control endpoint is added. Native live settings and browser ownership across authentication transitions remain pending.
-- Define Rust native rendering for the final app, retaining Next.js for HTTP browsers and Tauri as a transitional preview. Document egui/Slint/Iced tradeoffs, exploratory paired Linux measurements and the unpassed target/input/accessibility/licensing gates.
+- Define Rust native rendering for the final app, retaining Next.js for HTTP browsers and Tauri as a transitional preview. Document egui/Slint/Iced tradeoffs, exploratory paired Linux measurements and the unpassed target/input/accessibility/licensing gates in English and Chinese.
+- Synchronize the live-permission upload regression with actual admitted transfer progress, preserving its real paused body and publication/revision checks across desktop platforms.
+
+[CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) passes all six serial targets for this source. Every desktop target passes 33 native tests; Linux passes 53 tool/131 browser cases, and Android passes seven Kotlin cases and locked arm64 compilation. Five server ZIPs, six desktop packages and the unsigned APK pass architecture/resource inspection against the exact 36-file export. [Platform status](docs/platforms.md) and [package measurements](docs/distribution/size-and-runtime.md) record the checkpoint and its limits.
 
 Existing desktop preview.1 and Android preview.2 assets remain separate earlier releases. No Rust-rendered application preview or stable release is published by these changes.
 

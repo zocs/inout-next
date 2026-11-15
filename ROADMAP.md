@@ -13,6 +13,8 @@
 
 These foundations are implemented. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export, alongside the recorded core comparison and streamed/relocated checks. The Android extension adds private-host, Kotlin/index, real package and emulator HTTP/browser/lifecycle coverage described below. Current0.1.0 is experimental; target/device/offline/store readiness remains separate.
 
+Unreleased localization/live-policy source also passes [six-target serial CI at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175). Its five server ZIPs, six transitional desktop packages and unsigned arm64 APK are inspected against the exact 36-resource export. This verifies the source checkpoint; selected-renderer/device and release milestones below remain open.
+
 ## Native renderer migration
 
 Next.js remains the HTTP/browser manager. The final app uses Rust native rendering; current Tauri packages remain transitional previews.

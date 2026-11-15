@@ -1,5 +1,7 @@
 # Native GUI evaluation
 
+[简体中文](native-gui_zh.md)
+
 The planned application uses a Rust-rendered GUI. Next.js continues to export the HTTP file manager used by connecting browsers. The existing Tauri desktop and Android releases are transitional previews; no Rust-rendered application preview is released yet.
 
 The first feasibility candidate is **egui/eframe**, with **Slint** retained as the alternative for declarative UI and its documented mobile integration. **Iced** remains a desktop fallback. This is an evaluation order, not final adoption or complete platform support.

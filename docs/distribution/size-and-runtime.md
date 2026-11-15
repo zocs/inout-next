@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measured on 2026-11-15 for the experimental source, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute separate verified CI packages; no stable release is published yet.
+Measurements record experimental checkpoints from 2026-11-15–16, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute separate verified CI packages; no stable release is published yet.
 
 ## Local desktop checkpoint
 
@@ -83,6 +83,21 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 ## Current source web export
 
 The locally verified localization/permission integration exports 36 files totalling 1,084,605 bytes. JavaScript totals 1,011,194 raw bytes and 312,634 gzip bytes, measured separately per file. The same export passes 131 Chromium cases, including locale/theme changes during a real upload and public-write/action-visibility checks. These figures describe the current local source export; the earlier release-package measurements above retain their own exports and provenance.
+
+## Current CI packages
+
+[CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) completes all six serial targets on 2026-11-16. Its own tested export has 36 files / 1,084,607 bytes, including 1,011,196 raw JavaScript bytes and 312,635 gzip bytes measured separately per file. The source passes 131 Chromium cases, with no skipped, unexpected or flaky results. Downloaded packages are checked against this export, separately from the local export and earlier releases above.
+
+| Target | CLI + static web ZIP | Transitional native package |
+| --- | ---: | --- |
+| Linux x64 | 1.64MiB | 4.46MiB deb / 79.10MiB AppImage |
+| Windows x86 | 1.39MiB | 2.74MiB NSIS installer |
+| Windows x64 | 1.49MiB | 2.94MiB NSIS installer |
+| macOS ARM64 | 1.53MiB | 4.20MiB DMG |
+| macOS Intel | 1.55MiB | 4.28MiB DMG |
+| Android arm64 | — | 15.35MiB unsigned APK |
+
+The unsigned APK is **16,099,144 bytes**, with one 13,254,104-byte arm64 Rust library and the same 36 indexed web resources. Exact manifest, single-ABI, ELF/native ZIP alignment and two locked compilation children pass inspection; signature/install/device/16 KiB runtime acceptance is separate. The desktop packages still use Tauri and their platform webviews, with the same dependency/offline/old-Linux boundaries above. These CI artifacts are an unreleased source checkpoint; the separately signed 15.39MiB Android preview.2 and published desktop preview.1 retain their own package provenance.
 
 ## Rust-rendered GUI evaluation
 
