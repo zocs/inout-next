@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/provider";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Wordmark } from "./branding";
 
@@ -33,6 +35,7 @@ export default function Startup({ ready, name }: { ready: boolean; name: string 
 }
 
 function Presentation({ ready, name, dismiss, finish }: { ready: boolean; name: string; dismiss: () => void; finish: () => void }) {
+  const { t } = useI18n();
   const screen = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (ready) return;
@@ -54,8 +57,8 @@ function Presentation({ ready, name, dismiss, finish }: { ready: boolean; name: 
   }, [ready, finish]);
 
   return <div ref={screen} className="startup-screen" data-state={ready ? "leaving" : "opening"}
-    role={ready ? undefined : "status"} aria-label={ready ? undefined : `Opening ${name}`} aria-hidden={ready || undefined}>
+    role={ready ? undefined : "status"} aria-label={ready ? undefined : t("Opening {0}", name)} aria-hidden={ready || undefined}>
     <div className="startup-wordmark"><Wordmark name={name} /></div>
-    <p>Opening…</p>
+    <p>{t("Opening…")}</p>
   </div>;
 }

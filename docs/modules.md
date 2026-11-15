@@ -68,6 +68,14 @@ The Rust module owns temporary buffer validation, a private authentication handl
 
 The page owns first readiness. `FileManager.onReady(product)` reports the first usable context, authentication or recovery screen; `NativeHost.onReady()` reports initial native status or error, including setup before a service runs. These optional callbacks are independent of file-feature state and `HostStatus.running`. `Startup({ready,name})` owns visual dismissal and computed CSS-duration/delay cleanup with a one-second ceiling; initial/live reduced motion completes it immediately at readiness. Later navigation and service changes do not reopen it, and controls do not depend on animation completion. Product substitution needs no change to storage, feature registries or lifecycle algorithms.
 
+## Localized HTTP presentation
+
+The HTTP manager uses typed local `en`, `zh-Hans` and `zh-Hant` catalogs, without an i18n runtime dependency. `resolveLocale(languages, preference)` walks the ordered system languages, recognizes Traditional Chinese before generic Chinese and falls back to English. `useI18n()` exposes the effective locale, preference, catalog, preference setter and known-error rendering. Browser preferences use `share-ui.locale` and `share-ui.theme`, independent of product branding, and reject unsupported values or recover from denied storage.
+
+`ModuleRuntime.notify` accepts ordinary strings, typed message descriptors and errors. Keep translated text at rendering boundaries; persisted notices/errors retain their message identity. API/selection/navigation/refresh/notification callbacks and module identities stay independent of dictionary state. Locale changes must not become connection-effect dependencies or provider keys. The separate theme provider applies a root `data-theme` attribute without subscribing file views to palette changes. Byte/date/number helpers use cached native Intl formatters for the bounded locale registry and default to English for existing callers.
+
+The existing Tauri WebView host also consumes this shared presentation layer as a transitional preview. Its diagnostic panel and dictionary remain lazy. The intended final native application uses a Rust GUI; toolkit selection is pending measured Slint/Iced/egui assessment. These HTTP contracts do not choose the final native toolkit.
+
 ## Planned Store Compositions
 
 [Store readiness](distribution/store-readiness.md) keeps mobile permissions/lifecycle, signing/build numbers, privacy disclosures and optional store integrations in native/distribution compositions. SAF and Apple security-scoped grants are storage/provider concerns; unsupported publication/move operations remain unavailable rather than bypassing containment/collision requirements. Android Service ownership and iOS finite/foreground sharing use the shared service contract with distinct platform lifetimes.

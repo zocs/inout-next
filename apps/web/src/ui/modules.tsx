@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import type { PresentationMessage } from "@/i18n/catalog";
 import type { FileApi } from "@/lib/api";
 import type { Entry, ServerContext } from "@/lib/contracts";
 
@@ -12,7 +13,7 @@ export interface ModuleRuntime {
   select: (entry: Entry | null, origin?: HTMLElement) => void;
   navigate: (path: string) => void;
   refresh: () => void;
-  notify: (message: string, kind?: "success" | "error") => void;
+  notify: (message: PresentationMessage, kind?: "success" | "error") => void;
   focusCurrentFolder: () => void;
 }
 

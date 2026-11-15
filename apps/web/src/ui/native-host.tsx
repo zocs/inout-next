@@ -1,11 +1,14 @@
 "use client";
 
+import { useI18n } from "@/i18n/provider";
+
 import { invoke } from "@tauri-apps/api/core";
 import { Eye, EyeOff, FolderOpen, Play, Square } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import product from "@/generated/product.json";
 import { Header } from "./file-manager";
 import { Wordmark } from "./branding";
+import { presentError, type PresentationMessage } from "@/i18n/catalog";
 
 const DiagnosticPanel = lazy(() => import("@/features/diagnostics/panel"));
 
@@ -33,11 +36,12 @@ const desktopCapabilities = {
   storageKind: "folder", chooseFolder: true, openManager: true, foregroundOnly: false,
 } as const;
 
-function nativeError(error: unknown): string {
-  return typeof error === "string" ? error : error instanceof Error ? error.message : "The native action failed. Try again.";
+function nativeError(error: unknown): PresentationMessage {
+  return typeof error === "string" ? error : presentError(error, "The native action failed. Try again.");
 }
 
 export default function NativeHost({ onReady }: { onReady?: () => void }) {
+  const { t, renderMessage } = useI18n();
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const activations = useRef<number[]>([]);
   const diagnosticOrigin = useRef<HTMLButtonElement | null>(null);
@@ -62,7 +66,7 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
   const [activeKey, setActiveKey] = useState<{ managerUrl: string | null; value: string } | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<PresentationMessage>("");
   const readinessReported = useRef(false);
   const inFlight = useRef(false);
   const revision = useRef(0);
@@ -192,53 +196,53 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
   return <>
     <Header product={product} onBrandActivate={activateBrand} touchFriendly={capabilities.foregroundOnly} />
     <main className={`host-main${capabilities.foregroundOnly ? " host-touch" : ""}`}>
-      <div className="host-heading"><h2>{privateStorage ? "Share files" : "Share a folder"}</h2><p>{privateStorage
-        ? "Use this app’s storage to share files with another device on your local network."
-        : "Choose the files this device makes available, then open the file manager or connect from another device."}</p></div>
-      {capabilities.foregroundOnly && <p className="notice" role="note">Keep this app on screen. Sharing stops when it goes into the background. Return here and start sharing again.</p>}
-      <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{status ? status.running ? "Sharing is active." : "Sharing is stopped." : ""}</p>
-      {error && <p className="notice error" role="alert">{error}</p>}
-      {!status ? <>{error || busy ? <button ref={retryControl} type="button" className="button button-secondary" disabled={busy} onClick={(event) => void retry(event.currentTarget)}>{busy ? "Connecting…" : "Try again"}</button>
-        : <p role="status">Connecting to native controls…</p>}</> : <div className="host-layout">
+      <div className="host-heading"><h2>{privateStorage ? t("Share files") : t("Share a folder")}</h2><p>{privateStorage
+        ? t("Use this app’s storage to share files with another device on your local network.")
+        : t("Choose the files this device makes available, then open the file manager or connect from another device.")}</p></div>
+      {capabilities.foregroundOnly && <p className="notice" role="note">{t("Keep this app on screen. Sharing stops when it goes into the background. Return here and start sharing again.")}</p>}
+      <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{status ? status.running ? t("Sharing is active.") : t("Sharing is stopped.") : ""}</p>
+      {error && <p className="notice error" role="alert">{renderMessage(error)}</p>}
+      {!status ? <>{error || busy ? <button ref={retryControl} type="button" className="button button-secondary" disabled={busy} onClick={(event) => void retry(event.currentTarget)}>{busy ? t("Connecting…") : t("Try again")}</button>
+        : <p role="status">{t("Connecting to native controls…")}</p>}</> : <div className="host-layout">
         <form className="host-settings" onSubmit={start}>
-          <section className="host-section" aria-labelledby="host-folder-title"><h3 id="host-folder-title">{privateStorage ? "App storage" : "Shared folder"}</h3>
-            <p className="host-root">{privateStorage ? "Files uploaded here stay in this app. Uninstalling removes them." : status.root ?? "No folder selected"}</p>
-            {capabilities.chooseFolder && <button ref={folderControl} type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />Choose folder</button>}
-            {status.running && <p className="muted">{capabilities.chooseFolder ? "Stop sharing to change the folder or access settings." : "Stop sharing to change access settings."}</p>}
+          <section className="host-section" aria-labelledby="host-folder-title"><h3 id="host-folder-title">{privateStorage ? t("App storage") : t("Shared folder")}</h3>
+            <p className="host-root">{privateStorage ? t("Files uploaded here stay in this app. Uninstalling removes them.") : status.root ?? t("No folder selected")}</p>
+            {capabilities.chooseFolder && <button ref={folderControl} type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />{t("Choose folder")}</button>}
+            {status.running && <p className="muted">{capabilities.chooseFolder ? t("Stop sharing to change the folder or access settings.") : t("Stop sharing to change access settings.")}</p>}
           </section>
-          <fieldset className="host-section host-options" disabled={busy || status.running}><legend>Access settings</legend>
-            {status.running && !settings ? <p className="muted">Active settings are unavailable. Stop sharing to configure a new session.</p> : <>
-            <label className="checkbox-field"><input type="checkbox" checked={shownNetwork} disabled={!capabilities.openManager} onChange={(event) => setNetwork(event.target.checked)} />Share on the local network</label>
-            <p className="muted">{shownNetwork ? "Other devices can connect using this device’s local network address." : "Only browsers on this device can connect."}</p>
-            <label className="field host-port">Port<input type="number" min="0" max="65535" step="1" required value={shownPort} onChange={(event) => setPort(event.target.value)} /></label>
-            <p className="muted">Use 0 to choose an available port.</p>
-            <div className="host-permissions"><label className="checkbox-field"><input type="checkbox" checked={shownUploads} onChange={(event) => setUploads(event.target.checked)} />Allow uploads</label>
-              <label className="checkbox-field"><input type="checkbox" checked={shownManage} onChange={(event) => setManage(event.target.checked)} />Allow file management</label></div>
+          <fieldset className="host-section host-options" disabled={busy || status.running}><legend>{t("Access settings")}</legend>
+            {status.running && !settings ? <p className="muted">{t("Active settings are unavailable. Stop sharing to configure a new session.")}</p> : <>
+            <label className="checkbox-field"><input type="checkbox" checked={shownNetwork} disabled={!capabilities.openManager} onChange={(event) => setNetwork(event.target.checked)} />{t("Share on the local network")}</label>
+            <p className="muted">{shownNetwork ? t("Other devices can connect using this device’s local network address.") : t("Only browsers on this device can connect.")}</p>
+            <label className="field host-port">{t("Port")}<input type="number" min="0" max="65535" step="1" required value={shownPort} onChange={(event) => setPort(event.target.value)} /></label>
+            <p className="muted">{t("Use 0 to choose an available port.")}</p>
+            <div className="host-permissions"><label className="checkbox-field"><input type="checkbox" checked={shownUploads} onChange={(event) => setUploads(event.target.checked)} />{t("Allow uploads")}</label>
+              <label className="checkbox-field"><input type="checkbox" checked={shownManage} onChange={(event) => setManage(event.target.checked)} />{t("Allow file management")}</label></div>
             </>}
           </fieldset>
-          <section className="host-section" aria-labelledby="host-key-title"><h3 id="host-key-title">Access key</h3>
-            <p className="muted">Required for uploads and file management; optional for read-only sharing.</p>
-            {settings?.authRequired && !shownKey && <p className="muted">An access key is configured on this device. Stop sharing to enter or generate a new key.</p>}
-            {settings && !settings.authRequired && <p className="muted">No access key is set for this sharing session.</p>}
-            <div className="host-key-row"><label className="field"><span className="visually-hidden">Access key</span><input type={showKey ? "text" : "password"} autoComplete="off" value={shownKey} disabled={busy} readOnly={status.running} onChange={(event) => setKey(event.target.value)} /></label>
-              <button type="button" className="icon-button" aria-label={showKey ? "Hide access key" : "Show access key"} aria-pressed={showKey} disabled={busy || (status.running && !shownKey)} onClick={() => setShowKey((value) => !value)}>{showKey ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button></div>
-            <button type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void act(async () => { const next = await invoke<string>("create_access_key"); if (mounted.current) setKey(next); })}>Generate access key</button>
+          <section className="host-section" aria-labelledby="host-key-title"><h3 id="host-key-title">{t("Access key")}</h3>
+            <p className="muted">{t("Required for uploads and file management; optional for read-only sharing.")}</p>
+            {settings?.authRequired && !shownKey && <p className="muted">{t("An access key is configured on this device. Stop sharing to enter or generate a new key.")}</p>}
+            {settings && !settings.authRequired && <p className="muted">{t("No access key is set for this sharing session.")}</p>}
+            <div className="host-key-row"><label className="field"><span className="visually-hidden">{t("Access key")}</span><input type={showKey ? "text" : "password"} autoComplete="off" value={shownKey} disabled={busy} readOnly={status.running} onChange={(event) => setKey(event.target.value)} /></label>
+              <button type="button" className="icon-button" aria-label={showKey ? t("Hide access key") : t("Show access key")} aria-pressed={showKey} disabled={busy || (status.running && !shownKey)} onClick={() => setShowKey((value) => !value)}>{showKey ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button></div>
+            <button type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void act(async () => { const next = await invoke<string>("create_access_key"); if (mounted.current) setKey(next); })}>{t("Generate access key")}</button>
           </section>
           <div className="form-actions">{status.running
-            ? <button key="stop" ref={stopControl} type="button" className="button button-secondary" disabled={busy} onClick={() => void change("stop_service")}><Square size={16} aria-hidden="true" />{busy ? "Working…" : "Stop sharing"}</button>
-            : <button key="start" ref={startControl} type="submit" className="button button-primary" disabled={busy || !ready}><Play size={17} aria-hidden="true" />{busy ? "Working…" : "Start sharing"}</button>}
+            ? <button key="stop" ref={stopControl} type="button" className="button button-secondary" disabled={busy} onClick={() => void change("stop_service")}><Square size={16} aria-hidden="true" />{busy ? t("Working…") : t("Stop sharing")}</button>
+            : <button key="start" ref={startControl} type="submit" className="button button-primary" disabled={busy || !ready}><Play size={17} aria-hidden="true" />{busy ? t("Working…") : t("Start sharing")}</button>}
           </div>
         </form>
-        <aside className="host-connection" aria-labelledby="connection-title"><h3 id="connection-title">{status.running ? "Sharing is active" : "Ready when you are"}</h3>
-          {status.running ? <><p>{capabilities.openManager ? "Open the file manager on this device to browse and transfer files." : "Open a local network address on another device to upload, browse and manage files."}</p>
-            {capabilities.openManager && <button className="button button-primary" disabled={busy} onClick={() => void act(async () => { await invoke("open_manager"); })}>Open file manager</button>}
-            <dl className="host-addresses">{capabilities.openManager && <div><dt>This device</dt><dd>{status.managerUrl}</dd></div>}{status.addresses.length > 0 && <div><dt>Local network</dt><dd><ul>{status.addresses.map((address) => <li key={address}>{address}</li>)}</ul></dd></div>}</dl>
-            <p className="muted">{capabilities.openManager ? "Share a local network address and the access key with the person connecting. Closing the file manager stops sharing." : "Share the address and any access key with the person connecting. Keep this app on screen while transferring."}</p>
-          </> : <p>{privateStorage ? "Start sharing, then upload files from another device. Files stay in this app." : "Select a folder and start sharing. Files stay on this device."}</p>}
+        <aside className="host-connection" aria-labelledby="connection-title"><h3 id="connection-title">{status.running ? t("Sharing is active") : t("Ready when you are")}</h3>
+          {status.running ? <><p>{capabilities.openManager ? t("Open the file manager on this device to browse and transfer files.") : t("Open a local network address on another device to upload, browse and manage files.")}</p>
+            {capabilities.openManager && <button className="button button-primary" disabled={busy} onClick={() => void act(async () => { await invoke("open_manager"); })}>{t("Open file manager")}</button>}
+            <dl className="host-addresses">{capabilities.openManager && <div><dt>{t("This device")}</dt><dd>{status.managerUrl}</dd></div>}{status.addresses.length > 0 && <div><dt>{t("Local network")}</dt><dd><ul>{status.addresses.map((address) => <li key={address}>{address}</li>)}</ul></dd></div>}</dl>
+            <p className="muted">{capabilities.openManager ? t("Share a local network address and the access key with the person connecting. Closing the file manager stops sharing.") : t("Share the address and any access key with the person connecting. Keep this app on screen while transferring.")}</p>
+          </> : <p>{privateStorage ? t("Start sharing, then upload files from another device. Files stay in this app.") : t("Select a folder and start sharing. Files stay on this device.")}</p>}
         </aside>
       </div>}
-      {diagnosticsOpen && <Suspense fallback={<p role="status">Loading local diagnostics…</p>}><DiagnosticPanel serviceRunning={!!status?.running} onClose={closeDiagnostics} /></Suspense>}
+      {diagnosticsOpen && <Suspense fallback={<p role="status">{t("Loading local diagnostics…")}</p>}><DiagnosticPanel serviceRunning={!!status?.running} onClose={closeDiagnostics} /></Suspense>}
     </main>
-    <footer className="app-footer"><span><Wordmark name={product.name} /> {product.version}</span><span>Local file sharing</span></footer>
+    <footer className="app-footer"><span><Wordmark name={product.name} /> {product.version}</span><span>{t("Local file sharing")}</span></footer>
   </>;
 }

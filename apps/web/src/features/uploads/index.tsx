@@ -1,3 +1,5 @@
+import { presentError, type MessageKey, type PresentationMessage } from "@/i18n/catalog";
+import { useI18n } from "@/i18n/provider";
 import { Check, Upload, X } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ApiError, sendFile } from "@/lib/api";
@@ -6,7 +8,7 @@ import type { FeatureModule, ModuleProps, ModuleProviderProps } from "@/ui/modul
 import { captureTaskFocus } from "@/ui/focus";
 
 type Phase = "queued" | "sending" | "finalizing" | "saved" | "error" | "canceled";
-interface Job { id: number; file: File; path: string; phase: Phase; percent: number; error?: string }
+interface Job { id: number; file: File; path: string; phase: Phase; percent: number; error?: PresentationMessage; limit?: number }
 interface UploadState { jobs: Job[]; add: (files: File[]) => void; cancel: (id: number) => void; clear: () => void }
 const UploadContext = createContext<UploadState | null>(null);
 
@@ -61,7 +63,7 @@ function UploadProvider({ runtime, children }: ModuleProviderProps) {
         } catch (error) {
           patch(job.id, error instanceof ApiError && error.code === "canceled"
             ? { phase: "canceled" }
-            : { phase: "error", error: error instanceof Error ? error.message : "Upload failed. Choose the file again to retry." });
+            : { phase: "error", error: presentError(error, "Upload failed. Choose the file again to retry.") });
         } finally { active.current.delete(job.id); }
       }
     } finally { running.current = false; }
@@ -72,7 +74,7 @@ function UploadProvider({ runtime, children }: ModuleProviderProps) {
     const additions = files.map((file): Job => ({
       id: ++sequence.current, file, path: joinPath(runtimeRef.current.path, file.name), percent: 0,
       phase: file.size > limit ? "error" : "queued",
-      error: file.size > limit ? `This file exceeds the ${formatBytes(limit)} upload limit.` : undefined,
+      limit: file.size > limit ? limit : undefined,
     }));
     for (const job of additions) phases.current.set(job.id, job.phase);
     setJobs((current) => [...current, ...additions]);
@@ -95,30 +97,33 @@ function UploadProvider({ runtime, children }: ModuleProviderProps) {
 }
 
 function UploadToolbar() {
+  const { t } = useI18n();
   const { add } = useUploads();
-  return <label className="button button-primary upload-control"><Upload size={18} aria-hidden="true" /><span>Upload files</span>
-    <input className="visually-hidden" type="file" aria-label="Upload files" multiple onChange={(event) => {
+  return <label className="button button-primary upload-control"><Upload size={18} aria-hidden="true" /><span>{t("Upload files")}</span>
+    <input className="visually-hidden" type="file" aria-label={t("Upload files")} multiple onChange={(event) => {
       add(Array.from(event.target.files ?? [])); event.target.value = "";
     }} />
   </label>;
 }
 
-const phaseLabels: Record<Phase, string> = { queued: "Queued", sending: "Uploading", finalizing: "Saving…", saved: "Saved", error: "Failed", canceled: "Canceled" };
+const phaseLabels: Record<Phase, MessageKey> = { queued: "Queued", sending: "Uploading", finalizing: "Saving…", saved: "Saved", error: "Failed", canceled: "Canceled" };
 
 function UploadPanel({ runtime }: ModuleProps) {
+  const { t, locale, renderMessage } = useI18n();
   const { jobs, cancel, clear } = useUploads();
   const heading = useRef<HTMLHeadingElement>(null);
-  return <section className="transfer-panel" aria-label="Transfers">
-    <div className="panel-heading"><h3 ref={heading} tabIndex={-1}>Transfers</h3>{jobs.some((job) => ["saved", "error", "canceled"].includes(job.phase)) && <button className="text-button" onClick={(event) => { const finishFocus = captureTaskFocus(event.currentTarget); clear(); finishFocus(() => heading.current?.focus()); }}>Clear finished</button>}</div>
-    {jobs.length === 0 ? <p className="muted">Upload up to {formatBytes(runtime.context.limits.max_upload_bytes)} per file. Files are saved after the device confirms the transfer.</p>
+  return <section className="transfer-panel" aria-label={t("Transfers")}>
+    <div className="panel-heading"><h3 ref={heading} tabIndex={-1}>{t("Transfers")}</h3>{jobs.some((job) => ["saved", "error", "canceled"].includes(job.phase)) && <button className="text-button" onClick={(event) => { const finishFocus = captureTaskFocus(event.currentTarget); clear(); finishFocus(() => heading.current?.focus()); }}>{t("Clear finished")}</button>}</div>
+    {jobs.length === 0 ? <p className="muted">{t("Upload up to {0} per file. Files are saved after the device confirms the transfer.", formatBytes(runtime.context.limits.max_upload_bytes, locale))}</p>
       : <ul className="transfer-list">{jobs.map((job) => <li key={job.id}>
         <div className="transfer-name"><span title={job.path}>{job.file.name}</span>{job.phase === "saved" ? <Check className="saved-mark" size={18} aria-hidden="true" />
-          : ["queued", "sending", "finalizing"].includes(job.phase) && <button className="icon-button" onClick={() => cancel(job.id)} disabled={job.phase === "finalizing"} aria-label={`Cancel ${job.file.name}`}><X size={16} aria-hidden="true" /></button>}</div>
-        <div className="transfer-status"><span className={job.phase === "error" ? "error-text" : ""} role="status">{phaseLabels[job.phase]}</span><span>{job.phase === "sending" ? `${job.percent}%` : formatBytes(job.file.size)}</span></div>
-        {job.phase === "sending" && <progress max={100} value={job.percent} aria-label={`Upload progress for ${job.file.name}`} />}
-        {job.phase === "finalizing" && <p className="muted transfer-note">Sent. Waiting for the device to confirm it is saved.</p>}
-        {job.error && <p role="alert" className="error-text transfer-note">{job.error}</p>}
-        {job.phase === "canceled" && <p className="muted transfer-note">Stopped sending. Unfinished files are removed by the device.</p>}
+          : ["queued", "sending", "finalizing"].includes(job.phase) && <button className="icon-button" onClick={() => cancel(job.id)} disabled={job.phase === "finalizing"} aria-label={t("Cancel {0}", job.file.name)}><X size={16} aria-hidden="true" /></button>}</div>
+        <div className="transfer-status"><span className={job.phase === "error" ? "error-text" : ""} role="status">{t(phaseLabels[job.phase])}</span><span>{job.phase === "sending" ? `${job.percent}%` : formatBytes(job.file.size, locale)}</span></div>
+        {job.phase === "sending" && <progress max={100} value={job.percent} aria-label={t("Upload progress for {0}", job.file.name)} />}
+        {job.phase === "finalizing" && <p className="muted transfer-note">{t("Sent. Waiting for the device to confirm it is saved.")}</p>}
+        {job.limit !== undefined && <p role="alert" className="error-text transfer-note">{t("This file exceeds the {0} upload limit.", formatBytes(job.limit, locale))}</p>}
+        {job.error && <p role="alert" className="error-text transfer-note">{renderMessage(job.error)}</p>}
+        {job.phase === "canceled" && <p className="muted transfer-note">{t("Stopped sending. Unfinished files are removed by the device.")}</p>}
       </li>)}</ul>}
   </section>;
 }

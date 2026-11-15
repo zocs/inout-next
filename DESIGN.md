@@ -90,7 +90,7 @@ components:
   row-selected: {backgroundColor: "{colors.selected}"}
   entry-name-active: {backgroundColor: "{colors.secondary}", textColor: "{colors.accent-hover}"}
   folder-details-active: {backgroundColor: "{colors.secondary}", textColor: "{colors.accent-hover}"}
-  host-connection: {backgroundColor: "{colors.secondary}", rounded: "{rounded.container}", padding: "22px"}
+  host-connection: {backgroundColor: "{colors.secondary}", rounded: "12px", padding: "22px"}
   selection-panel: {typography: "{typography.body}", padding: "0 0 20px"}
   transfer-panel: {typography: "{typography.body}", padding: "0 0 20px"}
   notice: {backgroundColor: "{colors.selected}", textColor: "{colors.accent}", rounded: "{rounded.control}", padding: "5px 10px 5px 14px"}
@@ -148,6 +148,29 @@ The palette places dark green ink on warm paper, with white working surfaces and
 
 Eight-step tonal previews are illustrative documentation, not additional project tokens, themes or hover colors.
 
+### Selectable accent themes
+
+The HTTP manager offers four accents over the same paper/ink surfaces. Evergreen remains the default. Each palette changes the shell, shell-muted text, action/hover, secondary surface, selected wash and header/row feedback tokens; destructive feedback retains the separate error role.
+
+| Theme | Shell | Action | Action hover | Selected wash |
+| --- | --- | --- | --- | --- |
+| Evergreen | `#203c33` | `#22624e` | `#174737` | `#edf5ef` |
+| Tangerine | `#492e20` | `#984414` | `#76320f` | `#fff0df` |
+| Ocean | `#183c50` | `#176587` | `#104d68` | `#e9f5fb` |
+| Berry | `#422d49` | `#7d3984` | `#612b67` | `#f7edf9` |
+
+The root `data-theme` attribute carries the palette independently of locale state. Focus, selection, caret and progress use the active semantic accent. Header language/theme controls wrap with native select affordances and minimum 40px targets; the existing mobile host preview retains 48px targets. Mobile input/select text is 16px.
+
+### Language and retained task state
+
+The HTTP manager supports `English`, `简体中文` and `繁體中文`, plus a system preference. Controls retain their full native-language names. The effective language updates `html.lang`, with Traditional/Simplified Chinese system mapping and English fallback. Browser storage failures preserve a usable current session.
+
+Translate complete phrases with typed text arguments, without HTML interpolation. File names, paths, addresses and custom product descriptions are data. Known API errors and retained notices render in the current language; unknown server/provider details stay available. Switching locale or theme preserves folder/search/selection, forms, open dialogs and transfers, with stable module and connection identities. Dates and numbers use cached native Intl formatters.
+
+These Next.js surfaces serve the HTTP manager. The existing Tauri WebView host is a transitional preview, including shared localized controls and lazy diagnostics. The final native application is intended to use a Rust GUI; the toolkit remains subject to measured assessment.
+
+Scoped validation passes 104 Chromium cases against the real static file service, including 13 locale/theme/error cases. The palette samples cover 72 manager/host-preview combinations across three locales, four palettes and 320/390/1440px widths, with minimum measured text contrast 5.60:1 and enabled control-boundary contrast 3.13:1. A throttled 2 MiB upload preserves its exact published bytes while changing locale/theme. The export contains 1,083,889 bytes, including 1,010,428 bytes of JavaScript (312,243 bytes gzip); localization adds 31,554 total bytes, 26,038 raw JavaScript bytes and 9,230 gzip JavaScript bytes over the preceding export. These browser checks do not establish native toolkit/device performance or assistive-device clearance.
+
 ## Typography
 
 **UI Font:** the system stack in frontmatter: `-apple-system`, BlinkMacSystemFont, Segoe UI, sans-serif. The interface has no separate display family or downloaded font. Compact headings use a medium-heavy weight; body copy remains regular. There is no imposed mathematical scale ratio.
@@ -183,7 +206,7 @@ Depth comes from paper, white and quiet green layers with thin separators. File 
 
 ## Shapes
 
-Controls and notices use the shared control radius. File and host-connection containers use the container radius; the modal uses the larger dialog radius, and progress tracks use the smaller progress radius. Ordinary panels have a bottom separator without a surrounding card. File-list clipping contains its rounded edge and table content. Enabled field borders use the dedicated input boundary rather than the quieter container divider. Native checkboxes, scrollbars and progress semantics remain recognizable; icons use local inline SVG geometry.
+Controls and notices use the shared control radius. File containers use the container radius and the existing host connection preview uses 12px; the modal uses the larger dialog radius, and progress tracks use the smaller progress radius. Ordinary panels have a bottom separator without a surrounding card. File-list clipping contains its rounded edge and table content. Enabled field borders use the dedicated input boundary rather than the quieter container divider. Native checkboxes, scrollbars and progress semantics remain recognizable; icons use local inline SVG geometry.
 
 ## Components
 

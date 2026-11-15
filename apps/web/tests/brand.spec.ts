@@ -68,7 +68,12 @@ for (const { name, matrix } of [
         });
         expect(layout.pageWidth).toBeLessThanOrEqual(width);
         expect(layout.heading.right).toBeLessThanOrEqual(layout.brand.right + 1);
-        expect(layout.brand.right + 15).toBeLessThanOrEqual(layout.actions.left);
+        // Appearance controls can wrap beneath the brand on narrow screens.
+        // Require real separation on the rendered axis in both compositions.
+        const sameRow = layout.brand.top < layout.actions.bottom && layout.brand.bottom > layout.actions.top;
+        if (sameRow) expect(layout.brand.right + 15).toBeLessThanOrEqual(layout.actions.left);
+        else expect(layout.brand.bottom + 15).toBeLessThanOrEqual(layout.actions.top);
+        expect(layout.actions.right).toBeLessThanOrEqual(width);
         expect(layout.identity.right).toBeLessThanOrEqual(layout.description.left);
         if (matrix) {
           expect(layout.matrix!.right).toBeLessThanOrEqual(layout.heading.right + 1);

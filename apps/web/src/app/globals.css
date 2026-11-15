@@ -292,3 +292,48 @@ dialog .form-actions { justify-content: flex-end; margin-top: var(--space-main-t
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0ms !important; } }
 @media (prefers-reduced-motion: reduce) { .startup-wordmark { transform: none !important; } }
+
+/* Accent palettes share the paper surface and the same semantic state roles. */
+:root[data-theme="tangerine"] {
+  --color-shell: #492e20; --color-shell-muted: #eed6c7;
+  --color-accent: #984414; --color-accent-hover: #76320f;
+  --color-secondary: #f2eae0; --color-selected: #fff0df;
+  --color-header-border: #aa8972; --color-header-hover: #61402c;
+  --color-row-hover: #fff9f2;
+}
+:root[data-theme="ocean"] {
+  --color-shell: #183c50; --color-shell-muted: #ccdee9;
+  --color-accent: #176587; --color-accent-hover: #104d68;
+  --color-secondary: #e6eef2; --color-selected: #e9f5fb;
+  --color-header-border: #7898aa; --color-header-hover: #294f63;
+  --color-row-hover: #f4f9fc;
+}
+:root[data-theme="berry"] {
+  --color-shell: #422d49; --color-shell-muted: #e5d4e9;
+  --color-accent: #7d3984; --color-accent-hover: #612b67;
+  --color-secondary: #eee8f0; --color-selected: #f7edf9;
+  --color-header-border: #a08ba5; --color-header-hover: #5a3d63;
+  --color-row-hover: #fbf6fc;
+}
+.preferences { display: flex; flex-wrap: wrap; gap: var(--space-action); min-width: 0; }
+.preferences label { display: grid; gap: var(--space-unit); font-size: 12px; color: var(--color-shell-muted); min-width: 0; }
+.preferences select { max-width: 100%; min-width: 0; min-height: 40px; padding: var(--space-small) var(--space-action); border: 1px solid var(--color-header-border); border-radius: var(--radius-control); background: var(--color-shell); color: var(--color-surface); font: inherit; }
+.preferences select:hover { background: var(--color-header-hover); }
+.preferences select:focus-visible { outline-color: var(--color-shell-muted); }
+.touch-controls .preferences select { min-height: 48px; }
+.app-header, .header-actions { flex-wrap: wrap; }
+.host-heading h2 { font-size: 30px; }
+.host-root { color: var(--color-ink); font-weight: 550; }
+.host-connection { border-radius: 12px; }
+.host-connection h3 { font-size: 19px; color: var(--color-accent); }
+.host-addresses dd { font-size: 15px; font-weight: 550; line-height: 1.6; }
+.host-addresses > div { padding-top: var(--space-detail); border-top: 1px solid var(--color-border); }
+input, select { caret-color: var(--color-accent); }
+::selection { background: var(--color-accent); color: var(--color-surface); }
+@media (max-width: 760px) {
+  .header-actions { flex: 1 1 100%; justify-content: space-between; }
+  .preferences { flex: 1 1 auto; }
+  .preferences select { font-size: 16px; }
+  .field input, .field select, .search-field input { font-size: 16px; }
+  .host-heading h2 { font-size: 26px; }
+}
