@@ -96,7 +96,7 @@ for (const action of ["New folder", "Copy", "Delete"]) {
     if (action !== "Delete") await input.fill(action === "Copy" ? "welcome.txt" : "Occupied");
     const submit = page.getByRole("button", { name: action === "New folder" ? "Create folder" : action === "Copy" ? "Copy file" : "Delete permanently", exact: true });
     await activate(page, submit);
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("region", { name: "File actions", exact: true }).getByRole("alert")).toBeVisible();
     await expect(submit).toBeEnabled();
     if (action === "Delete") {
       await expect(page.getByRole("dialog")).toBeVisible();
@@ -163,7 +163,7 @@ for (const action of ["New folder", "Rename", "Copy", "failed New folder"]) {
       await search.focus();
       release();
       if (action.startsWith("failed")) {
-        await expect(page.getByRole("alert")).toBeVisible();
+        await expect(page.getByRole("region", { name: "File actions", exact: true }).getByRole("alert")).toBeVisible();
         await expect(page.getByLabel("Folder name", { exact: true })).toHaveValue("Result");
       } else {
         await expect(page.getByRole("textbox", { name: action === "New folder" ? "Folder name" : action === "Rename" ? "New name" : "Destination path", exact: true })).toHaveCount(0);
