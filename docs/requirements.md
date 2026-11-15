@@ -1,6 +1,6 @@
 # Requirements
 
-Status: experimental0.1.0 desktop and Android foreground previews, 2026-11-15; [desktop packages](distribution/preview.md) and [Android usage](distribution/android-preview.md) are separate from a stable release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android physical arm64/16 KiB/network acceptance and iOS adaptation remain pending.
+Status: experimental0.1.0, 2026-11-15; [desktop preview.1](distribution/preview.md) and [Android foreground preview.2](distribution/android-preview.md) have separate packages and usage scopes. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android physical arm64/16 KiB/network acceptance and iOS adaptation remain pending. No stable release is published yet.
 
 ## Product goal
 

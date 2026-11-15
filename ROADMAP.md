@@ -31,7 +31,9 @@ These foundations are implemented. [Desktop checkpoint c004d68](https://github.c
 
 ## 3. Android integration
 
-The first Android composition is a [foreground preview](docs/distribution/android-preview.md), separate from the completed [desktop prerelease](docs/distribution/preview.md). It shares app-private files with another device's browser, retains the existing Rust authorization/storage modules and exposes capability-aware native controls. Home/root Back stops sharing; resume requires explicit Start. Raw packaged web resources are integrity-checked outside the shared root. Optimized arm64 package inspection and API36 x86_64/4 KiB emulator execution are separate from physical-device acceptance.
+The first Android composition is [v0.1.0-preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2), with a [foreground-sharing guide](docs/distribution/android-preview.md), separate from the completed [desktop prerelease](docs/distribution/preview.md). It shares app-private files with another device's browser, retains the existing Rust authorization/storage modules and exposes capability-aware native controls. Home/root Back stops sharing; resume requires explicit Start. Raw packaged web resources are integrity-checked outside the shared root. Optimized arm64 package inspection and API36 x86_64/4 KiB emulator execution are separate from physical-device acceptance.
+
+The signed arm64 delivery is 15.39MiB and comes from [six-target serial CI at 4dd4b51](https://github.com/zocs/inout-next/actions/runs/43704226914), with its own guide and download checksums. The release tag adds documentation without changing the tested application files.
 
 Remaining Android milestones:
 

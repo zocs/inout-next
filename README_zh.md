@@ -2,7 +2,7 @@
 
 独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面/Android 宿主。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-目前是实验性 **0.1.0 preview**。可[下载桌面预发布版本](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1)，使用说明见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
+目前是实验性 **0.1.0 preview**。可下载[桌面 preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) 或 [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2)，使用说明分别见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
 
 - [English README](README.md)
 - [需求](docs/requirements.md) · [路线图](ROADMAP.md) · [平台状态](docs/platforms.md)
@@ -89,6 +89,8 @@ Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主�
 [桌面检查点 c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) 已按顺序通过全部五个目标。下载后的五份 CLI ZIP、六份原生包已核对程序架构及本轮测试的全部 35 个网页资源，Debian 包与 Windows 安装器的生成身份检查也已通过。产物验证与安装、真机、离线运行及签名验收分别记录。
 
 [CI 工作流](.github/workflows/ci.yml) 使用仓库级单队列：Linux 验证、Android arm64、Windows x86/x64，最后 macOS arm64/x64；矩阵均设置 `max-parallel: 1`。Android 复用 Linux 已测网页导出，验证 Cargo 子进程锁文件、优化后的未签名 APK、manifest、资源、ABI、ELF 和原生 ZIP 对齐，再进行直接预览签名。macOS 只编译一次，随后仅对 `hdiutil create` 的资源繁忙错误最多尝试三次打包；其他错误立即失败。Windows 离线便携版和旧 Linux 兼容版仍有独立里程碑。
+
+Android preview.2 来自 [4dd4b51 的 CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914)，六个目标全部串行通过。签名后的 arm64 APK 为 15.39MiB；[安装指南](docs/distribution/android-preview.md) 记录精确字节、校验值、各桌面目标32项原生测试、53工具/91浏览器/7Kotlin测试，以及单独的模拟器运行证据。
 
 ```sh
 cargo build -p share-cli --release --locked

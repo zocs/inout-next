@@ -1,6 +1,6 @@
 # Privacy Data Inventory
 
-Checked: 2026-11-15. Scope: the experimental Rust/Next.js/Tauri desktop and Android foreground hosts, native diagnostics and configurable inout branding. This is preparation for channel-specific disclosures, **not a published privacy policy, completed store form or exhaustive third-party privacy audit**. See [store readiness](store-readiness.md) and [official sources](store-sources.json).
+Checked: 2026-11-15. Scope: [desktop preview.1](preview.md), [Android foreground preview.2](android-preview.md), native diagnostics and configurable inout branding in the experimental Rust/Next.js/Tauri app. This is preparation for channel-specific disclosures, **not a published privacy policy, completed store form or exhaustive third-party privacy audit**. See [store readiness](store-readiness.md) and [official sources](store-sources.json).
 
 ## Current First-Party Data Paths
 

@@ -1,11 +1,11 @@
 # Android foreground preview
 
-This guide covers the experimental inout Android arm64 preview, with package version `0.1.0`. It shares files in the app's own storage with a browser on another device. The [desktop preview](preview.md) remains a separate download. Android's native foreground Service, SAF folder grants, local file import/manager and store distribution are later milestones.
+[Download v0.1.0-preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2). This experimental inout Android arm64 preview has package version `0.1.0` and shares files in the app's own storage with a browser on another device. The [desktop preview](preview.md) remains a separate download. Android's native foreground Service, SAF folder grants, local file import/manager and store distribution are later milestones.
 
 ## Install and connect
 
 1. Use an arm64 Android device. The declared minimum is Android 7 / API24; actual runtime validation currently uses API36/x86_64, so minimum-OS and physical arm64 operation remain unverified. Keep Android System WebView current.
-2. Download the Android arm64 APK and `SHA256SUMS.txt` from the preview release. Verify its checksum, then open the APK; if Android asks, allow installation from the browser or file manager you used. This is direct APK distribution, outside Play/F-Droid.
+2. Download [the arm64 APK](https://github.com/zocs/inout-next/releases/download/v0.1.0-preview.2/inout-next-0.1.0-preview.2-android-arm64.apk) and [SHA256SUMS.txt](https://github.com/zocs/inout-next/releases/download/v0.1.0-preview.2/SHA256SUMS.txt). The release also includes this guide as `ANDROID-PREVIEW.md`. Verify the APK checksum, then open it; if Android asks, allow installation from the browser or file manager you used. This is direct APK distribution, outside Play/F-Droid.
 3. Put the sharing phone and the other device on the same local network. Open **inout**; **App storage** identifies the files being shared.
 4. Enable **Allow uploads** and/or **Allow file management** as needed, then generate or enter an access key. Writes require a key. Start sharing and open a displayed local-network address in the other device's browser; enter the key there.
 5. Keep inout on screen while transferring. **Stop sharing**, Home or root Back closes sharing and cancels incomplete transfers. Returning leaves the service stopped until you choose **Start sharing** again.
@@ -23,6 +23,8 @@ Saved files remain after Stop, process restart and Activity recreation. Delete f
 | Preview application ID | `io.github.zocs.inoutnext.preview` |
 | Production identity retained separately | `io.github.zocs.inoutnext` |
 | Android version name / code | `0.1.0` / `100001` |
+| Release tag | `v0.1.0-preview.2` |
+| Tested build source | [`4dd4b51`](https://github.com/zocs/inout-next/commit/4dd4b518236d558d65b73cc47558d67b14594907) |
 | Compile / target / minimum API | `36` / `36` / `24` |
 | Distributed ABI | `arm64-v8a` |
 | Runtime | Rust library, static Next export and Android System WebView |
@@ -39,9 +41,15 @@ Each accepted APK is checked for the expected preview manifest/label/version/API
 
 ## Verification scope
 
-The optimized signed arm64 validation candidate is 16,151,507 bytes (15.40 MiB), with 35 raw web files / 1,052,337 bytes. It includes the final Android shutdown correction and passes package/signature inspection. Final release size and checksums come from the accepted CI APK after direct preview signing; [size/runtime guidance](size-and-runtime.md) distinguishes local and delivered measurements.
+The distributed signed arm64 APK is **16,135,122 bytes (15.39 MiB)**, with one 13,216,272-byte Rust library and 35 raw web files totalling 1,052,299 bytes. It comes from tested source `4dd4b518236d558d65b73cc47558d67b14594907` in [CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914). All six targets complete serially: Linux45 / Windows37each / macOS43each core tests, 32 native tests on every desktop target, 53 Python tool tests, 91 Chromium cases and seven Kotlin resource tests pass. Both actual Android Cargo compilation children preserve their lockfiles. Signing preserves every preexisting APK file, and the signed package passes resource/manifest/ABI/signature/16 KiB alignment inspection. The release tag adds product documentation without changing the tested application's non-Markdown files. [Size/runtime guidance](size-and-runtime.md) distinguishes this delivery from local validation builds.
 
-Actual release-APK execution uses an owned API36/x86_64 emulator with 4 KiB pages, accessed through ADB forwarding. It verifies 26 HTTP checks and seven browser operation groups: authentication and origin policy, upload/download/Range hashes, file copy/rename/move, directory move/delete and runtime-resource separation. The final signed x86_64 candidate passes eight lifecycle groups covering Stop/restart, Home/Back, incomplete-upload cancellation and persisted-file SHA-256, plus true Activity destruction/cold launch without the earlier native renderer exit failure. Five immediate Back/return cycles are also verified. Accessibility checks cover font scale1.3, increased display density, landscape, system bars and the keyboard. Host checks include 32 native and 91 Chromium cases; the latter include two separate Android native-command fixtures.
+APK SHA-256:
+
+```text
+2182b6088578e7b37525fafe9512f6e57707bb7f226e1e555c7bc46c1e103711  inout-next-0.1.0-preview.2-android-arm64.apk
+```
+
+Actual runtime verification uses a separate locally built optimized x86_64 APK with the same application code, on an API36 emulator with 4 KiB pages accessed through ADB forwarding. It verifies 26 HTTP checks and seven browser operation groups: authentication and origin policy, upload/download/Range hashes, file copy/rename/move, directory move/delete and runtime-resource separation. The signed x86_64 candidate passes eight lifecycle groups covering Stop/restart, Home/Back, incomplete-upload cancellation and persisted-file SHA-256, plus true Activity destruction/cold launch without the earlier native renderer exit failure. Five immediate Back/return cycles are also verified. Accessibility checks cover font scale1.3, increased display density, landscape, system bars and the keyboard. Host checks include 32 native and 91 Chromium cases; the latter include two separate Android native-command fixtures.
 
 These results establish that emulator/release-APK combination. Physical arm64, actual 16 KiB operation, two-device Wi-Fi, API24/other WebView combinations, installed upgrades, AAB and store acceptance remain unverified. The [platform matrix](../platforms.md), [roadmap](../../ROADMAP.md) and [store gates](store-readiness.md) track those milestones. iOS has no released artifact.
 

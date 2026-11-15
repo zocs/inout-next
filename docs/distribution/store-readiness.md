@@ -110,9 +110,9 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 
 当前落实：本报告、官方来源清单、[隐私数据清单](privacy-data-inventory.md)、需求/架构/模块/品牌/平台/路线图中的商店约束；`.gitignore` 排除 Apple `.p8`/`.p12`/provisioning profile、签名本机配置和商店二进制。生产身份仍是 `io.github.zocs.inoutnext`，Android 直接预览独立使用 `.preview`、显式 `versionCode=100001` 和保留的预览证书；未导入 FileInfra/生产密钥，未完成商店注册。显示改名不自动更改包名、签名或安装身份。
 
-[Android 前台预览](android-preview.md) 已实现私有共享目录、原始网页资源校验、前后台停止/手动重启和能力约束。优化后的 arm64 APK 通过 manifest、单 ABI、全部资源、ELF/native ZIP 16 KiB 对齐和签名检查；API36 x86_64/4 KiB 模拟器通过实际 HTTP/浏览器操作与生命周期验证。真实 arm64、16 KiB 运行、双设备 Wi-Fi、API24/WebView、AAB 和商店签名仍须分别验收，不能由对齐检查或模拟器结果替代。
+[Android 前台 preview.2](android-preview.md) 已实现私有共享目录、原始网页资源校验、前后台停止/手动重启和能力约束。[CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914) 六个目标串行通过；其 arm64 APK 经独立预览证书签名后为15.39MiB，manifest、单 ABI、全部资源、ELF/native ZIP 16 KiB 对齐和签名检查通过。相同应用源码的 API36 x86_64/4 KiB 模拟器 APK 通过实际 HTTP/浏览器操作与生命周期验证。真实 arm64、16 KiB 运行、双设备 Wi-Fi、API24/WebView、AAB 和商店签名仍须分别验收，不能由对齐检查或模拟器结果替代。
 
-2026-11-15 产品补充：应用显示名为 **inout**，仓库/slug 保留 `inout-next`；[签名与应用身份](signing.md) 说明与 FileInfra 共用证书时的独立包名、signature 权限及渠道影响。原生临时诊断通过五秒内激活名称按钮五次开启，仅执行受限本机调参和只读回环测速，没有遥测或公开 HTTP 控制接口。按 [Apple 审核指南 2.3.1](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata)，候选版应在审核备注中明确说明入口、用途和步骤，不能以隐藏发现方式隐瞒审核功能；数据清单和候选版说明同步包含诊断行为。移动/商店构建与审核关卡仍未通过。
+2026-11-15 产品补充：应用显示名为 **inout**，仓库/slug 保留 `inout-next`；[签名与应用身份](signing.md) 说明与 FileInfra 共用证书时的独立包名、signature 权限及渠道影响。原生临时诊断通过五秒内激活名称按钮五次开启，仅执行受限本机调参和只读回环测速，没有遥测或公开 HTTP 控制接口。按 [Apple 审核指南 2.3.1](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata)，候选版应在审核备注中明确说明入口、用途和步骤，不能以隐藏发现方式隐瞒审核功能；数据清单和候选版说明同步包含诊断行为。商店产物、真机与商店审核关卡仍需独立验收。
 
 | Gate | 要交付的可核查结果 | 当前状态 |
 | --- | --- | --- |
@@ -121,7 +121,7 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 | S3 原生产物与兼容 | 实际 target/manifest/ABI/16 KB/IPv6/WebView、签名/沙盒/资源检查以及最低与当前系统设备记录 | 桌面 target CI、Android 直接 APK 包检查与 x86_64/4 KiB 模拟器已有；arm64/16 KiB/最低 OS/双设备与商店产物未验收 |
 | S4 隐私与安全 | 最终依赖/数据流、公开隐私政策/联系入口、应用内访问、两家表单、必要 manifest/SDK、传输加密/配对/撤销设计与测试 | 当前数据清单已建立；HTTP 明文、政策发布/原生隐私清单及商店表单未完成 |
 | S5 自由软件/源码构建 | 依赖和资产许可/SBOM、干净 checkout 的 web/Rust/Gradle 源码构建、实际 fdroidserver recipe、可复现尝试/差异记录 | 根项目 MIT、锁文件和 Android 文本骨架已有；完整许可清单、F-Droid recipe/构建/可复现未通过 |
-| S6 审核资料与测试 | 真实功能描述、分级、联系/支持、必要截图/演示、适用的 closed testing/TestFlight、审核者操作步骤 | 全部未提交；媒体仅记录要求，本轮遵守仓库规则不生成/查看截图 |
-| S7 发布运维 | 单队列 CI、受保护的发布凭据、签名产物/来源/checksums、商店/直接渠道分开验收与回滚/升级记录 | 桌面/Android 单队列构建与直接预览验收路线已有；商店发布配置与实际升级验收待独立实现 |
+| S6 审核资料与测试 | 真实功能描述、分级、联系/支持、必要截图/演示、适用的 closed testing/TestFlight、审核者操作步骤 | 商店截图/演示、适用的 closed testing/TestFlight 和提交材料待准备 |
+| S7 发布运维 | 单队列 CI、受保护的发布凭据、签名产物/来源/checksums、商店/直接渠道分开验收与回滚/升级记录 | 桌面preview.1与Android preview.2有各自来源、串行CI、指南/checksums；Android预览签名已核验。商店发布配置与实际升级验收待独立实现 |
 
 正式候选版前重新检查官方政策及控制台当时的提示。SDK/政策日期放在这份分发研究与平台构建配置，避免耦合到 Rust domain/API 模块。各 Gate 有实际结果后才改为通过；框架教程、源码 review 或另一渠道 CI 不自动清除关卡。

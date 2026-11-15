@@ -1,10 +1,10 @@
 # Package size and runtime
 
-Measured on 2026-11-15 for the experimental source, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [The desktop prerelease](preview.md) distributes the verified CI packages; no stable release is published yet.
+Measured on 2026-11-15 for the experimental source, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute separate verified CI packages; no stable release is published yet.
 
-## Current local build
+## Local desktop checkpoint
 
-The current Linux x64 release build uses Rust 1.99.1 and Node 26.13.1. Its export and executables were verified together, including a relocated CLI ZIP and a streamed 128 MiB runtime check.
+The Linux x64 desktop checkpoint uses Rust 1.99.1 and Node 26.13.1. Its export and executables were verified together, including a relocated CLI ZIP and a streamed 128 MiB runtime check. These measurements precede the Android adaptation; the Android APK and its own export are measured separately below.
 
 | Item | Bytes | MiB |
 | --- | ---: | ---: |
@@ -33,7 +33,7 @@ For context, [dufs0.47.0](https://github.com/sigoden/dufs/releases/tag/v0.47.0) 
 
 ## Verified native packages
 
-These six native packages come from the same c004d68 CI checkpoint. Extraction verifies the native CPU/subsystem and every packaged web resource; it is separate from installing or running the GUI on a device. Both macOS bundles succeeded on their first packaging attempt, so this run does not demonstrate an actual resource-busy recovery.
+The six desktop packages come from the same c004d68 CI checkpoint. Extraction verifies the native CPU/subsystem and every packaged web resource; it is separate from installing or running the GUI on a device. Both macOS bundles succeeded on their first packaging attempt, so that run does not demonstrate an actual resource-busy recovery. The Android row comes from preview.2's separately accepted [CI at 4dd4b51](https://github.com/zocs/inout-next/actions/runs/43704226914), followed by direct preview signing.
 
 | Platform / package | inout-next 0.1.0 checkpoint | FileInfra0.5.13 | Runtime distinction |
 | --- | ---: | ---: | --- |
@@ -43,17 +43,17 @@ These six native packages come from the same c004d68 CI checkpoint. Extraction v
 | Linux x64 AppImage | 79.06MiB | 22.41MiB | Current Tauri bundle includes a large WebKitGTK/JavaScriptCore/GTK/ICU library closure |
 | macOS Intel native archive | 4.25MiB DMG | 20.03MiB ZIP | Different archive formats; Tauri uses Apple's system webview |
 | macOS ARM64 DMG | 4.16MiB | 19.93MiB ZIP | Different archive formats and native runtimes |
-| Android arm64 APK | 15.40MiB local signed foreground candidate | 11.14MiB | Different feature sets; Tauri uses Android System WebView, and physical arm64 is unverified |
+| Android arm64 APK | 15.39MiB signed CI foreground preview | 11.14MiB | Different feature sets; Tauri uses Android System WebView, and physical arm64 is unverified |
 
 FileInfra's Windowsx64 portable **GUI** ZIP is15.42MiB; it is not equivalent to the1.45MiB inout-next **CLI** ZIP. The former contains a20.29MiB uncompressed Flutter engine,6.72MiB Dart AOT application and5.23MiB dufs library, plus plugins/assets/runtime files. The inout-next uncompressed Windows native executable is11.44MiB forx64 and9.07MiB forx86, plus static resources and external WebView2 requirements. Extraction does not establish offline GUI portability.
 
 That Linux AppImage's logical regular-file inventory totals approximately258.03MiB before SquashFS compression. Its largest libraries are WebKitGTK85.84MiB, JavaScriptCore32.20MiB and ICU data28.12MiB; the native executable is14.81MiB. The static Next export is1.00MiB. Library packaging, compression/deduplication and compatibility strategy need independent work; shrinking a package by omitting a required runtime does not establish a working portable artifact.
 
-## Android foreground candidate
+## Android foreground preview
 
-The local optimized arm64 APK includes the final private-storage, resource, ProGuard, inset and lifecycle corrections. Its measured signed size is 16,151,507 bytes (15.40 MiB), with one 13,233,056-byte Rust library and 35 raw web resources totalling 1,052,337 bytes. The APK uses Android System WebView and contains neither a Node nor Python runtime. Final direct-release bytes are verified separately against the accepted CI artifact and listed in the [Android guide](android-preview.md).
+The distributed optimized arm64 APK includes the private-storage, resource, ProGuard, inset and lifecycle corrections. [CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914) builds it from `4dd4b51` using that run's tested web export. Its measured signed size is **16,135,122 bytes (15.39 MiB)**, with one **13,216,272-byte Rust library** and **35 raw web resources totalling 1,052,299 bytes**. The APK uses Android System WebView and contains neither a Node nor Python runtime. Signing preserves the original archive payloads; exact package and certificate checksums are in the [Android guide](android-preview.md).
 
-The local x86_64 release APK is 15,553,488 bytes (14.83 MiB) and is used for API36/4 KiB emulator execution. ABI/compiler/package differences prevent treating it as the arm64 release or a physical-device memory/throughput measurement. Both APKs pass exact resource, single-ABI, manifest, retained-preview-signature and 16 KiB ELF/native ZIP alignment checks; these checks do not establish 16 KiB runtime operation. FileInfra0.5.13's arm64 APK is 11.14 MiB, but native/background/storage features differ and no matched mobile performance comparison has been performed.
+Separate local validation builds measure 16,151,507 bytes (15.40 MiB) for signed arm64 and 15,553,488 bytes (14.83 MiB) for signed x86_64, with their own 35-file / 1,052,337-byte export. The x86_64 APK is used for API36/4 KiB emulator execution with the same application code. ABI/compiler/package differences prevent treating it as the delivered arm64 APK or a physical-device memory/throughput measurement. All three APKs pass exact resource, single-ABI, manifest, retained-preview-signature and 16 KiB ELF/native ZIP alignment checks; these checks do not establish 16 KiB runtime operation. FileInfra0.5.13's arm64 APK is 11.14 MiB, but native/background/storage features differ and no matched mobile performance comparison has been performed.
 
 ## Current core measurements
 

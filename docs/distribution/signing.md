@@ -16,7 +16,7 @@ Before reusing FileInfra's key for a production candidate, verify the certificat
 
 ## Direct Android preview
 
-The [foreground APK preview](android-preview.md) uses the independent `io.github.zocs.inoutnext.preview` package, explicit `versionCode=100001` and a retained private RSA3072 preview certificate. Its certificate SHA-256 fingerprint is:
+The [v0.1.0-preview.2 foreground APK](android-preview.md) uses the independent `io.github.zocs.inoutnext.preview` package, explicit `versionCode=100001` and a retained private RSA3072 preview certificate. Its certificate SHA-256 fingerprint is:
 
 ```text
 12125fbf1e85dff4cecaab432fc4cef02ba4eb37e5e36f26f6625df94842e5a2

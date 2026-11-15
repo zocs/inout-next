@@ -1,6 +1,6 @@
 # Desktop preview
 
-[Download v0.1.0-preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1). This is a prerelease for testing, with package version 0.1.0. The five desktop targets were built and tested at [c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553); the preview tag adds product documentation without changing the application. The later [Android foreground preview](android-preview.md) has a separate arm64 APK and scope. iOS remains scheduled for later adaptation and device validation.
+[Download v0.1.0-preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1). This is a prerelease for testing, with package version 0.1.0. The five desktop targets were built and tested at [c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553); the preview tag adds product documentation without changing the application. [Android v0.1.0-preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2) has a separate arm64 APK and [foreground-sharing scope](android-preview.md). iOS remains scheduled for later adaptation and device validation.
 
 ## Choose a GUI package
 

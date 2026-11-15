@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Android foreground preview
+## v0.1.0-preview.2 — Android foreground preview
 
 - Add an Android private-storage host sharing files with another device's HTTP browser, using the existing Rust storage, authentication and file-operation modules.
 - Expose native storage/folder/manager/foreground capabilities. The mobile UI explains persistence and foreground lifetime, hides unsupported actions and uses larger touch controls.
@@ -11,7 +11,7 @@
 - Add APK manifest/resource/ABI/ELF/native ZIP/signature inspection, actual Kotlin assets tests and release-APK HTTP/browser/lifecycle verification on an API36 x86_64 emulator with4 KiB pages.
 - Use the separate `.preview` package identity and preview certificate; production/FileInfra/store signing remains independent. Add Android arm64 packaging to the single serial CI queue.
 
-The [Android guide](docs/distribution/android-preview.md) records current usage and validation limits. Physical arm64/16 KiB/two-device Wi-Fi, SAF, native foreground Service, local import/manager, AAB/store acceptance and iOS remain later milestones.
+[Preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2) delivers the signed arm64 APK (16,135,122bytes / 15.39MiB), a bilingual guide and checksums, with package version0.1.0/code100001. [CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914) passes all six serial targets at4dd4b51, including 32 native tests per desktop target, 53 tool/91 browser/seven Kotlin tests and exact Android package/resource/alignment inspection. The [Android guide](docs/distribution/android-preview.md) records usage and validation limits. Physical arm64/16 KiB/two-device Wi-Fi, SAF, native foreground Service, local import/manager, AAB/store acceptance and iOS remain later milestones.
 
 ## 0.1.0 — Desktop preview (v0.1.0-preview.1)
 
