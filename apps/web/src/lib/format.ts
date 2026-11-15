@@ -18,9 +18,11 @@ export function formatBytes(bytes: number | null, locale: Locale = "en"): string
 }
 export function formatDate(seconds: number | null, locale: Locale = "en"): string {
   if (seconds === null) return catalogs[locale].Unavailable;
+  const date = new Date(seconds * 1000);
+  if (!Number.isFinite(date.getTime())) return catalogs[locale].Unavailable;
   let formatter = dates.get(locale);
   if (!formatter) { formatter = new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" }); dates.set(locale, formatter); }
-  return formatter.format(new Date(seconds * 1000));
+  return formatter.format(date);
 }
 export function joinPath(parent: string, name: string): string { return parent ? `${parent}/${name}` : name; }
 export function parentPath(path: string): string { return path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""; }

@@ -34,6 +34,7 @@ const messages = [
  ["Upload files", "上传文件", "上傳檔案"], ["Queued", "等待中", "等候中"], ["Uploading", "上传中", "上傳中"], ["Saving…", "正在保存…", "正在儲存…"], ["Saved", "已保存", "已儲存"], ["Failed", "失败", "失敗"], ["Canceled", "已取消", "已取消"],
  ["Transfers", "传输", "傳輸"], ["Clear finished", "清除已完成", "清除已完成"], ["Upload up to {0} per file. Files are saved after the device confirms the transfer.", "每个文件最多上传 {0}。设备确认传输后才会保存文件。", "每個檔案最多上傳 {0}。裝置確認傳輸後才會儲存檔案。"],
  ["Cancel {0}", "取消 {0}", "取消 {0}"], ["Upload progress for {0}", "{0} 的上传进度", "{0} 的上傳進度"], ["Sent. Waiting for the device to confirm it is saved.", "已发送。正在等待设备确认保存。", "已傳送。正在等候裝置確認儲存。"], ["Stopped sending. Unfinished files are removed by the device.", "已停止发送。设备会删除未完成的文件。", "已停止傳送。裝置會刪除未完成的檔案。"], ["This file exceeds the {0} upload limit.", "此文件超过 {0} 的上传限制。", "此檔案超過 {0} 的上傳限制。"],
+ ["Upload interrupted. Refresh the folder to check whether it was saved, then try again.", "上传中断。请刷新文件夹以检查文件是否已保存，然后重试。", "上傳中斷。請重新整理資料夾以確認檔案是否已儲存，再重試。"],
  ["Share files", "共享文件", "共享檔案"], ["Share a folder", "共享文件夹", "共享資料夾"],
  ["Use this app’s storage to share files with another device on your local network.", "使用此应用的存储空间与本地网络中的其他设备共享文件。", "使用此應用程式的儲存空間與區域網路中的其他裝置共享檔案。"],
  ["Choose the files this device makes available, then open the file manager or connect from another device.", "选择此设备要共享的文件，然后打开文件管理器或从其他设备连接。", "選擇此裝置要共享的檔案，然後開啟檔案管理員或從其他裝置連線。"],

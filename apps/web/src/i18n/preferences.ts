@@ -7,7 +7,11 @@ export function resolveLocale(languages: readonly string[], preference: LocalePr
   if (preference !== "system") return preference;
   for (const language of languages) {
     const tag = language.toLowerCase().replaceAll("_", "-");
-    if (/^zh(?:-|$)/.test(tag)) return /(?:^|-)hant(?:-|$)|(?:^|-)(?:tw|hk|mo)(?:-|$)/.test(tag) ? "zh-Hant" : "zh-Hans";
+    if (/^zh(?:-|$)/.test(tag)) {
+      if (/(?:^|-)hans(?:-|$)/.test(tag)) return "zh-Hans";
+      if (/(?:^|-)hant(?:-|$)/.test(tag)) return "zh-Hant";
+      return /(?:^|-)(?:tw|hk|mo)(?:-|$)/.test(tag) ? "zh-Hant" : "zh-Hans";
+    }
     if (/^en(?:-|$)/.test(tag)) return "en";
   }
   return "en";

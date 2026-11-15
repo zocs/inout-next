@@ -1,4 +1,4 @@
-import { presentError, type MessageKey, type PresentationMessage } from "@/i18n/catalog";
+import { describe, presentError, type MessageKey, type PresentationMessage } from "@/i18n/catalog";
 import { useI18n } from "@/i18n/provider";
 import { Check, Upload, X } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
@@ -63,7 +63,9 @@ function UploadProvider({ runtime, children }: ModuleProviderProps) {
         } catch (error) {
           patch(job.id, error instanceof ApiError && error.code === "canceled"
             ? { phase: "canceled" }
-            : { phase: "error", error: presentError(error, "Upload failed. Choose the file again to retry.") });
+            : { phase: "error", error: error instanceof ApiError && error.code === "connection_lost"
+              ? describe("Upload interrupted. Refresh the folder to check whether it was saved, then try again.")
+              : presentError(error, "Upload failed. Choose the file again to retry.") });
         } finally { active.current.delete(job.id); }
       }
     } finally { running.current = false; }
