@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — localization, live admission controls and native GUI evaluation
+
+- Add local English, Simplified Chinese and Traditional Chinese catalogs, system-language selection and evergreen/tangerine/ocean/berry themes with validated product-independent preferences, cached formatting and stable file/transfer state.
+- Preserve the publication-check warning after a lost upload response; resolve actual Chinese script/region subtags without confusing private-use tokens; keep browsing usable for unrepresentable timestamps.
+- Permit explicitly enabled public uploads and supported management/rename. Keep published-entry deletion independently permissioned and authenticated; update browser action visibility and optional-key native setup.
+- Add revision-checked atomic permission/key snapshots and bounded process-local transfer observations. Already-admitted handlers/GET bodies retain admission; no public permission or history-control endpoint is added. Native live settings and browser ownership across authentication transitions remain pending.
+- Define Rust native rendering for the final app, retaining Next.js for HTTP browsers and Tauri as a transitional preview. Document egui/Slint/Iced tradeoffs, exploratory paired Linux measurements and the unpassed target/input/accessibility/licensing gates.
+
+Existing desktop preview.1 and Android preview.2 assets remain separate earlier releases. No Rust-rendered application preview or stable release is published by these changes.
+
 ## v0.1.0-preview.2 — Android foreground preview
 
 - Add an Android private-storage host sharing files with another device's HTTP browser, using the existing Rust storage, authentication and file-operation modules.

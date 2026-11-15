@@ -2,6 +2,8 @@
 
 独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面/Android 宿主。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
+后续应用采用 Rust 原生绘制的 GUI，Next.js 继续用于通过 HTTP 访问的浏览器文件管理器。现有 Tauri 安装包属于过渡预览。[原生 GUI 评估](docs/native-gui.md)记录 egui、Slint、Iced 的取舍、Linux 初测结果，以及正式选型前的平台、输入法和无障碍验收要求。
+
 目前是实验性 **0.1.0 preview**。可下载[桌面 preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) 或 [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2)，使用说明分别见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
 
 - [English README](README.md)
@@ -9,6 +11,7 @@
 - [架构](docs/architecture.md) · [API v1](contracts/api-v1.md) · [模块](docs/modules.md)
 - [品牌与身份](docs/branding.md) · [设计系统](DESIGN.md) · [包体积与运行依赖](docs/distribution/size-and-runtime.md)
 - [默认分享地址与二维码规划](docs/network-selection.md)
+- [原生 GUI 选型与性能验收](docs/native-gui.md)
 - [应用商店前期准备](docs/distribution/store-readiness.md) · [隐私数据清单](docs/distribution/privacy-data-inventory.md)
 - [签名复用与应用身份](docs/distribution/signing.md)
 
@@ -26,7 +29,7 @@ cargo run -p share-cli --locked -- \
 
 把 `/path/to/shared-folder` 换成已有目录，再打开 `http://127.0.0.1:5000`。共享目录必须与网页资源目录分开。默认只读，Ctrl-C 停止服务。
 
-需要上传和管理文件时，在共享目录外生成密钥文件，读取后填入浏览器：
+添加 `--writable` 可明确启用上传、创建目录及存储提供者支持的重命名、移动、复制，无须强制设置访问密钥。不设置密钥时，已发布文件的删除权限保持关闭。如果需要保护全部文件访问并启用删除，在共享目录外生成密钥文件，读取后填入浏览器：
 
 ```sh
 python3 scripts/create_key.py ./access.key
@@ -36,6 +39,8 @@ cargo run -p share-cli --locked -- \
 ```
 
 其他设备使用共享电脑的局域网地址访问。配置密钥后，文件 API 都需要验证；HTTP 本身不加密密钥和文件内容。`--modules files` 会关闭上传和管理路由，更多参数见 `share-server --help`。
+
+当前源码支持英语、简体中文、繁体中文、跟随系统语言及四种本地主题。切换语言或主题保留文件操作与传输状态。这些功能及可不设密钥的写入策略属于尚未发布的源码更新；现有 preview 下载包保留原先行为。
 
 ## 桌面宿主
 
@@ -47,6 +52,8 @@ npm --prefix apps/desktop run dev
 ```
 
 桌面宿主通过系统对话框选择目录，设置仅本机或局域网访问、上传和管理权限、访问密钥，再启动服务并打开文件管理窗口。页面重载后显示实际运行设置，状态接口不会返回访问密钥。关闭文件管理窗口会停止共享。
+
+Rust 服务库已支持运行期间原子更新权限和密钥，并提供有界传输记录。已接纳的任务保留开始时的权限快照。原生实时设置控件，以及认证状态切换时浏览器传输任务的完整所有权处理仍待实现；当前宿主仍在停止共享后修改访问设置。
 
 保留可复用的点阵字标，随产品配置更名。启动呈现使用轻量过渡，跟随实际就绪状态结束，没有强制等待，并尊重系统“减少动态效果”设置。清理时间读取实际 CSS 过渡时长和延迟，上限一秒；退出动画期间，已就绪的控件始终可以操作。
 

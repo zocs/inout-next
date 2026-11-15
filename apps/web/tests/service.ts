@@ -9,6 +9,7 @@ const fixtureKey = "browser-fixture-key-32-characters-minimum";
 
 export interface ServiceOptions {
   writable?: boolean;
+  keyed?: boolean;
   modules?: string;
   maxUploadBytes?: number;
   alternateProduct?: boolean;
@@ -33,7 +34,10 @@ export const test = base.extend<{ service: Service; serviceOptions: ServiceOptio
     const keyFile = join(directory, "access.key");
     writeFileSync(keyFile, fixtureKey, { mode: 0o600 });
     const args = ["--root", root, "--listen", "127.0.0.1:0", "--web-dir", join(projectRoot, "apps/web/out")];
-    if (serviceOptions.writable !== false) args.push("--writable", "--key-file", keyFile);
+    if (serviceOptions.writable !== false) {
+      args.push("--writable");
+      if (serviceOptions.keyed !== false) args.push("--key-file", keyFile);
+    }
     if (serviceOptions.modules) args.push("--modules", serviceOptions.modules);
     if (serviceOptions.maxUploadBytes !== undefined) args.push("--max-upload-bytes", String(serviceOptions.maxUploadBytes));
     if (serviceOptions.alternateProduct || serviceOptions.productName) {

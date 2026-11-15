@@ -72,7 +72,7 @@ async fn native_controller_uses_the_real_service_and_stops_it() {
 }
 
 #[tokio::test]
-async fn native_controller_requires_a_selected_root_and_a_key_for_writes() {
+async fn native_controller_requires_a_selected_root_and_rejects_blank_keys() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("files");
     let web = temp.path().join("web");
@@ -84,6 +84,7 @@ async fn native_controller_requires_a_selected_root_and_a_key_for_writes() {
     assert!(host
         .start(StartOptions {
             uploads: true,
+            key: Some("  ".into()),
             ..Default::default()
         })
         .await
@@ -91,6 +92,7 @@ async fn native_controller_requires_a_selected_root_and_a_key_for_writes() {
     assert!(host
         .start(StartOptions {
             manage: true,
+            key: Some("  ".into()),
             ..Default::default()
         })
         .await
@@ -104,6 +106,70 @@ async fn request(url: &str, method: &str, path: &str, extra: &str, body: &str) -
     let mut response = String::new();
     stream.read_to_string(&mut response).await.unwrap();
     response
+}
+
+#[tokio::test]
+async fn explicitly_enabled_public_writes_do_not_enable_published_delete() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("files");
+    let web = temp.path().join("web");
+    std::fs::create_dir(&root).unwrap();
+    create_assets(&web);
+    let host = HostController::new(web);
+    host.select_root(root.clone()).await.unwrap();
+    let status = host
+        .start(StartOptions {
+            uploads: true,
+            manage: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(!status.active_settings.as_ref().unwrap().auth_required);
+    let url = status.manager_url.unwrap();
+    let response = request(&url, "GET", "/api/v1/context", "", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"));
+    let context: serde_json::Value =
+        serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(
+        context["modules"],
+        serde_json::json!(["files", "uploads", "manage"])
+    );
+    assert_eq!(context["permissions"]["upload"], true);
+    assert_eq!(context["permissions"]["manage"], true);
+    assert_eq!(context["permissions"]["rename"], true);
+    assert_eq!(context["permissions"]["delete"], false);
+    assert!(request(
+        &url,
+        "PUT",
+        "/api/v1/content?path=public.txt",
+        "",
+        "public bytes"
+    )
+    .await
+    .starts_with("HTTP/1.1 201"));
+    assert!(request(
+        &url,
+        "POST",
+        "/api/v1/directories",
+        "Content-Type: application/json\r\n",
+        r#"{"path":"Public"}"#
+    )
+    .await
+    .starts_with("HTTP/1.1 201"));
+    assert!(root.join("Public").is_dir());
+    assert!(
+        request(&url, "DELETE", "/api/v1/entries?path=public.txt", "", "")
+            .await
+            .starts_with("HTTP/1.1 403")
+    );
+    assert_eq!(
+        std::fs::read(root.join("public.txt")).unwrap(),
+        b"public bytes"
+    );
+    host.stop().await.unwrap();
+    let address = url.strip_prefix("http://").unwrap();
+    assert!(tokio::net::TcpStream::connect(address).await.is_err());
 }
 
 #[tokio::test]
@@ -321,6 +387,7 @@ async fn active_settings_stay_null_after_failed_starts_and_match_readonly_restar
     assert!(host
         .start(StartOptions {
             uploads: true,
+            key: Some("  ".into()),
             ..Default::default()
         })
         .await

@@ -1,10 +1,10 @@
 # Requirements
 
-Status: experimental0.1.0, 2026-11-15; [desktop preview.1](distribution/preview.md) and [Android foreground preview.2](distribution/android-preview.md) have separate packages and usage scopes. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android physical arm64/16 KiB/network acceptance and iOS adaptation remain pending. No stable release is published yet.
+Status: experimental0.1.0 source, 2026-11-16; [desktop preview.1](distribution/preview.md) and [Android foreground preview.2](distribution/android-preview.md) retain their separate earlier packages and usage scopes. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android physical arm64/16 KiB/network acceptance and iOS adaptation remain pending. No stable release is published yet.
 
 ## Product goal
 
-One device starts a Rust HTTP file service for a chosen desktop directory or the Android preview's app-private storage. Other devices browse and manage its files through a modern Next.js interface without installing an application. The same core is used by a CLI, Tauri desktop shell and Android foreground adapter.
+One device starts a Rust HTTP file service for a chosen desktop directory or the Android preview's app-private storage. Other devices browse and manage its files through a modern Next.js interface without installing an application. The final application uses a Rust-rendered native GUI; Next.js is the HTTP/browser manager. Current CLI/Tauri/Android compositions remain transitional while [native renderer evaluation](native-gui.md) proves the required targets and input/accessibility behavior.
 
 ## Experience carried forward
 
@@ -23,7 +23,8 @@ Planned connection improvements retain automatic consecutive-port fallback and i
 - Stream bounded uploads to staged files. Publish only on completion, clean abandoned staging files, and reject destination collisions without overwriting existing data.
 - Create directories; rename/move entries where the provider supplies exclusive moves; copy files; delete files and explicitly confirmed recursive directories. The UI must follow the actual file/directory move/copy capabilities.
 - Provide clear server errors for authorization, invalid paths, collisions, missing files, unsupported moves, limits and I/O failures.
-- Allow read-only operation. Writable operation must be explicitly enabled and protected by an access key. Support same-origin HttpOnly sessions for native download links and bearer authorization for API clients.
+- Allow read-only operation. Upload, directory creation, rename/move/copy may be explicitly enabled without an access key. Published-entry deletion requires both its independent permission and authentication with a configured key. Support same-origin HttpOnly sessions for browser download links and bearer authorization for API clients; check supplied browser Origin on public mutations too.
+- Keep list/download/upload/general-management/rename/delete permissions distinct. Application-owned updates atomically publish permissions and authentication with an expected revision, affecting subsequent admissions while admitted streams/provider operations retain their snapshot. Permission-only changes retain sessions; key rotation invalidates old credentials for new requests. Native live settings and uninterrupted browser ownership across authentication transitions remain required integration work.
 - Show a responsive file manager, keyboard-accessible controls, actual permissions and an upload queue with cancel/error/finalizing states. Keep all delivered assets local.
 - The HTTP manager supports English, Simplified Chinese and Traditional Chinese, with a system-language preference and evergreen, tangerine, ocean and berry themes. Validated preferences use product-independent browser storage keys and remain usable if storage is denied. Changes preserve folder navigation, search, selection, management inputs, dialogs and queued/in-flight transfers. Known API errors are localized; unknown provider details, file names, paths and custom product descriptions remain data.
 - Explicit Chinese script tags take precedence over system-language region hints. Unrepresentable modification timestamps show localized unavailable metadata without interrupting browsing. A lost upload response must retain the instruction to refresh and check whether the file was saved before retrying; transport failure does not prove that publication failed.
@@ -43,7 +44,7 @@ Planned connection improvements retain automatic consecutive-port fallback and i
 - Domain models have no Axum or native-platform dependencies. Storage is accessed through an interface; the first provider uses filesystem directory capabilities.
 - HTTP features register descriptors and routes. The initial modules are `files`, `uploads` and `manage`; enabling/disabling them controls actual routes and reported UI capabilities.
 - The web application uses a module registry and slots for views, toolbar contributions and panels. Module code consumes shared contracts, not another module's private implementation.
-- The CLI and Tauri shell consume the same service lifecycle interface. Android storage/background adapters belong behind native/provider interfaces.
+- CLI and native hosts consume the same Rust service lifecycle interface. Extract renderer-independent controller/runtime contracts before extending the final GUI; domain/storage/HTTP code must not depend on the GUI toolkit. Android storage/background adapters belong behind native/provider interfaces.
 
 ## Data and transfer constraints
 
@@ -55,6 +56,10 @@ Public web resources must be isolated from the actual provider's shared storage,
 
 Stopping cancels the whole request future, including body extraction, provider calls, copies and range positioning. Explicit stop drains tracked requests within two seconds or returns a shutdown error. Providers own their operations and release them when futures are dropped; detached writes and permanently blocking polls violate that contract.
 
+The service supplies process-local transfer observations bounded to 1,024 active and 200 terminal records, without evicting admitted active work or running a sampler. Stream-body leases span GET response lifetime; upload publication is reported only after storage success. Served bytes do not prove recipient saving or durability. Successful opaque copies use a known published size when supplied; unknown-size copies remain explicitly unmeasured.
+
+The intended application confirms explicit transfer cancellation, page/application close and Stop when they interrupt work. View recreation, theme/language changes and permission edits must not own cancellation. Current foreground-only Android suspension, browser authentication transitions and existing Stop/close controls do not yet provide that complete experience. Durable resume/crash recovery, native history/safe-open, single-file/common-directory sharing and browser previews remain separate milestones.
+
 Download buffers accept 16–128 KiB in 16 KiB increments and default to 128 KiB after a bounded buffer comparison. Capture the setting once per request; existing downloads retain their starting buffer. Filesystem ranges position on the original opened object without reopening a pathname, while asynchronous read-only providers retain a bounded forward-read fallback.
 
 Diagnostic tests use only the active service's IPv4 loopback address and actual port, normal authorization and protected-file checks. A HEAD plus 1/2/4/8 nonempty single ranges reads at most the first 64 MiB without saving content. Permit one test at a time, validate response ranges/lengths, reject settings changes during a test and bound the whole test to 30 seconds. Cancel, disable, Stop, exit and dropping the future release owned connection/request work without holding lifecycle locks across network awaits. Close/Stop restore defaults. Diagnostic status/results contain no key or absolute path; no telemetry, background sampler or Node/Python runtime is added.
@@ -64,6 +69,8 @@ Diagnostic UI replies, notices, errors and finalizers must belong to the current
 Default upload limit is 2 GiB, configurable. The initial release promises continuous streamed upload, not resumable sessions. Resume requires a later persisted-offset/session protocol with concurrency and crash-recovery verification. Preview, archives, WebDAV, recursive indexing and arbitrary native plugin loading are separate milestones.
 
 ## Platform targets
+
+The existing Tauri target results apply to transitional previews. A new renderer independently verifies Windows i686 on a real 32-bit OS, Linux compatibility, macOS architectures, Android minimum/current OS and iOS. Slint's API26 mobile floor must not silently replace the API24 goal; egui's GameActivity/AccessKit and custom iOS host are separate gates. Native startup, actual presented frames, CJK fonts/IME, idle/energy and total package/GPU/process costs follow the [evaluation protocol](native-gui.md).
 
 - Windows x86/x64: core and Tauri builds; portable delivery needs correct-architecture WebView2 and actual moved-folder/offline tests.
 - Linux x64/arm64: standalone service and desktop packages. Ubuntu 18.04/glibc 2.27 compatibility is an independent headless target; Tauri GUI needs a separate WebKitGTK compatibility decision.

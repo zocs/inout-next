@@ -19,6 +19,8 @@ The application displays **inout** while repository/distribution names retain `i
 
 ## Runtime and packaging
 
+The final application targets a Rust-rendered GUI; Next.js remains its HTTP/browser manager. Existing Tauri artifacts and target evidence are transitional. [Native GUI evaluation](native-gui.md) records egui/Glow and Slint/FemtoVG execution on Linux x86_64/X11/Intel only. No Windows/mobile/Apple replacement GUI is built or released. API24, selected-renderer i686, CJK/IME/accessibility, mobile lifecycle, offline/installed packages and store results require independent verification; Slint's API26 minimum is an unresolved product decision.
+
 CLI ZIPs contain the compiled server, static `web/`, product metadata, licence and usage instructions. They do not require Node or Python. Native packages additionally require a platform webview: WebKitGTK4.1/GTK3 on Linux and WebView2 on Windows. Current Windows NSIS uses a downloadable WebView2 bootstrapper; it is not verified offline GUI distribution. See [package size and runtime](distribution/size-and-runtime.md).
 
 Current Ubuntu22.04 native executables import GLIBC through2.34. This rules out a glibc2.27 claim for those executables and does not audit the minimum versions of every bundled/system dependency. AppImage size and a successful extraction do not establish old-distribution runtime compatibility.
@@ -30,6 +32,8 @@ Windows upload/copy publication requires a filesystem supporting hard links; fil
 Android shares `files/shared`, separate from packaged runtime resources. Keep the app on screen: Home/root Back stops the listener, cancels unfinished transfers and leaves sharing stopped on return. Configuration recreation and true Activity destruction also leave sharing stopped; saved files survive, while clearing application data or uninstalling removes them. Another device's browser manages the share. This preview has no foreground Service or arbitrary-folder/local-manager capability.
 
 ## CI
+
+Unreleased source adds localized themes, optional-key writes, separate rename/delete flags and application-side atomic policy/transfer controls. Native live-setting UI and durable recovery are pending. The earlier release CI counts below describe those exact packaged checkpoints, rather than this changed source or a new native renderer.
 
 The [workflow](../.github/workflows/ci.yml) orders Ubuntu22.04 verification, Android arm64 packaging, Windows2022x86/x64 and native macOS15ARM64/Intel through one noncancelling queue and serial matrices. Android explicitly provisions command-line tools build13114758 through a fixed-commit setup action in an isolated SDK directory, then installs the pinned API/build-tools/NDK. It reuses that run's Linux-tested web export, verifies locked Cargo children and packages one optimized unsigned APK with manifest/resource/ABI/alignment checks. Direct preview signing follows artifact acceptance. macOS compiles once; only disk-image creation's resource-busy error permits up to three bundle-only attempts with retained logs. Other errors remain fatal. Resource/architecture/identity checks are separate from installed upgrades and device acceptance. The workflow does not declare LinuxARM64, Ubuntu18.04, iOS or offline Windows GUI artifacts.
 

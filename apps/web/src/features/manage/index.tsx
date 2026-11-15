@@ -25,6 +25,7 @@ function ManageProvider({ children }: ModuleProviderProps) {
 function ManageToolbar({ runtime }: ModuleProps) {
   const { t } = useI18n();
   const { setCreating, createOpener } = useManage();
+  if (!runtime.context.permissions.manage) return null;
   return <button ref={createOpener} className="button button-secondary" onClick={() => { runtime.select(null); setCreating(true); }}><FolderPlus size={18} aria-hidden="true" />{t("New folder")}</button>;
 }
 
@@ -81,8 +82,12 @@ function ManagePanel({ runtime }: ModuleProps) {
     finishFocus(() => { if (opener?.isConnected) opener.focus(); });
   }
 
-  const canMove = selected?.kind === "file" ? runtime.context.capabilities.file_move : runtime.context.capabilities.directory_move;
-  const canCopy = selected?.kind === "file" || runtime.context.capabilities.directory_copy;
+  const permissions = runtime.context.permissions;
+  const movable = selected?.kind === "file" ? runtime.context.capabilities.file_move : runtime.context.capabilities.directory_move;
+  const canRename = movable && (permissions.rename ?? permissions.manage);
+  const canMove = movable && permissions.manage;
+  const canCopy = permissions.manage && (selected?.kind === "file" || runtime.context.capabilities.directory_copy);
+  const canDelete = permissions.delete ?? permissions.manage;
   if (!creating && !selected) return null;
   return <section className="manage-panel" aria-label={t("File actions")}>
     {creating ? <><h3>{t("New folder")}</h3><form ref={form} onSubmit={submit}>
@@ -92,10 +97,10 @@ function ManagePanel({ runtime }: ModuleProps) {
       <div className="form-actions"><button className="button button-primary" disabled={busy}>{busy ? t("Creating…") : t("Create folder")}</button><button className="button button-secondary" type="button" disabled={busy} onClick={cancel}>{t("Cancel")}</button></div>
     </form></> : <>
       <div className="entry-actions">
-        {canMove && <button className="button button-secondary" disabled={busy} onClick={(event) => edit("rename", event.currentTarget)}><Pencil size={16} aria-hidden="true" />{t("Rename")}</button>}
+        {canRename && <button className="button button-secondary" disabled={busy} onClick={(event) => edit("rename", event.currentTarget)}><Pencil size={16} aria-hidden="true" />{t("Rename")}</button>}
         {canMove && <button className="button button-secondary" disabled={busy} onClick={(event) => edit("move", event.currentTarget)}><ArrowRight size={16} aria-hidden="true" />{t("Move")}</button>}
         {canCopy && <button className="button button-secondary" disabled={busy} onClick={(event) => edit("copy", event.currentTarget)}><Copy size={16} aria-hidden="true" />{t("Copy")}</button>}
-        <button className="button button-danger-quiet" disabled={busy} onClick={(event) => edit("delete", event.currentTarget)}><Trash2 size={16} aria-hidden="true" />{t("Delete")}</button>
+        {canDelete && <button className="button button-danger-quiet" disabled={busy} onClick={(event) => edit("delete", event.currentTarget)}><Trash2 size={16} aria-hidden="true" />{t("Delete")}</button>}
       </div>
       {action && action !== "delete" && <form ref={form} className="operation-form" onSubmit={submit}>
         <label className="field">{action === "rename" ? t("New name") : t("Destination path")}<input ref={input} key={action} autoFocus required value={value} onChange={(event) => setValue(event.target.value)} /></label>
@@ -144,6 +149,6 @@ function DeleteDialog({ entry, runtime, close, opener }: ModuleProps & { entry: 
 }
 
 export const manageModule: FeatureModule = {
-  id: "manage", requires: ["files"], enabled: (context) => context.permissions.manage,
+  id: "manage", requires: ["files"], enabled: (context) => context.permissions.manage || !!context.permissions.rename || !!context.permissions.delete,
   Provider: ManageProvider, Toolbar: ManageToolbar, SelectionPanel: ManagePanel,
 };

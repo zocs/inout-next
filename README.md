@@ -2,6 +2,8 @@
 
 An independent Rust HTTP file service, a static Next.js file manager, and Tauri desktop/Android hosts. Share a folder on desktop or app-private files in the Android foreground preview, then browse, upload, download or manage them from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
 
+The planned application uses a Rust-rendered native GUI, with Next.js retained for the HTTP/browser manager. Existing Tauri packages are transitional previews. [Native GUI evaluation](docs/native-gui.md) compares egui, Slint and Iced, records an exploratory Linux measurement and defines the target/input/accessibility gates before adoption.
+
 This is an experimental **0.1.0 preview**. Download [desktop preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) or [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2), with separate [desktop](docs/distribution/preview.md) and [Android](docs/distribution/android-preview.md) usage guides. [CI](https://github.com/zocs/inout-next/actions) covers Linux x64, Android arm64 packaging, Windows x86/x64 and macOS ARM64/x64 in one serial queue. Android runtime checks use an API 36 x86_64 emulator with 4 KiB pages; physical arm64, 16 KiB operation and two-device Wi-Fi remain unverified. Installation, offline distribution and store acceptance have separate milestones in the [platform matrix](docs/platforms.md). iOS adaptation is scheduled later. No stable release is published yet.
 
 - [中文说明](README_zh.md)
@@ -9,6 +11,7 @@ This is an experimental **0.1.0 preview**. Download [desktop preview.1](https://
 - [Architecture](docs/architecture.md) · [API v1](contracts/api-v1.md) · [Modules](docs/modules.md)
 - [Branding](docs/branding.md) · [Design system](DESIGN.md) · [Package size and runtime](docs/distribution/size-and-runtime.md)
 - [Network address and QR plans](docs/network-selection.md)
+- [Native GUI candidates and performance gates](docs/native-gui.md)
 - [App store preparation](docs/distribution/store-readiness.md) · [Privacy data inventory](docs/distribution/privacy-data-inventory.md)
 - [Signing and application identity](docs/distribution/signing.md)
 
@@ -26,7 +29,7 @@ cargo run -p share-cli --locked -- \
 
 Open `http://127.0.0.1:5000`. The selected folder must exist and must be separate from the exported UI assets. The default is read-only. Ctrl-C stops the service.
 
-To allow uploads and management, create a private key outside the shared folder, read it locally, and enter it in the browser:
+Add `--writable` to explicitly allow uploads, directory creation and supported rename/move/copy operations without requiring an access key. Published-file deletion remains disabled without a key. To protect all file access and enable deletion, create a private key outside the shared folder, read it locally, and enter it in the browser:
 
 ```sh
 python3 scripts/create_key.py ./access.key
@@ -36,6 +39,8 @@ cargo run -p share-cli --locked -- \
 ```
 
 Other devices use the sharing computer's LAN address. An access key protects all file APIs when configured. HTTP does not encrypt the key or transferred files. Select `--modules files` to disable upload and management routes. Run `share-server --help` for transfer limits and alternate product configuration.
+
+Current source includes English, Simplified Chinese and Traditional Chinese, system-language selection and four local themes. Changing language/theme preserves file and transfer state. These additions and the optional-key write policy are unreleased source changes; the existing preview downloads retain their earlier behavior.
 
 ## Use the desktop host
 
@@ -47,6 +52,8 @@ npm --prefix apps/desktop run dev
 ```
 
 The desktop host selects a folder through the native dialog, configures local or LAN access and write permissions, generates an optional access key, starts/stops the shared Rust service and opens its file manager. Reloaded controls display the effective running settings; the status never returns the access key. Closing the manager stops sharing.
+
+The Rust service library supports atomic runtime permission/key updates and bounded transfer observations. Already-admitted work retains its policy snapshot. Native live-setting controls and browser transfer ownership through authentication changes remain pending; the current host still changes access settings between service sessions.
 
 The reusable dot-matrix wordmark follows the configured product name. Startup uses a light transition driven by actual readiness, with reduced-motion support and no minimum loading delay. Cleanup follows computed CSS timing with a one-second ceiling; ready controls remain usable throughout the exit.
 

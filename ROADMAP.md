@@ -13,6 +13,15 @@
 
 These foundations are implemented. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export, alongside the recorded core comparison and streamed/relocated checks. The Android extension adds private-host, Kotlin/index, real package and emulator HTTP/browser/lifecycle coverage described below. Current0.1.0 is experimental; target/device/offline/store readiness remains separate.
 
+## Native renderer migration
+
+Next.js remains the HTTP/browser manager. The final app uses Rust native rendering; current Tauri packages remain transitional previews.
+
+- Complete [egui/Slint/Iced feasibility gates](docs/native-gui.md), retaining egui first under API24/permissive-distribution goals and Slint as the documented mobile/declarative alternative. The Linux comparison is exploratory; no toolkit is adopted yet.
+- Extract the application controller/runtime from Tauri before final GUI/live-permission work. Keep Tokio, storage/providers, pickers/grants, branding, diagnostics and native lifecycle behind independent contracts.
+- Prove selected-renderer Windows i686/real 32-bit OS, Android GameActivity or Slint API26 decision, Chinese input/TalkBack/16 KiB and a native iOS host/VoiceOver path.
+- Preserve pixel branding, native localized themes and confirmed Stop/close/cancel, with actual presentation/input/idle/energy and relocated-package measurements.
+
 ## 2. Desktop distribution and compatibility
 
 - Actual Linux/macOS GUI, installation and device verification after current native target builds.
@@ -51,6 +60,11 @@ Remaining Android milestones:
 - Build/sign an archive and perform simulator, TestFlight and physical-device checks when an Apple build environment/device is available. No iOS artifact is currently released.
 
 ## 4. Transfer reliability and optional modules
+
+Current source supplies atomic Rust permission/key updates, independent rename/delete authorization and bounded process-local transfer observations. Already-admitted bodies/provider work retain their policy. The HTTP manager has English/Simplified/Traditional catalogs and four themes; language/theme changes preserve task state. Existing release packages precede these source updates.
+
+- Integrate native live settings and browser ownership across permission/authentication changes without cancelling admitted transfers; retain the mounted-module availability boundary.
+- Add confirmed cancellation/close/Stop and native transfer history/safe-open, single-file/common-directory sharing and configurable browser previews. Durable resume and crash recovery require persisted protocols beyond the current process-local ledger.
 
 - Extend matched core buffer/range measurements to physical LAN, slow clients, real disks and target devices; keep runtime tuning bounded and optional.
 - Persistent resumable uploads, cancellation/retry/crash recovery and multi-GiB/slow-client/concurrency measurements.

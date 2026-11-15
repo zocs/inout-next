@@ -50,7 +50,7 @@ test.describe("native host entry", () => {
     await page.getByLabel("Share on the local network", { exact: true }).check();
     await page.getByLabel("Allow uploads", { exact: true }).check();
     await page.getByLabel("Allow file management", { exact: true }).check();
-    await expect(page.getByRole("button", { name: "Start sharing", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start sharing", exact: true })).toBeEnabled();
     await page.getByRole("button", { name: "Generate access key", exact: true }).click();
     await page.getByRole("button", { name: "Start sharing", exact: true }).click();
     await expect(page.getByRole("button", { name: "Stop sharing", exact: true })).toBeVisible();

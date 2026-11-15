@@ -78,7 +78,17 @@ The smaller earlier read batches increased download work. Raising capacity impro
 
 These are cache-warm localhost samples, not universal speed guarantees. The earlier engine is an Ubuntu 22.04 CI build; the experiment and current engine use the same local compiler/profile. Authentication and filesystem/publication semantics differ between projects. Sampled peak RSS covers the workload including eight concurrent ranges and is higher in the current engine: larger per-request buffers have a real memory cost. Matching warmed RSS for the experiment and current CLI assesses the core control path, not the native diagnostics panel's total overhead.
 
-The built-in native test separately caps reads at 64 MiB and provides a local timing sample, not this checksum-verified comparison. GUI startup, total application/child-webview memory, native IPC, physical LAN, cold disk, slow clients and mobile performance still need matched target measurements. FileInfra's server already uses Rust; replacing its Flutter shell does not itself accelerate file transfers. ETag/If-Range validation, durable resume and feature/platform parity remain incomplete.
+The built-in native test separately caps reads at 64 MiB and provides a local timing sample, not this checksum-verified comparison. Tauri GUI startup, total application/child-webview memory, native IPC, physical LAN, cold disk, slow clients and mobile performance still need matched target measurements. FileInfra's server already uses Rust; replacing its Flutter shell does not itself accelerate file transfers. ETag/If-Range validation, durable resume and feature/platform parity remain incomplete.
+
+## Current source web export
+
+The locally verified localization/permission integration exports 36 files totalling 1,084,605 bytes. JavaScript totals 1,011,194 raw bytes and 312,634 gzip bytes, measured separately per file. The same export passes 131 Chromium cases, including locale/theme changes during a real upload and public-write/action-visibility checks. These figures describe the current local source export; the earlier release-package measurements above retain their own exports and provenance.
+
+## Rust-rendered GUI evaluation
+
+The [native GUI evaluation](../native-gui.md) records a separate exploratory Linux x86_64/X11/Intel comparison of egui 0.37/Glow and Slint 1.18.1/FemtoVG. Both throwaway fixtures use the real Rust service, the same optimized profile and 10,000 filename rows with system-font fallback. Thirty warm launches and six checksum-verified, deliberately throttled 64 MiB workloads passed.
+
+Populated render-callback medians are 125.96/181.08 ms, before OS presentation. Single-executable ZIPs are 5.01/7.85 MiB and idle process PSS is 46.32/48.09 MiB. These are concrete probe measurements, excluding static Next assets, external libraries/fonts, installed runtime cost and complete GPU allocations. Selected font faces/layouts and active render cadence differ; there is no normalized FPS/CPU ranking, cold-start result or mobile/Windows/Apple package acceptance. The reported animation sample slice is post-transfer. No Rust-rendered application preview is released; existing Tauri package sizes above remain separate.
 
 ## Python and repository language percentages
 

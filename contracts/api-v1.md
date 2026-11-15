@@ -8,7 +8,7 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 
 `Entry`: `{name: string, path: string, kind: "file" | "directory", size: number | null, modified: number | null}`. Modified time is UNIX seconds. Directory size is null, not an invented byte count.
 
-`Permissions`: `{list: boolean, download: boolean, upload: boolean, manage: boolean}`.
+`Permissions`: `{list: boolean, download: boolean, upload: boolean, manage: boolean, rename: boolean, delete: boolean}`. General `manage` permits directory creation, move and copy. Rename is separately permissioned and stays within the same parent; deletion is independently permissioned and requires authenticated keyed admission. Rename/delete are additive fields; older server responses without them retain manage-based browser presentation behavior.
 
 `Error`: `{error: {code: string, message: string}}`. Codes include `unauthorized`, `forbidden`, `invalid_path`, `not_found`, `target_exists`, `too_large`, `not_empty`, `unsupported`, `invalid_range`, `conflict`, `io_error`.
 
@@ -16,8 +16,8 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 
 | Endpoint | Request / response |
 | --- | --- |
-| `GET /status` | Public `{product, auth_required}` |
-| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, capabilities: {file_move: boolean, directory_move: boolean, directory_copy: boolean}, limits: {max_upload_bytes}}` |
+| `GET /status` | Public `{product, auth_required, policy_revision}` |
+| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, policy_revision, auth_required, capabilities: {file_move: boolean, directory_move: boolean, directory_copy: boolean}, limits: {max_upload_bytes}}` |
 | `POST /session` | JSON `{key}`; 204 and HttpOnly SameSite=Strict cookie after verification |
 | `DELETE /session` | 204, revoke session and clear cookie |
 | `GET /entries?path=` | `{path, entries: Entry[]}` |
@@ -27,7 +27,7 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 | `POST /operations` | JSON `{action: "rename" | "move" | "copy", source, destination}`; 200 `{entry}` |
 | `DELETE /entries?path=&recursive=false` | 204; root deletion forbidden; nonempty directories need explicit recursion |
 
-Authentication may use `Authorization: Bearer <access-key>` or the issued session. Session-authenticated mutations require a same-origin request; JSON session creation checks any supplied Origin. All operations also enforce server permissions and enabled modules. Writable configuration requires a key. Missing, unauthorized or disabled capabilities do not become active because a client crafts a request.
+Authentication may use `Authorization: Bearer <access-key>` or the issued session. Mutations check any supplied browser Origin, including public writes; session-authenticated mutations require the same-origin boundary. JSON session creation checks supplied Origin. All operations enforce server permissions and enabled modules. Explicit upload/general-management/rename may run without a key; published-entry deletion requires a configured key and authenticated admission. Empty configured keys reject startup. Missing, unauthorized or disabled capabilities do not become active because a client crafts a request.
 
 Storage capabilities are separate from permissions. The filesystem provider supplies file and directory move/rename through exclusive native rename on Linux, Android and Apple-family targets; Windows reports both move capabilities as false. [Android foreground preview.2](../docs/distribution/android-preview.md) release-APK operations are verified on an API36 x86_64/4 KiB emulator, separately from physical arm64 acceptance. Directory copy is not yet implemented. Clients hide unsupported file/directory actions while keeping the operations supported by the actual provider available. Providers must still reject unsupported operations server-side.
 
@@ -36,6 +36,16 @@ Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and
 The filesystem provider positions a range on the original opened handle; stream-only providers use a bounded forward-read fallback. Download buffers default to 128 KiB and can be tuned by a native host for subsequent requests. There is no HTTP tuning endpoint. Concurrent single-range requests are supported, but complete ETag/If-Range validation, multi-range responses and durable transfer resume are not promised.
 
 Uploads reject collisions, publish only after successful completion, enforce the streamed byte limit and clean unfinished staging files. The protocol does not claim resumability.
+
+## Rust application controls
+
+These are in-process Rust interfaces, not HTTP configuration/history endpoints or new Tauri IPC commands. `RunningServer::policy_control()` returns a `PolicyControl`; `router_with_store_and_policy` provides the same authority for an injected-provider router. Status returns `{revision, permissions, auth_required}`. `PolicyUpdate` contains `expected_revision`, complete permissions and `KeyUpdate::{Keep,Replace(String),Remove}`. Validation rejects stale revisions, blank keys, unkeyed deletion and enabling absent modules before atomically replacing the entire snapshot.
+
+Permission-only updates retain existing sessions. Key replacement rejects old credentials for subsequent admissions. Already-admitted handlers and GET bodies retain their original immutable policy/auth snapshot and streamed work. Permission changes do not rebind a listener or stop requests; explicit service Stop still cancels/drains owned work. This backend contract does not establish uninterrupted browser upload ownership across authentication screens or implemented native live controls.
+
+`RunningServer::transfer_control()` returns process-local `TransferControl` observations: `{active, records}`. Each record contains `{id, kind, path, policy_revision, total, bytes, state, started_ms, finished_ms}`; kind is upload/download/copy and state is active/published/served/interrupted/failed. Paths remain relative. Leases begin before pending provider work and span GET response-body lifetime; HEAD creates no transfer. At most 1,024 active and 200 terminal records are retained; capacity rejection never evicts active work. There is no background sampler.
+
+Upload/download byte counts observe stream bodies, not network packet accounting. Published records follow successful storage publication; Served means body bytes passed downstream, not recipient saving or durable storage. Opaque copy receipts supply a final known published size when available, otherwise `total=null` and `bytes=0` mean unmeasured accounting. This history is not persisted and cannot supply durable resume/crash recovery. Native history/safe-open and live-setting integration remain pending.
 
 ## Native host command boundary
 

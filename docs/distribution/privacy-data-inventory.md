@@ -1,8 +1,10 @@
 # Privacy Data Inventory
 
-Checked: 2026-11-15. Scope: [desktop preview.1](preview.md), [Android foreground preview.2](android-preview.md), native diagnostics and configurable inout branding in the experimental Rust/Next.js/Tauri app. This is preparation for channel-specific disclosures, **not a published privacy policy, completed store form or exhaustive third-party privacy audit**. See [store readiness](store-readiness.md) and [official sources](store-sources.json).
+Checked: 2026-11-16. Scope: [desktop preview.1](preview.md), [Android foreground preview.2](android-preview.md), unreleased language/theme preferences, process-local transfer observations, native diagnostics and configurable inout branding. The planned Rust GUI keeps Next.js for HTTP browsers; current Tauri packages remain transitional. This is preparation for channel-specific disclosures, **not a published privacy policy, completed store form or exhaustive third-party privacy audit**. See [store readiness](store-readiness.md) and [official sources](store-sources.json).
 
 ## Current First-Party Data Paths
+
+Unreleased source stores only validated language/theme choices in product-independent browser localStorage keys; storage denial leaves session preferences usable. The Rust transfer control keeps relative file paths, IDs, kinds, sizes/counts, policy revisions and times in memory, bounded to 1,024 active and 200 terminal records. It supplies no public HTTP history route, background sampler or telemetry; records are not durable crash-recovery state. Native history/live-setting UI remains pending. Permission-only edits retain sessions, while key replacement invalidates old credentials for new admissions and leaves admitted work on its prior snapshot.
 
 | Data | Processing and destination | Persistence / user control | Source / evidence boundary |
 | --- | --- | --- | --- |

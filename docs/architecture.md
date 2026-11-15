@@ -1,6 +1,6 @@
 # Architecture
 
-The runtime is an independently implemented Rust file service. Next.js exports static browser assets; Tauri owns native window/service lifecycle. Node builds the UI and Python supports configuration/packaging/verification; neither is a delivered file-server runtime or request handler.
+The runtime is an independently implemented Rust file service. Next.js exports static browser assets; current Tauri hosts own window/service lifecycle. The target application uses a Rust-rendered GUI with a renderer-independent controller, keeping Next.js for HTTP browsers. Node builds the web UI and Python supports configuration/packaging/verification; neither is a delivered file-server runtime or request handler.
 
 ```mermaid
 flowchart TB
@@ -37,13 +37,19 @@ The shell owns selection focus through the shared callback contract. Explicit in
 
 ## Contracts and lifecycle
 
+The [native GUI evaluation](native-gui.md) keeps egui as the first feasibility candidate, Slint as the documented mobile/declarative alternative and Iced as a desktop fallback. Toolkit adoption is undecided. The intended UI event loop dispatches bounded messages to an application-owned Rust runtime; Tokio handles networking/asynchronous storage without blocking widget callbacks. Pickers, storage grants, native lifecycle, branding and signing remain separate adapters. The current `HostController` still resides in the Tauri composition; extracting it before the final GUI/live-settings work is pending.
+
 The API uses `/api/v1` and stable JSON models documented in `contracts/api-v1.md`. Static assets and API share an origin. Browser downloads use HttpOnly session cookies; data uploads use streams rather than whole-file conversion.
 
 A host builds a service configuration, binds a listener and gets a handle containing the actual address and controlled shutdown. Android's first adapter deliberately shares only while its Activity is foregrounded. A future background-capable composition needs independent native Service ownership. Static UI deployment paths are separate from shared data paths.
 
 `ServerConfig::new`, `start` and `RunningServer::{address,request_stop,stop}` form the shared lifecycle. `start_with_store`/`router_with_store` support a replaceable provider without opening `config.root`. Whole-request cancellation and tracked drain cover body extraction and storage futures; explicit stop reports a missed two-second drain deadline.
 
-Downloads use a 128 KiB default read buffer. `DownloadControl` holds one validated shared setting, accepting 16–128 KiB in 16 KiB increments; handlers snapshot it once at request entry, so an adjustment affects subsequent requests. It adds no per-block counters, background sampling or HTTP configuration endpoint. Hosts obtain the application-side handle from `RunningServer::download_control()`.
+`PolicyControl` publishes immutable permission/authentication snapshots atomically. `PolicyUpdate` supplies the expected revision, six action flags and `KeyUpdate::{Keep,Replace,Remove}`. Stale/invalid changes preserve the whole current snapshot; mounted-module availability cannot be expanded by a permission edit. Explicit public upload/general-management/rename is permitted, while deletion requires a configured key and authenticated admission. Permission-only edits retain the same session store; key replacement supplies a new one. Every admitted handler and GET body retains its snapshot independently of later changes. The control is Rust application authority, with no public HTTP settings endpoint.
+
+`RunningServer::transfer_control()` exposes bounded process-local observations. Leases cover pending provider work, uploads/copies and GET response bodies; HEAD creates no transfer. Chunk-level counts and terminal publication/served/interrupted/failed states need no sampler. At most 1,024 active and 200 terminal records are retained. Known-size copy receipts report the published logical size; unknown-size copies remain unmeasured. Served means downstream body bytes rather than recipient-side saving. Native history and permission IPC/UI integration remain pending, including browser provider ownership across permission/authentication changes.
+
+Downloads use a 128 KiB default read buffer. `DownloadControl` holds one validated shared setting, accepting 16–128 KiB in 16 KiB increments; handlers snapshot it once at request entry, so an adjustment affects subsequent requests. Buffer tuning adds no sampler or HTTP configuration endpoint; transfer observations separately count yielded chunks. Hosts obtain the application-side handle from `RunningServer::download_control()`.
 
 `OpenFile` retains a `FileReader` backed by either the original seek-capable handle or an asynchronous read-only stream. Range positioning uses that object instead of reopening a pathname. The filesystem path seeks directly to the requested offset and checks a missing prefix; stream-only providers keep a bounded forward-read fallback. Metadata and content therefore retain the same opened-file identity while high-offset filesystem ranges avoid discarding every preceding byte.
 

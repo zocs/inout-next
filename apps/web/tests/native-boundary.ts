@@ -119,7 +119,7 @@ export async function installNativeBoundary(page: Page, managerUrl: string, opti
       case "start_service": {
         const options = args?.options;
         if (!state.root || !options || state.running) throw new Error("Invalid native start transition");
-        if ((options.uploads || options.manage) && !options.key?.trim()) throw new Error("An access key is required");
+        if (options.key !== null && !options.key.trim()) throw new Error("The access key must not be blank");
         const port = options.port === 0 ? 49321 : options.port;
         state.running = true;
         state.managerUrl = managerUrl;

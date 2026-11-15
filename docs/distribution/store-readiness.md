@@ -1,10 +1,10 @@
 # 应用商店前期准备：Google Play、Apple App Store、F-Droid
 
-政策核查日期：**2026-11-14**；实现状态更新：**2026-11-15**。对应实验性 **0.1.0 preview**。已有 Android 应用私有存储前台 APK 和模拟器验证，尚无移动商店候选包或审核结果。本报告记录官方政策、早期设计要求和当前平台差距。官方来源清单见 [store-sources.json](store-sources.json)，政策变动及正式候选版前须重新核查。
+政策核查日期：**2026-11-14**；实现状态更新：**2026-11-16**。对应实验性 **0.1.0 preview**。已有 Android 应用私有存储前台 APK 和模拟器验证，尚无移动商店候选包或审核结果。本报告记录官方政策、早期设计要求和当前平台差距。官方来源清单见 [store-sources.json](store-sources.json)，政策变动及正式候选版前须重新核查。
 
 ## 结论与渠道划分
 
-Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Google Play](https://v2.tauri.app/distribute/google-play/) 和 [Apple App Store](https://v2.tauri.app/distribute/app-store/) 打包路线。商店收录需要原生平台适配、隐私资料和真实构建/运行证据。当前桌面 preview 没有完成这些条件。
+最终应用计划采用 Rust 原生 GUI，静态 Next.js 用于 HTTP 浏览器文件管理器。现有 Tauri 属于过渡预览，其官方 [Google Play](https://v2.tauri.app/distribute/google-play/) 和 [Apple App Store](https://v2.tauri.app/distribute/app-store/) 打包指南仅作为现有宿主参考。新渲染器需要独立的平台适配、许可核对、隐私资料和真实构建/运行证据。当前 preview 尚未完成商店收录条件。
 
 | 渠道 | 目标产物与用途 | inout 当前差距 |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 
 | 官方要求 | 当前日期下的含义 | 项目准备与通过证据 |
 | --- | --- | --- |
-| [Target API](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) | 自 **2026-08-31** 起，普通 Android 新应用及更新须 target **Android 16 / API 36 或更高**；延长期至 2026-11-01 已过去。已有应用的可发现性要求与新应用提交要求不同 | Android 首个计划须明确 `compileSdk`/`targetSdk`，至少满足当时的普通应用提交要求。`minSdk=24` 是兼容目标，不能代替 target 要求；Tauri/Next 的旧设备运行须另测 |
+| [Target API](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) | 自 **2026-08-31** 起，普通 Android 新应用及更新须 target **Android 16 / API 36 或更高**；延长期至 2026-11-01 已过去。已有应用的可发现性要求与新应用提交要求不同 | Android 首个计划须明确 `compileSdk`/`targetSdk`，至少满足当时的普通应用提交要求。`minSdk=24` 是兼容目标，不能代替 target 要求；每个原生渲染器及浏览器页面的旧设备运行须另测 |
 | [AAB](https://developer.android.com/guide/app-bundle) 与 [签名](https://developer.android.com/studio/publish/app-signing) | 新应用采用 AAB/Play App Signing；上传密钥与应用签名密钥职责不同 | 分开保管 app-signing key、upload key、密码及证书指纹；核对控制台包名和实际 AAB manifest。APK 用于直接分发/F-Droid，两者不可混为一项验收 |
 | [64 位](https://developer.android.com/google/play/requirements/64-bit) 与 [16 KB 页面](https://developer.android.com/guide/practices/page-sizes) | 原生代码需要相应 64 位支持。当前页面规定 target API 35+ 的 64 位应用支持 16 KB，并列出 **2027-02-01** 起不兼容更新无法发布；以本次抓取的当前原文为准 | Android 首个产物先覆盖 arm64。若增加 32 位 ABI，按政策提供对应 64 位 ABI。所有打包 `.so` 都检查 ELF LOAD/RELRO、APK ZIP 对齐、AAB 配置及 16 KB 实际运行；Rust 编译成功不是页面兼容证据 |
 | [原生页面构建指导](https://developer.android.com/guide/practices/page-sizes) | 官方推荐 AGP **8.5.1+**、NDK **r28+**；仍须检查实际打包结果，不能只依赖版本号 | Android 计划固定 JDK/Gradle/AGP/SDK/NDK/Rust 和工具校验值；验证 Rust、Tauri 及全部间接原生库。使用 `zipalign -c -P 16 -v 4`、`bundletool dump config`、ELF 检查和 `adb shell getconf PAGE_SIZE` 的实际结果 |
@@ -53,7 +53,9 @@ Rust + 静态 Next.js + Tauri 路线可以继续，也有 Tauri 官方的 [Googl
 
 首个 iOS 设计应提供：用户选择目录、显式开始共享、前台有效状态、可理解的中断/停止、取消和重新开始。退到后台时允许的有限任务完成与清理须按真实系统行为设计和验证；不要宣称整晚后台共享。通过 [目录选择 API](https://developer.apple.com/documentation/uikit/providing-access-to-directories) 获取 security-scoped URL，并在提供者/授权对象中管理访问生命周期；不能把外部目录 URL 当成无限有效的普通 POSIX 路径。
 
-[2.5.5](https://developer.apple.com/app-store/review/guidelines/#software-requirements) 要求 IPv6-only 可用：现有 native/CLI 的 IPv4 假设须在 Apple 候选版验证 IPv6 地址显示、绑定、URL、连接和下载。静态 Next 页面与 WebKit 宿主可继续复用；[4.2](https://developer.apple.com/app-store/review/guidelines/#minimum-functionality) 要求超过网站包装的实际用途。真实原生目录选择、共享服务控制、停止/权限和平台文件交互是应交付的产品能力，单纯加载网页不构成通过。
+[2.5.5](https://developer.apple.com/app-store/review/guidelines/#software-requirements) 要求 IPv6-only 可用：现有 native/CLI 的 IPv4 假设须在 Apple 候选版验证 IPv6 地址显示、绑定、URL、连接和下载。静态 Next 页面继续用于 HTTP 浏览器文件管理器，最终应用计划采用 Rust 原生 GUI，现有 WebKit/Tauri 宿主属于过渡预览；[4.2](https://developer.apple.com/app-store/review/guidelines/#minimum-functionality) 要求超过网站包装的实际用途。真实原生目录选择、共享服务控制、停止/权限和平台文件交互是应交付的产品能力，单纯加载网页不构成通过。
+
+Rust GUI 选型另见[原生评估](../native-gui.md)。egui 需要 Android GameActivity/AccessKit 与单独的 iOS Metal 宿主验收；Slint 的 Android API26 下限、强制 Skia、Android 无障碍桥接及 GPL/royalty-free/commercial 分发选择都需要提前解决，不能沿用 Tauri 的设备和签名检查作为新渲染器的验收。F-Droid 要验证实际自由软件依赖和源码构建，免版税费用为零不等于已满足收录许可；Apple 分发同样需要对应渠道条款和产物验证。
 
 ### Mac App Store 沙盒与打包
 

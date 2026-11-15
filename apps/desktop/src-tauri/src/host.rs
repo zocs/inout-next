@@ -163,7 +163,7 @@ impl HostController {
         let running = share_http::start(config)
             .await
             .map_err(|error| match error {
-                share_http::ServerError::Policy => "Enter a nonempty access key to enable writes",
+                share_http::ServerError::Policy => "The access key must not be blank",
                 _ => "The service could not start; check the folder, assets and port",
             })?;
         state.addresses = if options.network {

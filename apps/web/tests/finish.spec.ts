@@ -203,7 +203,7 @@ for (const productName of ["NeighborhoodFileStation", "NeighborhoodFileStationNe
 test.describe("native finish behavior at the mocked command boundary", () => {
   test.use({ serviceOptions: { writable: false, modules: "files" } });
 
-  test("running settings survive reload without a stored key and a fresh key permits restart", async ({ page, service }) => {
+  test("running settings survive reload and an optional fresh key protects restart", async ({ page, service }) => {
     await installNativeBoundary(page, service.url);
     await page.goto("http://tauri.localhost");
     const accessKey = page.getByRole("region", { name: "Access key", exact: true }).locator("input");
@@ -232,7 +232,7 @@ test.describe("native finish behavior at the mocked command boundary", () => {
     await expect(page.getByLabel("Allow uploads", { exact: true })).not.toBeChecked();
     await expect(page.getByLabel("Allow file management", { exact: true })).not.toBeChecked();
     await page.getByLabel("Allow uploads", { exact: true }).check();
-    await expect(page.getByRole("button", { name: "Start sharing", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start sharing", exact: true })).toBeEnabled();
     await accessKey.fill("new-local-restart-key");
     await page.getByRole("button", { name: "Start sharing", exact: true }).click();
     await expect(page.getByRole("button", { name: "Stop sharing", exact: true })).toBeVisible();

@@ -164,10 +164,9 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
   }
 
   const validPort = /^\d+$/.test(port) && Number(port) <= 65_535;
-  const keyNeeded = uploads || manage;
   const capabilities = status?.capabilities ?? desktopCapabilities;
   const privateStorage = capabilities.storageKind === "app-private";
-  const ready = !!status?.root && !status.running && validPort && (!keyNeeded || !!key.trim());
+  const ready = !!status?.root && !status.running && validPort;
   const settings = status?.running ? status.activeSettings : null;
   const shownNetwork = settings?.network ?? (capabilities.openManager ? network : true);
   const shownPort = settings ? String(settings.port) : port;
@@ -221,7 +220,7 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
             </>}
           </fieldset>
           <section className="host-section" aria-labelledby="host-key-title"><h3 id="host-key-title">{t("Access key")}</h3>
-            <p className="muted">{t("Required for uploads and file management; optional for read-only sharing.")}</p>
+            <p className="muted">{t("Optional for uploads and file management. Deleting files requires an access key.")}</p>
             {settings?.authRequired && !shownKey && <p className="muted">{t("An access key is configured on this device. Stop sharing to enter or generate a new key.")}</p>}
             {settings && !settings.authRequired && <p className="muted">{t("No access key is set for this sharing session.")}</p>}
             <div className="host-key-row"><label className="field"><span className="visually-hidden">{t("Access key")}</span><input type={showKey ? "text" : "password"} autoComplete="off" value={shownKey} disabled={busy} readOnly={status.running} onChange={(event) => setKey(event.target.value)} /></label>
