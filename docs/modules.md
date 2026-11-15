@@ -50,6 +50,8 @@ Uploads use a module-owned sequential XHR queue with progress, cancellation, err
 
 This is composition through stable interfaces plus configurable availability. Native ABI plugin loading, hot-unloading active transfer modules and third-party executable plugins require a separate lifecycle/security design.
 
+The planned [network recommendation module](network-selection.md) separates platform snapshots/events, a deterministic address selector and QR rendering. It consumes the actual listener port and explicit user choice; it does not alter HTTP/file modules or running interface bindings. Missing platform metadata must produce conservative labels and recommendations. The current desktop composition only lists IPv4 LAN addresses; this selector and QR flow are not implemented.
+
 ## Native diagnostic extension
 
 Diagnostics belong to the native host, outside the public `files`/`uploads`/`manage` registry. The optional header activation callback exists only in the native host; the HTTP manager has a plain brand. Its panel is lazy-loaded and consumes a typed IPC contract rather than shared host paths or another module's private state.

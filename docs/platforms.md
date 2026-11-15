@@ -2,7 +2,7 @@
 
 The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview.
 
-The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The current buffer, diagnostic and startup extension passes 45 core, 23 native, 15 tool and 89 Chromium tests locally, strict Clippy, production builds, streamed/relocated integrity checks and a matched core measurement. The target-package table below describes the earlier verified CI packages until the extension's ordered target build is inspected. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
+The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The buffer, diagnostic and startup checkpoint passes 45 core, 23 native, 19 tool and 89 Chromium tests locally, strict Clippy, production builds, streamed/relocated integrity checks and a matched core measurement. [Desktop CI at c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) completes all five targets serially; all five CLI ZIPs and six native packages match its 35 tested web resources and expected architectures. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
 
 | Target | Verified scope | Remaining work |
 | --- | --- | --- |
@@ -28,7 +28,9 @@ Windows upload/copy publication requires a filesystem supporting hard links; fil
 
 ## CI
 
-The [workflow](../.github/workflows/ci.yml) runs Ubuntu22.04, Windows2022x86/x64 and native macOS15ARM64/Intel targets through one noncancelling queue and serial matrices. Tests execute on the runner host and each target is separately packaged. Resource/architecture/identity checks are separate from installed upgrades and device acceptance. The workflow does not declare Android, LinuxARM64, Ubuntu18.04 or offline Windows GUI artifacts.
+The [workflow](../.github/workflows/ci.yml) runs Ubuntu22.04, Windows2022x86/x64 and native macOS15ARM64/Intel targets through one noncancelling queue and serial matrices. Tests execute on the runner host and each target is separately packaged. macOS compiles once; only disk-image creation's resource-busy error permits up to three bundle-only attempts with retained logs. Other errors remain fatal. Resource/architecture/identity checks are separate from installed upgrades and device acceptance. The workflow does not declare Android, LinuxARM64, Ubuntu18.04 or offline Windows GUI artifacts.
+
+The verified checkpoint executes 45 core tests on Linux, 37 on each Windows target and 43 on each macOS target, reflecting platform-specific cases; every target passes 23 native tests and strict Clippy. Linux also passes 19 Python tool and 89 Chromium tests plus streamed 128 MiB and relocated 8 MiB integrity/clean-stop checks. Both macOS bundles succeed on their first attempt; the bounded retry policy has real-child-process tests but no resource-busy event occurs in this successful run.
 
 ## Store channels
 

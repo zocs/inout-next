@@ -8,6 +8,7 @@ This is an experimental **0.1.0 preview**. [CI](https://github.com/zocs/inout-ne
 - [Requirements](docs/requirements.md) · [Roadmap](ROADMAP.md) · [Platforms](docs/platforms.md)
 - [Architecture](docs/architecture.md) · [API v1](contracts/api-v1.md) · [Modules](docs/modules.md)
 - [Branding](docs/branding.md) · [Design system](DESIGN.md) · [Package size and runtime](docs/distribution/size-and-runtime.md)
+- [Network address and QR plans](docs/network-selection.md)
 - [App store preparation](docs/distribution/store-readiness.md) · [Privacy data inventory](docs/distribution/privacy-data-inventory.md)
 - [Signing and application identity](docs/distribution/signing.md)
 
@@ -77,9 +78,11 @@ python3 scripts/verify_runtime.py --mib 128
 
 Browser tests use Chromium and the actual Rust service/filesystem. Native command-boundary fixtures are separate from target-device tests. Install Chromium locally or run `npx playwright install --with-deps chromium` from `apps/web`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` selects another installed binary.
 
-Current local acceptance passes 45 core, 23 native, 15 Python tool and 89 Chromium tests, both strict Clippy checks, production builds and streamed/relocated integrity checks. A checksum-verified core comparison measures the 128 KiB buffer and same-handle ranges against the earlier engine and FileInfra's shipped dufs. The [size/runtime report](docs/distribution/size-and-runtime.md) records improved download timings, higher peak memory under concurrent ranges and the limits of localhost sampling; it makes no GUI or physical-LAN performance claim.
+Current local acceptance passes 45 core, 23 native, 19 Python tool and 89 Chromium tests, both strict Clippy checks, production builds and streamed/relocated integrity checks. A checksum-verified core comparison measures the 128 KiB buffer and same-handle ranges against the earlier engine and FileInfra's shipped dufs. The [size/runtime report](docs/distribution/size-and-runtime.md) records improved download timings, higher peak memory under concurrent ranges and the limits of localhost sampling; it makes no GUI or physical-LAN performance claim.
 
-The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue. Linux verification precedes the Windows x86/x64 matrix, then the macOS arm64/x64 matrix; every matrix has `max-parallel: 1`. It creates CLI ZIPs and native bundles for implemented desktop targets. Android and offline Windows packages remain platform milestones.
+[Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five targets serially. Its five CLI ZIPs and six native packages match the expected executable architectures and all 35 tested web resources; emitted Debian and Windows installer identity checks also pass. Package verification remains separate from installed/device/offline/signing readiness.
+
+The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue. Linux verification precedes the Windows x86/x64 matrix, then the macOS arm64/x64 matrix; every matrix has `max-parallel: 1`. macOS compiles once, then permits at most three total bundle attempts for the specific `hdiutil create` resource-busy error, retaining each attempt's output; other errors remain fatal. It creates CLI ZIPs and native bundles for implemented desktop targets. Android and offline Windows packages remain platform milestones.
 
 ```sh
 cargo build -p share-cli --release --locked

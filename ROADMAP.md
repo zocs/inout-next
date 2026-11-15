@@ -11,7 +11,7 @@
 - Real filesystem/browser tests, transfer hashes, identity/resource verification and serial Linux/Windows/macOS CI.
 - Public API, architecture, design-system and distribution documentation.
 
-These foundations are implemented. Current local acceptance includes 45 core, 23 native and 89 Chromium tests, production builds, streamed/relocated integrity checks and a 12-process matched core comparison. The current0.1.0 is experimental; these checks remain separate from installed/device/offline/signing readiness.
+These foundations are implemented. Current local acceptance includes 45 core, 23 native, 19 Python tool and 89 Chromium tests, production builds, streamed/relocated integrity checks and a 12-process matched core comparison. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export. The current0.1.0 is experimental; these checks remain separate from installed/device/offline/signing readiness.
 
 ## 2. Desktop distribution and compatibility
 
@@ -22,6 +22,12 @@ These foundations are implemented. Current local acceptance includes 45 core, 23
 - Reduce Linux native runtime-packaging cost while retaining required libraries and truthful compatibility.
 - Safe Windows move/rename and directory copy where storage guarantees permit them.
 - LinuxARM64 runtime and an explicit Ubuntu18.04/glibc2.27/WebKitGTK compatibility strategy.
+
+## Connection experience
+
+- Preserve bounded consecutive-port fallback, actual-address display and the preferred port for the next start, with controlled app-owned shutdown.
+- Add a modular [sharing-address recommendation and QR flow](docs/network-selection.md): explicit user choice, confirmed hotspots, recent network changes and successful remote transfers, with stable fallback and simple connection labels.
+- Verify interface classification, network events and permission degradation independently on each platform, followed by real two-device scanning/transfers; new VPN/virtual interfaces must not displace ordinary LAN connections automatically.
 
 ## 3. Android integration
 
