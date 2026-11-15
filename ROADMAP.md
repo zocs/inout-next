@@ -11,7 +11,7 @@
 - Real filesystem/browser tests, transfer hashes, identity/resource verification and serial Linux/Windows/macOS CI.
 - Public API, architecture, design-system and distribution documentation.
 
-These foundations are implemented. Current local acceptance includes 45 core, 23 native, 19 Python tool and 89 Chromium tests, production builds, streamed/relocated integrity checks and a 12-process matched core comparison. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export. The current0.1.0 is experimental; these checks remain separate from installed/device/offline/signing readiness.
+These foundations are implemented. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export, alongside the recorded core comparison and streamed/relocated checks. The Android extension adds private-host, Kotlin/index, real package and emulator HTTP/browser/lifecycle coverage described below. Current0.1.0 is experimental; target/device/offline/store readiness remains separate.
 
 ## 2. Desktop distribution and compatibility
 
@@ -31,14 +31,22 @@ These foundations are implemented. Current local acceptance includes 45 core, 23
 
 ## 3. Android integration
 
-Android arm64 is the immediate mobile build priority after [the first desktop prerelease](docs/distribution/preview.md). Deliver and label build, installation/startup, storage/transfer and foreground-service milestones separately. Upload a testable Android preview after its actual supported behavior is verified. iOS adaptation and build preparation remain scheduled later, with physical-device validation pending.
+The first Android composition is a [foreground preview](docs/distribution/android-preview.md), separate from the completed [desktop prerelease](docs/distribution/preview.md). It shares app-private files with another device's browser, retains the existing Rust authorization/storage modules and exposes capability-aware native controls. Home/root Back stops sharing; resume requires explicit Start. Raw packaged web resources are integrity-checked outside the shared root. Optimized arm64 package inspection and API36 x86_64/4 KiB emulator execution are separate from physical-device acceptance.
 
-- Rust library/JNI and native Service ownership independent of Activity/WebView.
+Remaining Android milestones:
+
+- Native Service ownership independent of Activity/WebView, extending the implemented Rust library/JNI host.
 - User-started, visible and stoppable sharing with correct foreground-service prerequisites/types/timeouts.
-- SAF/app-private storage and truthful provider publication/move capabilities.
+- SAF directory selection and local import/export/manager UX, retaining the implemented app-private storage and truthful provider publication/move capabilities.
 - API24 minimum-runtime goal, current Play submission target and version-aware local-network permissions.
-- Actual arm64APK/AAB,16KB native-library/package alignment and physical-device operation.
+- Physical arm64 and real16 KiB operation, two-device Wi-Fi, minimum/current OS and modern System WebView checks; AAB/store packaging beyond the inspected direct APK.
 - Repeatable clean-source web/Rust/Gradle builds, explicit versionCode, permission revocation and signing-channel continuity.
+
+### iOS/iPadOS preparation
+
+- Adapt security-scoped documents and explicit foreground/allowed finite sharing, interruption, cancellation and manual restart.
+- Prepare current Apple SDK/deployment, local-network/IPv6 and privacy-manifest requirements with stable identity and independent build numbers.
+- Build/sign an archive and perform simulator, TestFlight and physical-device checks when an Apple build environment/device is available. No iOS artifact is currently released.
 
 ## 4. Transfer reliability and optional modules
 
@@ -46,7 +54,6 @@ Android arm64 is the immediate mobile build priority after [the first desktop pr
 - Persistent resumable uploads, cancellation/retry/crash recovery and multi-GiB/slow-client/concurrency measurements.
 - Archives, previews, editor and search through independently registered modules.
 - Lightweight old-browser fallback and additional storage providers.
-- iOS foreground-sharing feasibility, security-scoped storage, IPv6 and interruption/restart behavior.
 
 ## 5. Store candidates
 
@@ -59,4 +66,4 @@ Android arm64 is the immediate mobile build priority after [the first desktop pr
 
 ## Release criteria
 
-Relevant tests, independent review, actual CI/artifact verification, truthful platform limits and current product documentation precede a release. Store candidates additionally require their channel-specific evidence. Current CLI ZIPs and native target builds do not establish Android, old-Linux, offline Windows or store readiness.
+Relevant tests, independent review, actual CI/artifact verification, truthful platform limits and current product documentation precede a release. Store candidates additionally require their channel-specific evidence. Target builds and emulator operation do not establish physical arm64/16 KiB/Wi-Fi, old-Linux, offline Windows or store readiness.

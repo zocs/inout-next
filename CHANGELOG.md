@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0 — Android foreground preview
+
+- Add an Android private-storage host sharing files with another device's HTTP browser, using the existing Rust storage, authentication and file-operation modules.
+- Expose native storage/folder/manager/foreground capabilities. The mobile UI explains persistence and foreground lifetime, hides unsupported actions and uses larger touch controls.
+- Stop sharing on Home/root Back; resume requires manual Start. Serialize pending suspension/start/stop, retain files during Activity recreation and clean up the owned service on final destruction.
+- Give the Android shutdown worker sole ownership of final process termination, preventing framework exit from racing active renderer threads after service cleanup; preserve desktop exit behavior.
+- Materialize the raw Next export from a bounded SHA-256 index before Rust initialization, keeping runtime resources separate from uploaded files. Preserve underscore-prefixed Next assets through Android packaging.
+- Pin API36/min24, NDK28.2.13676358, JDK17, AGP8.13.1, Kotlin2.2.20 and Gradle8.14; retain text scaffolding while excluding generated/binary/private files. Build one ABI with verified locked Cargo children.
+- Add APK manifest/resource/ABI/ELF/native ZIP/signature inspection, actual Kotlin assets tests and release-APK HTTP/browser/lifecycle verification on an API36 x86_64 emulator with4 KiB pages.
+- Use the separate `.preview` package identity and preview certificate; production/FileInfra/store signing remains independent. Add Android arm64 packaging to the single serial CI queue.
+
+The [Android guide](docs/distribution/android-preview.md) records current usage and validation limits. Physical arm64/16 KiB/two-device Wi-Fi, SAF, native foreground Service, local import/manager, AAB/store acceptance and iOS remain later milestones.
+
 ## 0.1.0 — Desktop preview (v0.1.0-preview.1)
 
 - Add an independent Rust file service and CLI, static Next.js manager and Tauri desktop host.
@@ -20,4 +33,4 @@
 - Document architecture, API contracts, design tokens, platform limits, signing reuse, early store/privacy requirements and measured core transfer/size costs.
 - Define future default-address and QR requirements around explicit user choice, confirmed hotspots, recent network changes, stable recommendations and simple connection labels; these features are not implemented yet.
 
-[The desktop prerelease](docs/distribution/preview.md) provides the verified five-target packages and checksums for testing. Android arm64 is the next build priority; iOS native adaptation is scheduled later. Mobile storage/service support, the new port-fallback and QR recommendation changes, durable resume, directory copy, Windows move/rename, older Linux compatibility, offline GUI packaging and installed/signing/store validation remain future work. No stable release is published yet.
+[The desktop prerelease](docs/distribution/preview.md) provides the verified five-target packages and checksums for testing. Its packages remain separate from the later Android foreground composition above. SAF/native foreground Service, iOS, the new port-fallback and QR recommendation changes, durable resume, directory copy, Windows move/rename, older Linux compatibility, offline GUI packaging and installed/store validation remain future work. No stable release is published yet.

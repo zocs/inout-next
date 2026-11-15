@@ -4,6 +4,17 @@
 **/out/
 **/dist/
 **/gen/
+!/apps/desktop/src-tauri/gen/
+/apps/desktop/src-tauri/gen/*
+!/apps/desktop/src-tauri/gen/android/
+**/.gradle/
+**/.kotlin/
+/tests/android-assets/build/
+**/gen/android/**/build/
+**/gen/android/gradle/wrapper/*.jar
+**/gen/android/app/src/main/assets/web/
+**/gen/android/app/src/main/assets/inout-web-index.tsv
+**/gen/android/app/src/main/res/mipmap-*/
 **/target/
 /.local/
 /.superpowers/

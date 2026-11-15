@@ -240,6 +240,13 @@ progress::-moz-progress-bar { background: var(--color-accent); border-radius: 3p
 .host-addresses > div { display: block; margin-top: var(--space-form); }
 .host-addresses dd { margin-top: var(--space-small); overflow-wrap: anywhere; }
 .host-addresses ul { margin: 0; padding: 0; list-style: none; }
+.touch-controls .brand h1 button { min-height: 48px; min-width: 48px; }
+.host-touch .button, .host-touch .icon-button, .host-touch .field input { min-height: 48px; }
+.host-touch .icon-button { width: 48px; min-width: 48px; }
+.host-touch .host-key-row { grid-template-columns: minmax(0, 1fr) 48px; }
+.host-touch .checkbox-field { min-height: 48px; align-items: center; }
+.host-touch .checkbox-field input { margin-top: 0; }
+.host-touch p, .host-touch label, .host-touch input, .host-touch .host-addresses { font-size: 16px; }
 .host-addresses li + li { margin-top: var(--space-label); }
 dialog { border: 0; border-radius: 14px; padding: var(--space-shell); max-width: 460px; width: calc(100% - 32px); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 20px 64px var(--color-dialog-shadow); }
 dialog::backdrop { background: var(--color-dialog-backdrop); }

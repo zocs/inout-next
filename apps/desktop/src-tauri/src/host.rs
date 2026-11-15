@@ -1,5 +1,7 @@
+mod capabilities;
 #[path = "diagnostics.rs"]
 pub(crate) mod diagnostics;
+pub use capabilities::{HostCapabilities, StorageKind};
 use diagnostics::Diagnostics;
 pub use diagnostics::{DiagnosticReport, DiagnosticStatus};
 use serde::{Deserialize, Serialize};
@@ -39,6 +41,7 @@ pub struct HostStatus {
     pub manager_url: Option<String>,
     pub addresses: Vec<String>,
     pub active_settings: Option<ActiveSettings>,
+    pub capabilities: HostCapabilities,
 }
 
 #[derive(Default)]
@@ -51,7 +54,7 @@ struct HostState {
 }
 
 impl HostState {
-    fn status(&self) -> HostStatus {
+    fn status(&self, capabilities: HostCapabilities) -> HostStatus {
         HostStatus {
             root: self
                 .root
@@ -64,6 +67,7 @@ impl HostState {
                 .map(|server| format!("http://127.0.0.1:{}", server.address().port())),
             addresses: self.addresses.clone(),
             active_settings: self.active_settings.clone(),
+            capabilities,
         }
     }
 }
@@ -72,6 +76,7 @@ impl HostState {
 /// root change from racing a listener that is still starting or shutting down.
 pub struct HostController {
     web_dir: PathBuf,
+    capabilities: HostCapabilities,
     state: Mutex<HostState>,
     probe_permit: Arc<Semaphore>,
 }
@@ -80,24 +85,49 @@ impl HostController {
     pub fn new(web_dir: PathBuf) -> Self {
         Self {
             web_dir,
+            capabilities: HostCapabilities::default(),
             state: Mutex::new(HostState::default()),
             probe_permit: Arc::new(Semaphore::new(1)),
         }
     }
 
+    pub fn new_app_private(web_dir: PathBuf, root: PathBuf) -> Result<Self, String> {
+        let root = checked_root(root)?;
+        let web_dir = web_dir
+            .canonicalize()
+            .map_err(|_| "The packaged web resources are unavailable")?;
+        if !checked_assets(&web_dir) {
+            return Err("The packaged web assets are missing or incomplete".into());
+        }
+        if root.starts_with(&web_dir) || web_dir.starts_with(&root) {
+            return Err("App storage must be separate from the application resources".into());
+        }
+        Ok(Self {
+            web_dir,
+            capabilities: HostCapabilities::app_private(),
+            state: Mutex::new(HostState {
+                root: Some(root),
+                ..HostState::default()
+            }),
+            probe_permit: Arc::new(Semaphore::new(1)),
+        })
+    }
+
+    pub fn capabilities(&self) -> HostCapabilities {
+        self.capabilities
+    }
+
     pub async fn select_root(&self, root: PathBuf) -> Result<HostStatus, String> {
+        if !self.capabilities.choose_folder {
+            return Err("This preview shares only its own app storage".into());
+        }
         let mut state = self.state.lock().await;
         if state.running.is_some() {
             return Err("Stop the service before choosing another folder".into());
         }
-        let root = root
-            .canonicalize()
-            .map_err(|_| "The selected folder is unavailable")?;
-        if !root.is_dir() {
-            return Err("Choose a folder to share".into());
-        }
+        let root = checked_root(root)?;
         state.root = Some(root);
-        Ok(state.status())
+        Ok(state.status(self.capabilities))
     }
 
     pub async fn start(&self, options: StartOptions) -> Result<HostStatus, String> {
@@ -155,7 +185,7 @@ impl HostController {
             self.probe_permit.clone(),
         ));
         state.running = Some(running);
-        Ok(state.status())
+        Ok(state.status(self.capabilities))
     }
 
     pub async fn stop(&self) -> Result<HostStatus, String> {
@@ -172,7 +202,7 @@ impl HostController {
                 .await
                 .map_err(|_| "The service could not shut down cleanly")?;
         }
-        Ok(state.status())
+        Ok(state.status(self.capabilities))
     }
 
     pub async fn diagnostic_status(&self) -> DiagnosticStatus {
@@ -240,8 +270,18 @@ impl HostController {
     }
 
     pub async fn status(&self) -> HostStatus {
-        self.state.lock().await.status()
+        self.state.lock().await.status(self.capabilities)
     }
+}
+
+fn checked_root(root: PathBuf) -> Result<PathBuf, String> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "The selected folder is unavailable")?;
+    if !root.is_dir() {
+        return Err("Choose a folder to share".into());
+    }
+    Ok(root)
 }
 
 fn lan_addresses(port: u16) -> Vec<String> {

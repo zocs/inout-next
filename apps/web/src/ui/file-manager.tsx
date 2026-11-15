@@ -148,8 +148,8 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
   </>;
 }
 
-export function Header({ product, context, canLock, lock, onBrandActivate }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void; onBrandActivate?: (origin: HTMLButtonElement) => void }) {
-  return <header className="app-header"><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}><Wordmark name={product.name} /></button> : <Wordmark name={product.name} />}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
+export function Header({ product, context, canLock, lock, onBrandActivate, touchFriendly }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void; onBrandActivate?: (origin: HTMLButtonElement) => void; touchFriendly?: boolean }) {
+  return <header className={`app-header${touchFriendly ? " touch-controls" : ""}`}><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}><Wordmark name={product.name} /></button> : <Wordmark name={product.name} />}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions">{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage ? "Can edit" : "Read only"}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />Lock files</button>}</div></header>;
 }
 
 function Unlock({ api, product, unlocked }: { api: FileApi; product: Product; unlocked: (context: ServerContext) => void }) {

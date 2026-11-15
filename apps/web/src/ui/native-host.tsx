@@ -21,7 +21,17 @@ interface HostStatus {
     manage: boolean;
     authRequired: boolean;
   } | null;
+  capabilities?: {
+    storageKind: "folder" | "app-private";
+    chooseFolder: boolean;
+    openManager: boolean;
+    foregroundOnly: boolean;
+  };
 }
+
+const desktopCapabilities = {
+  storageKind: "folder", chooseFolder: true, openManager: true, foregroundOnly: false,
+} as const;
 
 function nativeError(error: unknown): string {
   return typeof error === "string" ? error : error instanceof Error ? error.message : "The native action failed. Try again.";
@@ -62,7 +72,7 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
   const startControl = useRef<HTMLButtonElement>(null);
   const stopControl = useRef<HTMLButtonElement>(null);
   const focusAfterChange = useRef<"start" | "stop" | null>(null);
-  const retryFocus = useRef<{ origin: HTMLButtonElement; destination: "folder" | "stop" | "retry" } | null>(null);
+  const retryFocus = useRef<{ origin: HTMLButtonElement; destination: "folder" | "start" | "stop" | "retry" } | null>(null);
 
   useEffect(() => {
     // A stopped host (including no selected folder) is usable setup. An initial
@@ -107,7 +117,7 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
     if (busy || !task) return;
     retryFocus.current = null;
     if (document.activeElement !== document.body && !task.origin.contains(document.activeElement)) return;
-    const control = task.destination === "folder" ? folderControl : task.destination === "stop" ? stopControl : retryControl;
+    const control = task.destination === "folder" ? folderControl : task.destination === "start" ? startControl : task.destination === "stop" ? stopControl : retryControl;
     control.current?.focus();
   }, [busy, status, error]);
 
@@ -123,10 +133,13 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
     if (inFlight.current) return;
     const owned = origin.contains(document.activeElement);
     await act(async () => {
-      let destination: "folder" | "stop" | "retry" = "retry";
+      let destination: "folder" | "start" | "stop" | "retry" = "retry";
       try {
         const next = await invoke<HostStatus>("host_status");
-        if (mounted.current) { setStatus(next); destination = next.running ? "stop" : "folder"; }
+        if (mounted.current) {
+          setStatus(next);
+          destination = next.running ? "stop" : next.capabilities?.chooseFolder === false ? "start" : "folder";
+        }
       } finally {
         if (owned && mounted.current) retryFocus.current = { origin, destination };
       }
@@ -148,9 +161,11 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
 
   const validPort = /^\d+$/.test(port) && Number(port) <= 65_535;
   const keyNeeded = uploads || manage;
+  const capabilities = status?.capabilities ?? desktopCapabilities;
+  const privateStorage = capabilities.storageKind === "app-private";
   const ready = !!status?.root && !status.running && validPort && (!keyNeeded || !!key.trim());
   const settings = status?.running ? status.activeSettings : null;
-  const shownNetwork = settings?.network ?? network;
+  const shownNetwork = settings?.network ?? (capabilities.openManager ? network : true);
   const shownPort = settings ? String(settings.port) : port;
   const shownUploads = settings?.uploads ?? uploads;
   const shownManage = settings?.manage ?? manage;
@@ -163,7 +178,8 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
     if (!ready) return;
     await act(async () => {
       const next = await invoke<HostStatus>("start_service", { options: {
-        network, port: Number(port), uploads, manage, key: key.trim() ? key : null,
+        network: capabilities.openManager ? network : true,
+        port: Number(port), uploads, manage, key: key.trim() ? key : null,
       } });
       if (mounted.current) {
         setActiveKey(key.trim() ? { managerUrl: next.managerUrl, value: key } : null);
@@ -174,22 +190,25 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
   }
 
   return <>
-    <Header product={product} onBrandActivate={activateBrand} />
-    <main className="host-main">
-      <div className="host-heading"><h2>Share a folder</h2><p>Choose the files this device makes available, then open the file manager or connect from another device.</p></div>
+    <Header product={product} onBrandActivate={activateBrand} touchFriendly={capabilities.foregroundOnly} />
+    <main className={`host-main${capabilities.foregroundOnly ? " host-touch" : ""}`}>
+      <div className="host-heading"><h2>{privateStorage ? "Share files" : "Share a folder"}</h2><p>{privateStorage
+        ? "Use this app’s storage to share files with another device on your local network."
+        : "Choose the files this device makes available, then open the file manager or connect from another device."}</p></div>
+      {capabilities.foregroundOnly && <p className="notice" role="note">Keep this app on screen. Sharing stops when it goes into the background. Return here and start sharing again.</p>}
       <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{status ? status.running ? "Sharing is active." : "Sharing is stopped." : ""}</p>
       {error && <p className="notice error" role="alert">{error}</p>}
       {!status ? <>{error || busy ? <button ref={retryControl} type="button" className="button button-secondary" disabled={busy} onClick={(event) => void retry(event.currentTarget)}>{busy ? "Connecting…" : "Try again"}</button>
         : <p role="status">Connecting to native controls…</p>}</> : <div className="host-layout">
         <form className="host-settings" onSubmit={start}>
-          <section className="host-section" aria-labelledby="host-folder-title"><h3 id="host-folder-title">Shared folder</h3>
-            <p className="host-root">{status.root ?? "No folder selected"}</p>
-            <button ref={folderControl} type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />Choose folder</button>
-            {status.running && <p className="muted">Stop sharing to change the folder or access settings.</p>}
+          <section className="host-section" aria-labelledby="host-folder-title"><h3 id="host-folder-title">{privateStorage ? "App storage" : "Shared folder"}</h3>
+            <p className="host-root">{privateStorage ? "Files uploaded here stay in this app. Uninstalling removes them." : status.root ?? "No folder selected"}</p>
+            {capabilities.chooseFolder && <button ref={folderControl} type="button" className="button button-secondary" disabled={busy || status.running} onClick={() => void change("choose_folder")}><FolderOpen size={18} aria-hidden="true" />Choose folder</button>}
+            {status.running && <p className="muted">{capabilities.chooseFolder ? "Stop sharing to change the folder or access settings." : "Stop sharing to change access settings."}</p>}
           </section>
           <fieldset className="host-section host-options" disabled={busy || status.running}><legend>Access settings</legend>
             {status.running && !settings ? <p className="muted">Active settings are unavailable. Stop sharing to configure a new session.</p> : <>
-            <label className="checkbox-field"><input type="checkbox" checked={shownNetwork} onChange={(event) => setNetwork(event.target.checked)} />Share on the local network</label>
+            <label className="checkbox-field"><input type="checkbox" checked={shownNetwork} disabled={!capabilities.openManager} onChange={(event) => setNetwork(event.target.checked)} />Share on the local network</label>
             <p className="muted">{shownNetwork ? "Other devices can connect using this device’s local network address." : "Only browsers on this device can connect."}</p>
             <label className="field host-port">Port<input type="number" min="0" max="65535" step="1" required value={shownPort} onChange={(event) => setPort(event.target.value)} /></label>
             <p className="muted">Use 0 to choose an available port.</p>
@@ -211,10 +230,11 @@ export default function NativeHost({ onReady }: { onReady?: () => void }) {
           </div>
         </form>
         <aside className="host-connection" aria-labelledby="connection-title"><h3 id="connection-title">{status.running ? "Sharing is active" : "Ready when you are"}</h3>
-          {status.running ? <><p>Open the file manager on this device to browse and transfer files.</p><button className="button button-primary" disabled={busy} onClick={() => void act(async () => { await invoke("open_manager"); })}>Open file manager</button>
-            <dl className="host-addresses"><div><dt>This device</dt><dd>{status.managerUrl}</dd></div>{status.addresses.length > 0 && <div><dt>Local network</dt><dd><ul>{status.addresses.map((address) => <li key={address}>{address}</li>)}</ul></dd></div>}</dl>
-            <p className="muted">Share a local network address and the access key with the person connecting. Closing the file manager stops sharing.</p>
-          </> : <p>Select a folder and start sharing. Files stay on this device.</p>}
+          {status.running ? <><p>{capabilities.openManager ? "Open the file manager on this device to browse and transfer files." : "Open a local network address on another device to upload, browse and manage files."}</p>
+            {capabilities.openManager && <button className="button button-primary" disabled={busy} onClick={() => void act(async () => { await invoke("open_manager"); })}>Open file manager</button>}
+            <dl className="host-addresses">{capabilities.openManager && <div><dt>This device</dt><dd>{status.managerUrl}</dd></div>}{status.addresses.length > 0 && <div><dt>Local network</dt><dd><ul>{status.addresses.map((address) => <li key={address}>{address}</li>)}</ul></dd></div>}</dl>
+            <p className="muted">{capabilities.openManager ? "Share a local network address and the access key with the person connecting. Closing the file manager stops sharing." : "Share the address and any access key with the person connecting. Keep this app on screen while transferring."}</p>
+          </> : <p>{privateStorage ? "Start sharing, then upload files from another device. Files stay in this app." : "Select a folder and start sharing. Files stay on this device."}</p>}
         </aside>
       </div>}
       {diagnosticsOpen && <Suspense fallback={<p role="status">Loading local diagnostics…</p>}><DiagnosticPanel serviceRunning={!!status?.running} onClose={closeDiagnostics} /></Suspense>}

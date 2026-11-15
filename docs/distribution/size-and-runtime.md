@@ -43,11 +43,17 @@ These six native packages come from the same c004d68 CI checkpoint. Extraction v
 | Linux x64 AppImage | 79.06MiB | 22.41MiB | Current Tauri bundle includes a large WebKitGTK/JavaScriptCore/GTK/ICU library closure |
 | macOS Intel native archive | 4.25MiB DMG | 20.03MiB ZIP | Different archive formats; Tauri uses Apple's system webview |
 | macOS ARM64 DMG | 4.16MiB | 19.93MiB ZIP | Different archive formats and native runtimes |
-| Android arm64 APK | Not built | 11.14MiB | No inout-next mobile-size or device claim yet |
+| Android arm64 APK | 15.40MiB local signed foreground candidate | 11.14MiB | Different feature sets; Tauri uses Android System WebView, and physical arm64 is unverified |
 
 FileInfra's Windowsx64 portable **GUI** ZIP is15.42MiB; it is not equivalent to the1.45MiB inout-next **CLI** ZIP. The former contains a20.29MiB uncompressed Flutter engine,6.72MiB Dart AOT application and5.23MiB dufs library, plus plugins/assets/runtime files. The inout-next uncompressed Windows native executable is11.44MiB forx64 and9.07MiB forx86, plus static resources and external WebView2 requirements. Extraction does not establish offline GUI portability.
 
 That Linux AppImage's logical regular-file inventory totals approximately258.03MiB before SquashFS compression. Its largest libraries are WebKitGTK85.84MiB, JavaScriptCore32.20MiB and ICU data28.12MiB; the native executable is14.81MiB. The static Next export is1.00MiB. Library packaging, compression/deduplication and compatibility strategy need independent work; shrinking a package by omitting a required runtime does not establish a working portable artifact.
+
+## Android foreground candidate
+
+The local optimized arm64 APK includes the final private-storage, resource, ProGuard, inset and lifecycle corrections. Its measured signed size is 16,151,507 bytes (15.40 MiB), with one 13,233,056-byte Rust library and 35 raw web resources totalling 1,052,337 bytes. The APK uses Android System WebView and contains neither a Node nor Python runtime. Final direct-release bytes are verified separately against the accepted CI artifact and listed in the [Android guide](android-preview.md).
+
+The local x86_64 release APK is 15,553,488 bytes (14.83 MiB) and is used for API36/4 KiB emulator execution. ABI/compiler/package differences prevent treating it as the arm64 release or a physical-device memory/throughput measurement. Both APKs pass exact resource, single-ABI, manifest, retained-preview-signature and 16 KiB ELF/native ZIP alignment checks; these checks do not establish 16 KiB runtime operation. FileInfra0.5.13's arm64 APK is 11.14 MiB, but native/background/storage features differ and no matched mobile performance comparison has been performed.
 
 ## Current core measurements
 

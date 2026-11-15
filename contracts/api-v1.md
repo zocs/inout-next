@@ -29,7 +29,7 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 
 Authentication may use `Authorization: Bearer <access-key>` or the issued session. Session-authenticated mutations require a same-origin request; JSON session creation checks any supplied Origin. All operations also enforce server permissions and enabled modules. Writable configuration requires a key. Missing, unauthorized or disabled capabilities do not become active because a client crafts a request.
 
-Storage capabilities are separate from permissions. The initial filesystem provider supplies file and directory move/rename through exclusive native rename on Linux and Apple-family targets; Windows reports both move capabilities as false. Android source support is not native-device verification. Directory copy is not yet implemented. Clients hide unsupported file/directory actions while keeping the operations supported by the actual provider available. Providers must still reject unsupported operations server-side.
+Storage capabilities are separate from permissions. The filesystem provider supplies file and directory move/rename through exclusive native rename on Linux, Android and Apple-family targets; Windows reports both move capabilities as false. Android release-APK operations are verified on an API36 x86_64/4 KiB emulator, separately from physical arm64 acceptance. Directory copy is not yet implemented. Clients hide unsupported file/directory actions while keeping the operations supported by the actual provider available. Providers must still reject unsupported operations server-side.
 
 Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and correct `Content-Length`; unsatisfiable ranges 416 with `bytes */size`; HEAD returns full metadata and zero body. Multiple ranges may be ignored in this first version. User files are attachment responses with `nosniff`; active HTML/SVG are not served as same-origin previews.
 
@@ -37,11 +37,13 @@ The filesystem provider positions a range on the original opened handle; stream-
 
 Uploads reject collisions, publish only after successful completion, enforce the streamed byte limit and clean unfinished staging files. The protocol does not claim resumability.
 
-## Native desktop command boundary
+## Native host command boundary
 
-This is a Tauri IPC contract for the local `main` window, separate from HTTP API v1. The external file-manager webview receives no native command capability.
+This is a Tauri IPC contract for the local desktop/Android `main` window, separate from HTTP API v1. The external file-manager webview/browser receives no native command capability.
 
-`HostStatus`: `{root: string | null, running: boolean, managerUrl: string | null, addresses: string[], activeSettings: ActiveSettings | null}`. Native controls can display the locally selected absolute root; HTTP responses still do not expose it.
+`HostStatus`: `{root: string | null, running: boolean, managerUrl: string | null, addresses: string[], activeSettings: ActiveSettings | null, capabilities: HostCapabilities}`. Native controls can access the locally selected absolute root; HTTP responses still do not expose it. The Android UI presents app-storage copy instead of that private path.
+
+`HostCapabilities`: `{storageKind: "folder" | "app-private", chooseFolder: boolean, openManager: boolean, foregroundOnly: boolean}`. Desktop values are `folder/true/true/false`; the Android foreground preview uses `app-private/false/false/true`. The field is additive; clients receiving older status without it use desktop defaults. These local host capabilities are distinct from `/context` storage capabilities.
 
 `ActiveSettings`: `{network: boolean, port: number, uploads: boolean, manage: boolean, authRequired: boolean}`. These are sanitized effective settings. The port is the actual listener port, including an automatically assigned port. Settings exist only while running and are cleared before stopping. Status never returns a key.
 
@@ -53,6 +55,8 @@ This is a Tauri IPC contract for the local `main` window, separate from HTTP API
 | `stop_service` | No arguments; `HostStatus` after controlled shutdown |
 | `open_manager` | No arguments; open/reuse the exact loopback-origin manager |
 | `create_access_key` | No arguments; fresh OS-random key, never added to status |
+
+Android `choose_folder` and `open_manager` reject unsupported actions in native code. The private root is preselected and immutable to the UI. Start is rejected while suspended, during a pending background drain or after final shutdown begins; a suspension racing an awaited start stops that new listener. Home/root Back stops sharing, resume never starts it automatically, and saved files survive Activity recreation or a fresh process. The preview has no native foreground Service, SAF grant or local manager Activity.
 
 The main native window also exposes temporary diagnostics. Five app-name activations within five seconds reveal its UI; the gesture does not authorize any command. Every command retains the main-window and active-application checks. No HTTP route or external manager capability grants these controls.
 

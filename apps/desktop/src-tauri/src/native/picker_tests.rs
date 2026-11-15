@@ -23,12 +23,7 @@ impl Fixture {
             "<!doctype html><title>Picker fixture</title>",
         )
         .unwrap();
-        let state = Arc::new(NativeState {
-            host: HostController::new(web),
-            transition: Mutex::new(()),
-            exiting: AtomicBool::new(false),
-            shutdown_completed: AtomicBool::new(false),
-        });
+        let state = Arc::new(NativeState::new(HostController::new(web)));
         state.host.select_root(root.clone()).await.unwrap();
         let root = root.canonicalize().unwrap();
         let other = other.canonicalize().unwrap();

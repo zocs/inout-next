@@ -12,7 +12,19 @@ Different Android package IDs can use the same signing certificate. FileInfra us
 
 FileInfra's Gradle configuration selects the `KEY_ALIAS` environment value, falling back to its historical `inout` entry. A **keystore alias is a key lookup name**, rather than an app display name or package ID. Changing a fallback from `dufshub` to `inout` is appropriate only when it selects the intended existing entry; it neither renames the app nor creates a new certificate. This project's branding generator never changes signing aliases or keys.
 
-Before a signed Android candidate, verify the certificate fingerprints of the actual published FileInfra APK, the selected existing key entry and the new APK. Record key ownership, channel choices and rotation/backup arrangements privately. This desktop preview has no Android package, imported FileInfra key or completed signing-continuity check for inout.
+Before reusing FileInfra's key for a production candidate, verify the certificate fingerprints of the actual published FileInfra APK, the selected existing key entry and the new APK. Record key ownership, channel choices and rotation/backup arrangements privately. No FileInfra key was imported for the Android preview, and production/channel signing continuity remains unverified.
+
+## Direct Android preview
+
+The [foreground APK preview](android-preview.md) uses the independent `io.github.zocs.inoutnext.preview` package, explicit `versionCode=100001` and a retained private RSA3072 preview certificate. Its certificate SHA-256 fingerprint is:
+
+```text
+12125fbf1e85dff4cecaab432fc4cef02ba4eb37e5e36f26f6625df94842e5a2
+```
+
+The signature is verified on the final APK, separately from its SHA-256 download checksum, manifest/resource inspection and native alignment checks. The preview installs separately from FileInfra and future production `io.github.zocs.inoutnext`; Android does not automatically migrate their private data. Subsequent preview updates must retain this package/certificate and advance the explicit version code. The preview certificate does not enroll an app in Play/F-Droid or establish installed-upgrade, production-signing or store acceptance.
+
+CI produces an unsigned single-ABI APK. Direct preview signing occurs after that artifact and its source/export are accepted; private key material and passwords are not build inputs in the public repository. A preview key is separate from an HTTP access key and from a future Play upload key.
 
 ## Channels and platforms
 

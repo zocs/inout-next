@@ -20,6 +20,12 @@ interface Status {
     manage: boolean;
     authRequired: boolean;
   } | null;
+  capabilities: {
+    storageKind: "folder" | "app-private";
+    chooseFolder: boolean;
+    openManager: boolean;
+    foregroundOnly: boolean;
+  };
 }
 
 export const generatedKey = "fixture-native-key-64-characters-for-browser-interface-verification";
@@ -30,8 +36,15 @@ export const generatedKey = "fixture-native-key-64-characters-for-browser-interf
 export async function installNativeBoundary(page: Page, managerUrl: string, options: {
   holdInitialStatus?: boolean;
   initialStatusError?: string;
+  privateStorage?: boolean;
 } = {}) {
-  const state: Status = { root: null, running: false, managerUrl: null, addresses: [], activeSettings: null };
+  const state: Status = {
+    root: options.privateStorage ? "/app-private/files/shared" : null,
+    running: false, managerUrl: null, addresses: [], activeSettings: null,
+    capabilities: options.privateStorage
+      ? { storageKind: "app-private", chooseFolder: false, openManager: false, foregroundOnly: true }
+      : { storageKind: "folder", chooseFolder: true, openManager: true, foregroundOnly: false },
+  };
   const calls: { command: string; args: unknown }[] = [];
   const diagnostic = { enabled: false, running: false, bufferKib: 128, defaultBufferKib: 128, probeState: "idle", result: null as null | {bytes:number;durationMs:number;mibPerSecond:number;bufferKib:number;connections:number} };
   let applyReply: (() => void) | undefined;

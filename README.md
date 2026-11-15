@@ -1,8 +1,8 @@
 # inout
 
-An independent Rust HTTP file service, a static Next.js file manager, and a Tauri desktop host. Share a folder from one device and browse, upload, download or manage it from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
+An independent Rust HTTP file service, a static Next.js file manager, and Tauri desktop/Android hosts. Share a folder on desktop or app-private files in the Android foreground preview, then browse, upload, download or manage them from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
 
-This is an experimental **0.1.0 preview**. [Download the desktop prerelease](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) and see the [package guide](docs/distribution/preview.md). [CI](https://github.com/zocs/inout-next/actions) builds and tests Linux x64, Windows x86/x64 and macOS ARM64/x64, including real browser file operations and native packaging. Installation, signing, offline distribution and mobile support have separate milestones; see the [platform matrix](docs/platforms.md). Android arm64 is the next build priority; iOS adaptation and device checks are scheduled later. No stable release is published yet.
+This is an experimental **0.1.0 preview**. [Download the desktop prerelease](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) and see the [desktop package guide](docs/distribution/preview.md) or [Android preview guide](docs/distribution/android-preview.md). [CI](https://github.com/zocs/inout-next/actions) covers Linux x64, Android arm64 packaging, Windows x86/x64 and macOS ARM64/x64 in one serial queue. Android runtime checks use an API 36 x86_64 emulator with 4 KiB pages; physical arm64, 16 KiB operation and two-device Wi-Fi remain unverified. Installation, offline distribution and store acceptance have separate milestones in the [platform matrix](docs/platforms.md). iOS adaptation is scheduled later. No stable release is published yet.
 
 - [中文说明](README_zh.md)
 - [Requirements](docs/requirements.md) · [Roadmap](ROADMAP.md) · [Platforms](docs/platforms.md)
@@ -46,7 +46,7 @@ npm ci --prefix apps/desktop
 npm --prefix apps/desktop run dev
 ```
 
-The host selects a folder through the native dialog, configures local or LAN access and write permissions, generates an optional access key, starts/stops the shared Rust service and opens its file manager. Reloaded controls display the effective running settings; the status never returns the access key. Closing the manager stops sharing. Android storage and foreground-service integration are later milestones.
+The desktop host selects a folder through the native dialog, configures local or LAN access and write permissions, generates an optional access key, starts/stops the shared Rust service and opens its file manager. Reloaded controls display the effective running settings; the status never returns the access key. Closing the manager stops sharing.
 
 The reusable dot-matrix wordmark follows the configured product name. Startup uses a light transition driven by actual readiness, with reduced-motion support and no minimum loading delay. Cleanup follows computed CSS timing with a one-second ceiling; ready controls remain usable throughout the exit.
 
@@ -57,6 +57,12 @@ Linux production compilation:
 ```sh
 npm --prefix apps/desktop run tauri -- build --no-bundle -- --locked
 ```
+
+## Use the Android preview
+
+The Android host shares its own app storage with a browser on another device. Enable uploads/management and generate an access key, then start sharing and use a displayed local-network address. Uploaded files survive Stop, restart and Activity recreation; clearing app storage or uninstalling removes them. The native preview has no arbitrary-folder picker, file-import UI or local manager window.
+
+Keep the app on screen. Home or system Back stops sharing and cancels incomplete transfers; returning leaves it stopped until you explicitly start again. A native foreground Service, SAF directory grants and notification controls remain later milestones. The preview uses the independent `io.github.zocs.inoutnext.preview` installation ID and a retained preview certificate; it installs separately from FileInfra and the future production app. See the [Android guide](docs/distribution/android-preview.md) for build, installation and test limits.
 
 ## Build and verify
 
@@ -78,11 +84,11 @@ python3 scripts/verify_runtime.py --mib 128
 
 Browser tests use Chromium and the actual Rust service/filesystem. Native command-boundary fixtures are separate from target-device tests. Install Chromium locally or run `npx playwright install --with-deps chromium` from `apps/web`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` selects another installed binary.
 
-Current local acceptance passes 45 core, 23 native, 19 Python tool and 89 Chromium tests, both strict Clippy checks, production builds and streamed/relocated integrity checks. A checksum-verified core comparison measures the 128 KiB buffer and same-handle ranges against the earlier engine and FileInfra's shipped dufs. The [size/runtime report](docs/distribution/size-and-runtime.md) records improved download timings, higher peak memory under concurrent ranges and the limits of localhost sampling; it makes no GUI or physical-LAN performance claim.
+The Android extension adds real asset/index, Kotlin filesystem, private-host and foreground-lifetime checks to the existing core/browser coverage. Actual release-APK tests cover authenticated HTTP operations, browser uploads/downloads, listener closure, restart persistence and Activity lifecycle. These emulator checks are separate from physical-device and store acceptance. The earlier checksum-verified core comparison measures the 128 KiB buffer and same-handle ranges against the earlier engine and FileInfra's shipped dufs. The [size/runtime report](docs/distribution/size-and-runtime.md) records download timings, concurrent-range memory costs and localhost sampling limits; it makes no GUI or physical-LAN performance claim.
 
 [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five targets serially. Its five CLI ZIPs and six native packages match the expected executable architectures and all 35 tested web resources; emitted Debian and Windows installer identity checks also pass. Package verification remains separate from installed/device/offline/signing readiness.
 
-The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue. Linux verification precedes the Windows x86/x64 matrix, then the macOS arm64/x64 matrix; every matrix has `max-parallel: 1`. macOS compiles once, then permits at most three total bundle attempts for the specific `hdiutil create` resource-busy error, retaining each attempt's output; other errors remain fatal. It creates CLI ZIPs and native bundles for implemented desktop targets. Android and offline Windows packages remain platform milestones.
+The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue: Linux verification, Android arm64, Windows x86/x64, then macOS arm64/x64; every matrix has `max-parallel: 1`. Android reuses the Linux-tested web export, builds an optimized unsigned APK with locked Cargo children, and checks its manifest/resources/ABI/ELF/native ZIP alignment. Direct preview signing follows artifact acceptance. macOS compiles once, then permits at most three total bundle attempts for the specific `hdiutil create` resource-busy error; other errors remain fatal. Offline Windows packages remain a separate milestone.
 
 ```sh
 cargo build -p share-cli --release --locked
@@ -94,13 +100,13 @@ The ZIP contains the stable server binary, built `web/`, product metadata, licen
 
 ## Store distribution preparation
 
-Google Play, F-Droid, iOS/iPadOS App Store and Mac App Store have separate dated requirements and acceptance gates in the [store research](docs/distribution/store-readiness.md). Android preparation includes the current API 36 submission floor, native 16 KB checks, SAF directory grants, correctly owned foreground services and a real F-Droid source-build recipe. Apple preparation separates foreground iOS sharing from Mac App Store sandboxing, signing and privacy requirements. Stable app identity, independent build numbers, signing continuity, dependency licences and truthful data/transport disclosures are planned from the start. No Android/iOS build or store acceptance is claimed by the desktop preview.
+Google Play, F-Droid, iOS/iPadOS App Store and Mac App Store have separate dated requirements and acceptance gates in the [store research](docs/distribution/store-readiness.md). Android preparation includes the current API 36 submission floor, native 16 KB operation, SAF directory grants, correctly owned foreground services and a real F-Droid source-build recipe. The foreground APK preview does not clear these store gates. Apple preparation separates foreground iOS sharing from Mac App Store sandboxing, signing and privacy requirements. Stable app identity, independent build numbers, signing continuity, dependency licences and truthful data/transport disclosures are planned from the start. iOS and store acceptance remain pending.
 
 ## Current boundaries
 
 There is no dufs dependency, copied server or sidecar. Next.js exports static assets; Rust implements the file operations. Configuration and compiled module interfaces provide replaceable components; a dynamic third-party plugin ABI is not implemented. Display branding comes from `product.json`, while `config/native-identity.json` preserves native package/install names and the explicit WiX upgrade UUID. Window/browser names and portable filenames can change while OS installation labels remain stable; changing installation identity requires a deliberate migration.
 
-Uploads default to a 2 GiB limit and stream continuously; resume and crash recovery are unfinished. Directory copying is unsupported. Windows file/folder move and rename are conservatively disabled until a validated exclusive implementation exists; uploads/copies require a filesystem supporting hard links there. Linux/Apple publication and moves require native exclusive rename support. Root mutation, traversal, symlink sharing and implicit overwrite are rejected.
+Uploads default to a 2 GiB limit and stream continuously; resume and crash recovery are unfinished. Directory copying is unsupported. Windows file/folder move and rename are conservatively disabled until a validated exclusive implementation exists; uploads/copies require a filesystem supporting hard links there. Linux/Android/Apple publication and moves require native exclusive rename support. Root mutation, traversal, symlink sharing and implicit overwrite are rejected.
 
 Empty reserved `INOUTTMP` directories persist physically after transfers to avoid races between concurrent uploads. Public listings hide them, and cancellation removes unpublished files. A process or OS crash can leave internal files; recovery is a later milestone.
 

@@ -1,8 +1,8 @@
 # inout
 
-独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面宿主。一台设备选择共享目录，其他设备通过浏览器访问。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
+独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面/Android 宿主。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-目前是实验性 **0.1.0 preview**。可[下载桌面预发布版本](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1)，产物选择见[预览运行说明](docs/distribution/preview.md)。[CI](https://github.com/zocs/inout-next/actions) 覆盖 Linux x64、Windows x86/x64、macOS ARM64/x64 的构建与测试，包含真实浏览器文件操作和原生打包。安装、签名、离线分发和移动平台分别验收，具体见[平台状态](docs/platforms.md)。接下来优先推进 Android arm64 构建；iOS 适配和实机验证安排在后续。尚无稳定正式版本。
+目前是实验性 **0.1.0 preview**。可[下载桌面预发布版本](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1)，使用说明见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
 
 - [English README](README.md)
 - [需求](docs/requirements.md) · [路线图](ROADMAP.md) · [平台状态](docs/platforms.md)
@@ -46,7 +46,7 @@ npm ci --prefix apps/desktop
 npm --prefix apps/desktop run dev
 ```
 
-通过系统对话框选择目录，设置仅本机或局域网访问、上传和管理权限、访问密钥，再启动服务并打开文件管理窗口。页面重载后显示实际运行设置，状态接口不会返回访问密钥。关闭文件管理窗口会停止共享。Android 的存储适配和前台服务仍需独立实现。
+桌面宿主通过系统对话框选择目录，设置仅本机或局域网访问、上传和管理权限、访问密钥，再启动服务并打开文件管理窗口。页面重载后显示实际运行设置，状态接口不会返回访问密钥。关闭文件管理窗口会停止共享。
 
 保留可复用的点阵字标，随产品配置更名。启动呈现使用轻量过渡，跟随实际就绪状态结束，没有强制等待，并尊重系统“减少动态效果”设置。清理时间读取实际 CSS 过渡时长和延迟，上限一秒；退出动画期间，已就绪的控件始终可以操作。
 
@@ -57,6 +57,12 @@ Linux 原生生产编译：
 ```sh
 npm --prefix apps/desktop run tauri -- build --no-bundle -- --locked
 ```
+
+## Android 前台预览版
+
+Android 宿主将应用自己的存储共享给另一台设备的浏览器。启用上传/管理，生成访问密钥，再启动共享并使用页面显示的局域网地址。上传文件在停止、重启及 Activity 重建后保留；清除应用数据或卸载会删除文件。当前没有任意目录选择、文件导入界面或本机文件管理窗口。
+
+共享时保持应用在屏幕上。Home 或系统返回键会停止共享并取消未完成传输；回到应用后需手动重新启动。原生前台 Service、SAF 目录授权和通知控制仍是后续任务。预览版使用独立的 `io.github.zocs.inoutnext.preview` 包名与保留的预览证书，与 FileInfra 及未来正式应用分别安装。构建、安装和测试边界见 [Android 指南](docs/distribution/android-preview.md)。
 
 ## 验证与打包
 
@@ -78,11 +84,11 @@ python3 scripts/verify_runtime.py --mib 128
 
 浏览器测试使用真实 Rust 服务和文件系统，原生命令边界模拟与实际设备测试分别记录。可在 `apps/web` 中运行 `npx playwright install --with-deps chromium` 安装测试浏览器，或通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已有 Chromium。
 
-当前本地验收通过 45 项核心、23 项原生、19 项 Python 工具及 89 项 Chromium 测试，同时完成严格 Clippy、生产构建、流式校验和 ZIP 迁移运行。使用完整文件校验的核心对比测量了 128 KiB 缓冲及原句柄 Range 定位，并与旧引擎、FileInfra 实际发布的 dufs 对照。[体积与运行报告](docs/distribution/size-and-runtime.md) 同时记录下载改善、多连接负载下更高的峰值内存和本机缓存采样的边界；这些结果尚不能代表 GUI 或物理局域网性能。
+Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主和前台生命周期检查。实际 release APK 已用于认证 HTTP 操作、浏览器上传/下载、监听关闭、重启文件保留及 Activity 生命周期测试；模拟器结果与真机、商店验收分别记录。此前使用完整文件校验的核心对比测量了 128 KiB 缓冲及原句柄 Range 定位，并与旧引擎、FileInfra 实际发布的 dufs 对照。[体积与运行报告](docs/distribution/size-and-runtime.md) 同时记录下载耗时、多连接峰值内存和本机缓存采样边界；这些结果尚不能代表 GUI 或物理局域网性能。
 
 [桌面检查点 c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) 已按顺序通过全部五个目标。下载后的五份 CLI ZIP、六份原生包已核对程序架构及本轮测试的全部 35 个网页资源，Debian 包与 Windows 安装器的生成身份检查也已通过。产物验证与安装、真机、离线运行及签名验收分别记录。
 
-[CI 工作流](.github/workflows/ci.yml) 使用仓库级单队列：先 Linux 验证，再 Windows x86/x64，最后 macOS arm64/x64；矩阵均设置 `max-parallel: 1`。macOS 只编译一次，随后仅对 `hdiutil create` 的资源繁忙错误最多尝试三次打包并保留每次输出；其他错误立即失败。产物区分 CLI ZIP 和原生安装包，Android、Windows 离线便携版和旧 Linux 兼容版有独立里程碑。
+[CI 工作流](.github/workflows/ci.yml) 使用仓库级单队列：Linux 验证、Android arm64、Windows x86/x64，最后 macOS arm64/x64；矩阵均设置 `max-parallel: 1`。Android 复用 Linux 已测网页导出，验证 Cargo 子进程锁文件、优化后的未签名 APK、manifest、资源、ABI、ELF 和原生 ZIP 对齐，再进行直接预览签名。macOS 只编译一次，随后仅对 `hdiutil create` 的资源繁忙错误最多尝试三次打包；其他错误立即失败。Windows 离线便携版和旧 Linux 兼容版仍有独立里程碑。
 
 ```sh
 cargo build -p share-cli --release --locked
@@ -94,13 +100,13 @@ ZIP 包含固定名称的服务程序、构建好的 `web/`、产品配置、许
 
 ## 从初期准备应用商店
 
-[商店调研](docs/distribution/store-readiness.md) 按 2026-11-14 的官方要求分别记录 Google Play、F-Droid、iOS/iPadOS 和 Mac App Store。Android 需要当前 API 36 提交目标、16 KB 原生库验证、SAF 目录授权、正确的前台服务，以及实际运行的 F-Droid 源码构建 recipe；Apple 需要分别实现 iOS 前台共享和 Mac App Store 沙盒、签名及隐私要求。稳定应用身份、独立构建号、签名延续、第三方许可及真实的数据/传输安全披露都纳入早期设计。当前桌面 preview 尚无 Android/iOS 产物或商店审核结果。
+[商店调研](docs/distribution/store-readiness.md) 按 2026-11-14 的官方要求分别记录 Google Play、F-Droid、iOS/iPadOS 和 Mac App Store。Android 需要当前 API 36 提交目标、16 KB 实际运行、SAF 目录授权、正确的前台服务，以及真实 F-Droid 源码构建 recipe；前台 APK 预览并不代表通过这些关卡。Apple 需要分别实现 iOS 前台共享和 Mac App Store 沙盒、签名及隐私要求。稳定应用身份、独立构建号、签名延续、第三方许可及真实的数据/传输安全披露都纳入早期设计。iOS 产物与商店审核仍未完成。
 
 ## 当前范围
 
 新项目没有 dufs 依赖、复制的服务端或 sidecar；文件操作由 Rust 实现，Next.js 只导出静态网页。模块使用明确接口和配置注册，尚未实现动态第三方插件 ABI。修改 `product.json` 后同步和重建即可更换网页、窗口显示名称及便携包文件名；`config/native-identity.json` 单独保存关联的应用 ID、稳定安装名和 WiX 升级 UUID。显示改名时，系统安装名保持稳定；更换安装身份需要明确迁移和平台升级验证。
 
-上传默认上限 2 GiB，支持连续流式传输，尚无断点续传和崩溃恢复。目录复制未实现。Windows 的文件及目录移动、重命名暂时关闭，上传和复制需要支持硬链接的文件系统；Linux/Apple 使用原生排他重命名。服务端拒绝根目录修改、路径越界、符号链接分享和隐式覆盖。
+上传默认上限 2 GiB，支持连续流式传输，尚无断点续传和崩溃恢复。目录复制未实现。Windows 的文件及目录移动、重命名暂时关闭，上传和复制需要支持硬链接的文件系统；Linux/Android/Apple 使用原生排他重命名。服务端拒绝根目录修改、路径越界、符号链接分享和隐式覆盖。
 
 传输完成或取消后，磁盘上保留空的内部 `INOUTTMP` 目录，避免并发上传竞争临时目录清理。公共列表隐藏该目录，取消操作仍会移除未发布文件；进程或系统崩溃后的恢复仍待实现。
 

@@ -1,10 +1,10 @@
 # Requirements
 
-Status: experimental0.1.0 desktop preview, 2026-11-15; [prerelease packages and guide](distribution/preview.md) are separate from a stable release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android arm64 builds and usable native hosting are the next priority; iOS adaptation remains scheduled with device validation pending.
+Status: experimental0.1.0 desktop and Android foreground previews, 2026-11-15; [desktop packages](distribution/preview.md) and [Android usage](distribution/android-preview.md) are separate from a stable release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android physical arm64/16 KiB/network acceptance and iOS adaptation remain pending.
 
 ## Product goal
 
-One device starts a Rust HTTP file service for a chosen directory. Other devices browse and manage its files through a modern Next.js interface without installing an application. The same core can be used by a CLI, a Tauri desktop shell and future Android native adapters.
+One device starts a Rust HTTP file service for a chosen desktop directory or the Android preview's app-private storage. Other devices browse and manage its files through a modern Next.js interface without installing an application. The same core is used by a CLI, Tauri desktop shell and Android foreground adapter.
 
 ## Experience carried forward
 
@@ -30,6 +30,8 @@ Planned connection improvements retain automatic consecutive-port fallback and i
 - Explicit inline/dialog cancellation must return keyboard focus to a surviving opener. Successful management operations, notice dismissal and finished-history clearing need an appropriate surviving task destination. Failed operations keep actionable forms, and an async completion must preserve unrelated focus that the user deliberately chose while waiting.
 - Native reload must display actual running network/port/permission settings and whether a key is configured, without returning or persisting that key. Selection-associated actions must remain adjacent to the inspector even with long transfer history.
 - A hidden native diagnostic entry uses five app-name activations within five seconds and remains keyboard accessible. It adds temporary validated download-buffer tuning and a bounded read-only local test. Hidden discovery does not grant authority: every diagnostic command remains restricted to the active application's main native window, with no HTTP tuning endpoint.
+- Android's first preview shares only app-private files. Materialized raw web assets and their bounded integrity index stay separate from the shared root. Uploads from another device persist across stop/restart and Activity recreation; clearing app data/uninstalling removes them. Folder picking, local file import and a local manager are unavailable.
+- Mobile host capabilities explicitly describe private storage, unsupported folder/manager actions and foreground-only lifetime; native code enforces them. Home/root Back suspends sharing, closes the listener and cancels incomplete requests. Resume never automatically restarts sharing. Configuration recreation preserves a usable stopped host; final destruction cleans up the owned service before process termination.
 
 ## Modularity and renaming
 
@@ -64,7 +66,7 @@ Default upload limit is 2 GiB, configurable. The initial release promises contin
 - Windows x86/x64: core and Tauri builds; portable delivery needs correct-architecture WebView2 and actual moved-folder/offline tests.
 - Linux x64/arm64: standalone service and desktop packages. Ubuntu 18.04/glibc 2.27 compatibility is an independent headless target; Tauri GUI needs a separate WebKitGTK compatibility decision.
 - macOS Intel/Apple Silicon: core and Tauri, followed by real packaging, signing and device checks.
-- Android API 24+: Rust library, native foreground service, SAF/path provider, notifications, tiles and signing. Framework compilation alone does not establish these behaviors.
+- Android API24+ is the declared minimum, with compile/target36. The initial arm64 APK uses the Rust library, private storage and foreground-only host. API36 x86_64/4 KiB emulator execution is verified separately from physical arm64, actual16 KiB operation and API24 runtime. SAF, native foreground Service, notifications/tiles and production/store signing remain milestones.
 - iOS remains a later feasibility/adapter milestone.
 - Modern Next browser requirements apply. A basic page for old Chromium/WebViews is a separate compatibility milestone.
 
@@ -88,6 +90,6 @@ Google Play, F-Droid, iOS/iPadOS App Store and Mac App Store are planned distrib
 
 The first runnable milestone must pass domain/storage/API tests, real streamed hash verification, actual browser CRUD/upload/download interaction, brand substitution, disabled-module behavior, and clean production builds. CI must test supported host systems and build declared artifacts. Native and compatibility status is tracked independently.
 
-Current implementation includes the CLI, real storage/HTTP modules, static file manager and native desktop controller, with Linux/Windows/macOS target CI and real browser/file-integrity checks. The current extension passes 45 core, 23 native, 19 Python tool and 89 Chromium tests locally, production builds, streamed/relocated integrity checks and a matched 12-process core comparison. [Measured results](distribution/size-and-runtime.md) include memory costs and sampling limits. Windows native directory selection, manager, supported writable operations and shutdown have bounded earlier runtime validation. Store gates, directory copy, Windows moves, native Android/iOS, resume, offline Windows WebView2 packaging and Ubuntu18.04 compatibility remain explicit milestones; [platforms](platforms.md) distinguishes compilation, execution and installed/device/signing readiness.
+Current implementation includes the CLI, real storage/HTTP modules, static file manager, desktop controller and Android private-storage foreground host. Android checks use actual Kotlin/filesystem resources, locked target builds, package inspection and installed release-APK HTTP/browser/lifecycle tests on an API36 x86_64/4 KiB emulator. The existing desktop target CI and matched core comparison remain separately recorded; [measured results](distribution/size-and-runtime.md) include memory costs and sampling limits. Windows native directory selection, manager, supported writable operations and shutdown have bounded earlier runtime validation. Store gates, directory copy, Windows moves, SAF/foreground Service, physical Android/16 KiB/Wi-Fi, iOS, resume, offline Windows WebView2 and Ubuntu18.04 remain milestones; [platforms](platforms.md) distinguishes compilation, execution and installed/device/signing readiness.
 
 Every major update must update affected public product documentation and retain detailed handoff/validation/review records locally under ignored paths. Public docs contain usage, architecture, current limits, roadmap and concise measured facts. All status claims require evidence; a scaffold or cross-compilation alone does not establish production readiness.

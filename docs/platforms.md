@@ -1,8 +1,8 @@
 # Platform readiness
 
-The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview; [download/package guidance](distribution/preview.md) identifies the first desktop prerelease. Android arm64 is the next build priority. iOS remains scheduled for later native adaptation and device validation.
+The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. Current 0.1.0 is experimental: the [desktop prerelease](distribution/preview.md) and [Android foreground preview](distribution/android-preview.md) have separate packages and validation scopes. iOS remains scheduled for later native adaptation and device validation.
 
-The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The buffer, diagnostic and startup checkpoint passes 45 core, 23 native, 19 tool and 89 Chromium tests locally, strict Clippy, production builds, streamed/relocated integrity checks and a matched core measurement. [Desktop CI at c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) completes all five targets serially; all five CLI ZIPs and six native packages match its 35 tested web resources and expected architectures. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
+The application displays **inout** while repository/distribution names retain `inout-next`. Stable desktop installer/package labels remain `Inout Next`; Android's label uses the display name. See [branding and identity](branding.md). [Desktop CI at c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) completes all five targets serially; all five CLI ZIPs and six native packages match its 35 tested web resources and expected architectures. The Android extension has 32 native and 91 Chromium cases, bounded index/Kotlin asset checks and actual release-APK HTTP/browser/lifecycle checks on an API 36 x86_64 emulator with 4 KiB pages. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
 
 | Target | Verified scope | Remaining work |
 | --- | --- | --- |
@@ -12,8 +12,9 @@ The application displays **inout** while repository/distribution names retain `i
 | macOS ARM64/Intel | Native macOS15 host tests/strict Clippy, CLI ZIP/app/DMG builds and extracted resources/Mach-O CPU checks | Native GUI/device/installation, older-macOS, signing/notarization and store profile |
 | Linux ARM64 | Planned target | Core/desktop artifacts and target runtime |
 | Ubuntu18.04/glibc2.27 | Independent compatibility goal | Actual compatible headless build/runtime and a separate WebKitGTK GUI strategy |
-| Android arm64/API24+ | Native-adapter milestone | Rust/JNI, SAF storage, foreground Service, ABI/16KB/package/device/signing checks |
-| Android armv7/x86_64 | Later ABI coverage | Following validated arm64 adaptation |
+| Android arm64/API24+ | Optimized foreground APK, min24/target36, exact raw resources/single ABI, 16 KiB ELF and native ZIP alignment, retained preview certificate | Physical arm64, minimum-OS and 16 KiB runtime; two-device Wi-Fi; SAF/import/local manager, native foreground Service, AAB/store acceptance |
+| Android x86_64 | Local release APK on API36/4 KiB emulator: authenticated transfers/Range, file management, Stop/restart/persistence, Home/Back/destruction/recreation and system/IME clearance | Additional OS/WebView/device coverage and separate public ABI delivery |
+| Android armv7 | Later ABI coverage | Build/package and target runtime following the initial arm64 preview |
 | iOS/iPadOS | Later adapter milestone | Security-scoped storage, permitted lifecycle, signing and device validation |
 
 ## Runtime and packaging
@@ -24,13 +25,15 @@ Current Ubuntu22.04 native executables import GLIBC through2.34. This rules out 
 
 Tauri's [Windows installer guide](https://v2.tauri.app/distribute/windows-installer/#building-for-32-bit-or-arm) supports32bit `i686-pc-windows-msvc`. Executing that binary on Windowsx64 is distinct from testing a32bit Windows OS. Linux32bit is not a declared target. Modern browser/System WebView requirements remain relevant to the static Next export.
 
-Windows upload/copy publication requires a filesystem supporting hard links; file/directory move and rename are disabled. Linux/Apple publication and moves require native exclusive rename support. Directory copying is unsupported. Android SAF URIs require a storage adapter with truthful provider capabilities.
+Windows upload/copy publication requires a filesystem supporting hard links; file/directory move and rename are disabled. Linux/Android/Apple publication and moves require native exclusive rename support. Directory copying is unsupported. The Android preview uses the existing filesystem provider inside app-private storage. Future SAF URIs require a separate adapter with truthful provider capabilities.
+
+Android shares `files/shared`, separate from packaged runtime resources. Keep the app on screen: Home/root Back stops the listener, cancels unfinished transfers and leaves sharing stopped on return. Configuration recreation and true Activity destruction also leave sharing stopped; saved files survive, while clearing application data or uninstalling removes them. Another device's browser manages the share. This preview has no foreground Service or arbitrary-folder/local-manager capability.
 
 ## CI
 
-The [workflow](../.github/workflows/ci.yml) runs Ubuntu22.04, Windows2022x86/x64 and native macOS15ARM64/Intel targets through one noncancelling queue and serial matrices. Tests execute on the runner host and each target is separately packaged. macOS compiles once; only disk-image creation's resource-busy error permits up to three bundle-only attempts with retained logs. Other errors remain fatal. Resource/architecture/identity checks are separate from installed upgrades and device acceptance. The workflow does not declare Android, LinuxARM64, Ubuntu18.04 or offline Windows GUI artifacts.
+The [workflow](../.github/workflows/ci.yml) orders Ubuntu22.04 verification, Android arm64 packaging, Windows2022x86/x64 and native macOS15ARM64/Intel through one noncancelling queue and serial matrices. Android reuses that run's Linux-tested web export, verifies locked Cargo children and packages one optimized unsigned APK with manifest/resource/ABI/alignment checks. Direct preview signing follows artifact acceptance. macOS compiles once; only disk-image creation's resource-busy error permits up to three bundle-only attempts with retained logs. Other errors remain fatal. Resource/architecture/identity checks are separate from installed upgrades and device acceptance. The workflow does not declare LinuxARM64, Ubuntu18.04, iOS or offline Windows GUI artifacts.
 
-The verified checkpoint executes 45 core tests on Linux, 37 on each Windows target and 43 on each macOS target, reflecting platform-specific cases; every target passes 23 native tests and strict Clippy. Linux also passes 19 Python tool and 89 Chromium tests plus streamed 128 MiB and relocated 8 MiB integrity/clean-stop checks. Both macOS bundles succeed on their first attempt; the bounded retry policy has real-child-process tests but no resource-busy event occurs in this successful run.
+The accepted desktop checkpoint executes 45 core tests on Linux, 37 on each Windows target and 43 on each macOS target, reflecting platform-specific cases; every desktop target passes 23 native tests and strict Clippy. Linux also passes 19 Python tool and 89 Chromium tests plus streamed 128 MiB and relocated 8 MiB integrity/clean-stop checks. Both macOS bundles succeed on their first attempt; the bounded retry policy has real-child-process tests but no resource-busy event occurs in that run. The Android extension's new tests and packages have their own acceptance records in the [Android guide](distribution/android-preview.md).
 
 ## Store channels
 
@@ -38,11 +41,11 @@ The [official-source requirements checked2026-11-14](distribution/store-readines
 
 | Channel | Required platform evidence | Current boundary |
 | --- | --- | --- |
-| Google Play | Current targetAPI36 separately from minimumAPI24 goal; intended ABIs/16KB/AAB/device checks, SAF, correct FGS/local-network adaptation, signing/forms/testing | No Android candidate or store result |
-| F-Droid | Free-software dependency/assets/tool inventory; actual clean-source Next/Rust/Gradle recipe, static version codes/tags and reproducible-signing attempt | No fdroiddata build/MR or APK verification |
+| Google Play | Current targetAPI36 separately from minimumAPI24 goal; intended ABIs/16KB/AAB/device checks, SAF, correct FGS/local-network adaptation, signing/forms/testing | Direct foreground APK only; no AAB, Play signing/submission or store result |
+| F-Droid | Free-software dependency/assets/tool inventory; actual clean-source Next/Rust/Gradle recipe, static version codes/tags and reproducible-signing attempt | Durable Android text scaffold and direct APK exist; no fdroiddata build/MR or reproducibility result |
 | iOS/iPadOS App Store | Current Apple SDK/deployment floor, scoped documents, permitted foreground/finite sharing, IPv6/privacy/network grants, signed archive/TestFlight/device checks | Later native adaptation; no indefinite-background-server claim |
 | Mac App Store | Independent sandbox/signing/provision profile, directory/bookmark scope, network grants, signed app/pkg and disclosures | Separate from direct-distribution DMGs; no store candidate |
 
 SDK/policy requirements are rechecked before submission. Build/runtime readiness, signing continuity and store acceptance remain distinct.
 
-Different Android package IDs can share FileInfra's signing certificate and install independently. No Android candidate or certificate-continuity check exists for this preview; [signing guidance](distribution/signing.md) separates certificate reuse, aliases, Play/F-Droid channels and Apple/Windows/Linux identities.
+Different Android package IDs can share FileInfra's signing certificate and install independently. The direct Android preview instead uses an independent retained preview certificate and `.preview` ID; no FileInfra key import or production/channel continuity is claimed. [Signing guidance](distribution/signing.md) separates certificates, aliases, Play/F-Droid channels and Apple/Windows/Linux identities.

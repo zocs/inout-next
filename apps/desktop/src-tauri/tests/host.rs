@@ -259,7 +259,16 @@ async fn active_settings_report_the_real_bound_service_without_returning_a_key()
         serialized["activeSettings"],
         serde_json::json!({"network":true,"port":port,"uploads":true,"manage":true,"authRequired":true})
     );
-    assert_eq!(serialized.as_object().unwrap().len(), 5);
+    assert_eq!(
+        serialized["capabilities"],
+        serde_json::json!({
+            "storageKind":"folder",
+            "chooseFolder":true,
+            "openManager":true,
+            "foregroundOnly":false
+        })
+    );
+    assert_eq!(serialized.as_object().unwrap().len(), 6);
     assert!(!serialized.to_string().contains(key));
     assert!(!serialized.to_string().contains("\"key\""));
     assert_eq!(
@@ -365,4 +374,118 @@ async fn active_settings_stay_null_after_failed_starts_and_match_readonly_restar
             serde_json::Value::Null
         );
     }
+}
+
+#[tokio::test]
+async fn private_host_preselects_only_its_owned_folder_and_preserves_uploaded_files() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().join("files/shared");
+    let web = temporary.path().join("files/runtime-assets/web");
+    let other = temporary.path().join("other-files");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::create_dir(&other).unwrap();
+    create_assets(&web);
+    std::fs::write(
+        temporary.path().join("private-settings.json"),
+        "private sibling",
+    )
+    .unwrap();
+    let host = HostController::new_app_private(web, root.clone()).unwrap();
+    let initial = serde_json::to_value(host.status().await).unwrap();
+    assert_eq!(
+        initial["root"],
+        root.canonicalize().unwrap().to_str().unwrap()
+    );
+    assert_eq!(
+        initial["capabilities"],
+        serde_json::json!({
+            "storageKind":"app-private", "chooseFolder":false, "openManager":false, "foregroundOnly":true
+        })
+    );
+    assert!(host.select_root(other).await.is_err());
+    let key = "owned-storage-test-key";
+    let options = || StartOptions {
+        uploads: true,
+        manage: true,
+        key: Some(key.into()),
+        ..Default::default()
+    };
+    let started = host.start(options()).await.unwrap();
+    let url = started.manager_url.as_deref().unwrap();
+    assert!(request(
+        url,
+        "PUT",
+        "/api/v1/content?path=owned.txt",
+        "",
+        "owned upload"
+    )
+    .await
+    .starts_with("HTTP/1.1 401"));
+    let authorization = format!("Authorization: Bearer {key}\r\n");
+    assert!(request(
+        url,
+        "PUT",
+        "/api/v1/content?path=owned.txt",
+        &authorization,
+        "owned upload"
+    )
+    .await
+    .starts_with("HTTP/1.1 201"));
+    assert_eq!(
+        std::fs::read(root.join("owned.txt")).unwrap(),
+        b"owned upload"
+    );
+    let download = request(
+        url,
+        "GET",
+        "/api/v1/content?path=owned.txt",
+        &authorization,
+        "",
+    )
+    .await;
+    assert!(download.starts_with("HTTP/1.1 200") && download.ends_with("owned upload"));
+    let private = request(
+        url,
+        "GET",
+        "/api/v1/content?path=..%2F..%2Fprivate-settings.json",
+        &authorization,
+        "",
+    )
+    .await;
+    assert!(!private.starts_with("HTTP/1.1 200") && !private.contains("private sibling"));
+    assert!(request(url, "GET", "/", "", "")
+        .await
+        .contains("Host fixture"));
+    let address = url.strip_prefix("http://").unwrap().to_owned();
+    host.stop().await.unwrap();
+    assert!(tokio::net::TcpStream::connect(address).await.is_err());
+    assert_eq!(
+        std::fs::read(root.join("owned.txt")).unwrap(),
+        b"owned upload"
+    );
+    let restarted = host.start(options()).await.unwrap();
+    assert!(request(
+        restarted.manager_url.as_deref().unwrap(),
+        "GET",
+        "/api/v1/content?path=owned.txt",
+        &authorization,
+        ""
+    )
+    .await
+    .ends_with("owned upload"));
+    assert_eq!(
+        std::fs::read_to_string(temporary.path().join("private-settings.json")).unwrap(),
+        "private sibling"
+    );
+    host.stop().await.unwrap();
+}
+
+#[test]
+fn private_host_rejects_a_shared_ancestor_of_its_resources() {
+    let temporary = tempfile::tempdir().unwrap();
+    let web = temporary.path().join("runtime-assets/web");
+    create_assets(&web);
+    assert!(HostController::new_app_private(web.clone(), temporary.path().to_path_buf()).is_err());
+    assert!(HostController::new_app_private(web.clone(), web.clone()).is_err());
+    assert!(HostController::new_app_private(web, temporary.path().join("missing")).is_err());
 }
