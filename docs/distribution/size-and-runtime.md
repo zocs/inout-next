@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measured on 2026-11-15 for the experimental source, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below; no release is published yet.
+Measured on 2026-11-15 for the experimental source, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [The desktop prerelease](preview.md) distributes the verified CI packages; no stable release is published yet.
 
 ## Current local build
 

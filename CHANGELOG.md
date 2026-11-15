@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Experimental foundation (unreleased)
+## 0.1.0 — Desktop preview (v0.1.0-preview.1)
 
 - Add an independent Rust file service and CLI, static Next.js manager and Tauri desktop host.
 - Separate product branding, stable installation identity, storage providers and compiled feature modules.
@@ -20,4 +20,4 @@
 - Document architecture, API contracts, design tokens, platform limits, signing reuse, early store/privacy requirements and measured core transfer/size costs.
 - Define future default-address and QR requirements around explicit user choice, confirmed hotspots, recent network changes, stable recommendations and simple connection labels; these features are not implemented yet.
 
-Android/iOS native adaptation, durable resume, directory copy, Windows move/rename, older Linux compatibility, offline GUI packaging and installed/signing/store validation remain future work. This entry describes the experimental source preview; no release is published yet.
+[The desktop prerelease](docs/distribution/preview.md) provides the verified five-target packages and checksums for testing. Android arm64 is the next build priority; iOS native adaptation is scheduled later. Mobile storage/service support, the new port-fallback and QR recommendation changes, durable resume, directory copy, Windows move/rename, older Linux compatibility, offline GUI packaging and installed/signing/store validation remain future work. No stable release is published yet.

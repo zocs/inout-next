@@ -2,7 +2,7 @@
 
 独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面宿主。一台设备选择共享目录，其他设备通过浏览器访问。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-目前是实验性 **0.1.0 preview**。[CI](https://github.com/zocs/inout-next/actions) 覆盖 Linux x64、Windows x86/x64、macOS ARM64/x64 的构建与测试，包含真实浏览器文件操作和原生打包。安装、签名、离线分发和移动平台分别验收，具体见[平台状态](docs/platforms.md)。尚无正式发布版本。
+目前是实验性 **0.1.0 preview**。可[下载桌面预发布版本](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1)，产物选择见[预览运行说明](docs/distribution/preview.md)。[CI](https://github.com/zocs/inout-next/actions) 覆盖 Linux x64、Windows x86/x64、macOS ARM64/x64 的构建与测试，包含真实浏览器文件操作和原生打包。安装、签名、离线分发和移动平台分别验收，具体见[平台状态](docs/platforms.md)。接下来优先推进 Android arm64 构建；iOS 适配和实机验证安排在后续。尚无稳定正式版本。
 
 - [English README](README.md)
 - [需求](docs/requirements.md) · [路线图](ROADMAP.md) · [平台状态](docs/platforms.md)

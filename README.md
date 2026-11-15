@@ -2,7 +2,7 @@
 
 An independent Rust HTTP file service, a static Next.js file manager, and a Tauri desktop host. Share a folder from one device and browse, upload, download or manage it from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
 
-This is an experimental **0.1.0 preview**. [CI](https://github.com/zocs/inout-next/actions) builds and tests Linux x64, Windows x86/x64 and macOS ARM64/x64, including real browser file operations and native packaging. Installation, signing, offline distribution and mobile support have separate milestones; see the [platform matrix](docs/platforms.md). There is no published release yet.
+This is an experimental **0.1.0 preview**. [Download the desktop prerelease](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) and see the [package guide](docs/distribution/preview.md). [CI](https://github.com/zocs/inout-next/actions) builds and tests Linux x64, Windows x86/x64 and macOS ARM64/x64, including real browser file operations and native packaging. Installation, signing, offline distribution and mobile support have separate milestones; see the [platform matrix](docs/platforms.md). Android arm64 is the next build priority; iOS adaptation and device checks are scheduled later. No stable release is published yet.
 
 - [中文说明](README_zh.md)
 - [Requirements](docs/requirements.md) · [Roadmap](ROADMAP.md) · [Platforms](docs/platforms.md)

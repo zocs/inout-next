@@ -1,6 +1,6 @@
 # Platform readiness
 
-The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview.
+The project targets Windows, Linux, macOS and Android. Status distinguishes target compilation/tests, actual execution, installation, offline runtime, signing and store acceptance. The current0.1.0 is an experimental desktop/CLI preview; [download/package guidance](distribution/preview.md) identifies the first desktop prerelease. Android arm64 is the next build priority. iOS remains scheduled for later native adaptation and device validation.
 
 The application displays **inout** while repository/distribution names retain `inout-next`. Stable native installer/package labels remain `Inout Next`; see [branding and identity](branding.md). The buffer, diagnostic and startup checkpoint passes 45 core, 23 native, 19 tool and 89 Chromium tests locally, strict Clippy, production builds, streamed/relocated integrity checks and a matched core measurement. [Desktop CI at c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) completes all five targets serially; all five CLI ZIPs and six native packages match its 35 tested web resources and expected architectures. Earlier Windows VM checks cover the prior picker/manager/shutdown behavior and do not establish current diagnostic IPC or startup frame times on target devices.
 

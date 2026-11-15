@@ -1,6 +1,6 @@
 # Requirements
 
-Status: experimental0.1.0 preview, 2026-11-15, with no published release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md).
+Status: experimental0.1.0 desktop preview, 2026-11-15; [prerelease packages and guide](distribution/preview.md) are separate from a stable release. App display name: **inout**; repository/distribution slug: **inout-next**. Display branding is configured independently in `product.json`. Current build/runtime readiness is recorded in [platforms](platforms.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md). Android arm64 builds and usable native hosting are the next priority; iOS adaptation remains scheduled with device validation pending.
 
 ## Product goal
 

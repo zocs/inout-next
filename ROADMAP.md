@@ -31,6 +31,8 @@ These foundations are implemented. Current local acceptance includes 45 core, 23
 
 ## 3. Android integration
 
+Android arm64 is the immediate mobile build priority after [the first desktop prerelease](docs/distribution/preview.md). Deliver and label build, installation/startup, storage/transfer and foreground-service milestones separately. Upload a testable Android preview after its actual supported behavior is verified. iOS adaptation and build preparation remain scheduled later, with physical-device validation pending.
+
 - Rust library/JNI and native Service ownership independent of Activity/WebView.
 - User-started, visible and stoppable sharing with correct foreground-service prerequisites/types/timeouts.
 - SAF/app-private storage and truthful provider publication/move capabilities.
