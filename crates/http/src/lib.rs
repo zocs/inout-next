@@ -3,9 +3,15 @@
 mod assets;
 mod auth;
 mod download;
+mod policy;
 mod routes;
+mod transfers;
 
 pub use download::{DownloadBufferError, DownloadControl, DEFAULT_DOWNLOAD_BUFFER_KIB};
+pub use policy::{KeyUpdate, PolicyControl, PolicyStatus, PolicyUpdate};
+pub use transfers::{
+    TransferControl, TransferKind, TransferRecord, TransferSnapshot, TransferState,
+};
 
 use axum::{
     extract::{DefaultBodyLimit, Request, State},
@@ -13,7 +19,7 @@ use axum::{
     response::{IntoResponse, Response},
     Router,
 };
-use share_domain::{Error, ModuleRegistry, Product};
+use share_domain::{Error, ModuleRegistry, Permissions, Product};
 use share_storage::{FileStore, FsStore};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::task::JoinHandle;
@@ -25,10 +31,12 @@ pub struct ServerConfig {
     pub web_dir: Option<PathBuf>,
     pub key: Option<String>,
     pub writable: bool,
+    pub permissions: Option<Permissions>,
     pub modules: Vec<String>,
     pub max_upload_bytes: u64,
     pub product: Product,
     pub download_control: DownloadControl,
+    pub transfer_control: TransferControl,
 }
 impl ServerConfig {
     pub fn new(root: PathBuf, listen: SocketAddr) -> Self {
@@ -38,16 +46,16 @@ impl ServerConfig {
             web_dir: None,
             key: None,
             writable: false,
+            permissions: None,
             modules: vec!["files".into(), "uploads".into(), "manage".into()],
             max_upload_bytes: 2147483648,
             product: Product::default(),
             download_control: DownloadControl::default(),
+            transfer_control: TransferControl::default(),
         }
     }
     fn validate(&self) -> Result<ModuleRegistry, ServerError> {
-        if self.key.as_ref().is_some_and(|key| key.trim().is_empty())
-            || (self.writable && self.key.is_none())
-        {
+        if self.key.as_ref().is_some_and(|key| key.trim().is_empty()) {
             return Err(ServerError::Policy);
         }
         ModuleRegistry::new(&self.modules).map_err(ServerError::Domain)
@@ -56,7 +64,7 @@ impl ServerConfig {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
-    #[error("Writable mode requires a nonempty access key")]
+    #[error("Access keys must be nonempty; deletion requires a configured key")]
     Policy,
     #[error("Invalid service configuration: {0}")]
     Domain(Error),
@@ -74,6 +82,8 @@ pub struct RunningServer {
     task: Option<JoinHandle<Result<(), std::io::Error>>>,
     requests: TaskTracker,
     download_control: DownloadControl,
+    policy: PolicyControl,
+    transfers: TransferControl,
 }
 impl RunningServer {
     pub fn address(&self) -> SocketAddr {
@@ -81,6 +91,12 @@ impl RunningServer {
     }
     pub fn download_control(&self) -> DownloadControl {
         self.download_control.clone()
+    }
+    pub fn policy_control(&self) -> PolicyControl {
+        self.policy.clone()
+    }
+    pub fn transfer_control(&self) -> TransferControl {
+        self.transfers.clone()
     }
     pub fn request_stop(&self) {
         self.cancellation.cancel();
@@ -124,9 +140,9 @@ struct AppState {
     store: Arc<dyn FileStore>,
     product: Product,
     registry: ModuleRegistry,
-    writable: bool,
     max_upload_bytes: u64,
-    auth: Arc<auth::Auth>,
+    policy: PolicyControl,
+    transfers: TransferControl,
     cancellation: CancellationToken,
     download_control: DownloadControl,
 }
@@ -144,9 +160,10 @@ pub async fn start_with_store(
     store: Arc<dyn FileStore>,
 ) -> Result<RunningServer, ServerError> {
     let download_control = config.download_control.clone();
+    let transfers = config.transfer_control.clone();
     let cancellation = CancellationToken::new();
     let requests = TaskTracker::new();
-    let router = build_router(&config, store, cancellation.clone(), requests.clone())?;
+    let (router, policy) = build_router(&config, store, cancellation.clone(), requests.clone())?;
     let listener = tokio::net::TcpListener::bind(config.listen)
         .await
         .map_err(ServerError::Io)?;
@@ -163,6 +180,8 @@ pub async fn start_with_store(
         task: Some(task),
         requests,
         download_control,
+        policy,
+        transfers,
     })
 }
 
@@ -171,6 +190,14 @@ pub fn router_with_store(
     config: &ServerConfig,
     store: Arc<dyn FileStore>,
 ) -> Result<Router, ServerError> {
+    router_with_store_and_policy(config, store).map(|(router, _)| router)
+}
+
+/// The injected-provider router and its application-owned admission control.
+pub fn router_with_store_and_policy(
+    config: &ServerConfig,
+    store: Arc<dyn FileStore>,
+) -> Result<(Router, PolicyControl), ServerError> {
     build_router(config, store, CancellationToken::new(), TaskTracker::new())
 }
 fn build_router(
@@ -178,8 +205,22 @@ fn build_router(
     store: Arc<dyn FileStore>,
     cancellation: CancellationToken,
     requests: TaskTracker,
-) -> Result<Router, ServerError> {
+) -> Result<(Router, PolicyControl), ServerError> {
     let registry = config.validate()?;
+    let permissions = config.permissions.clone().unwrap_or_else(|| {
+        let mut permissions = registry.permissions(config.writable);
+        permissions.delete &= config.key.is_some();
+        permissions
+    });
+    let policy = PolicyControl::new(registry.clone(), permissions, config.key.as_deref()).map_err(
+        |error| {
+            if error == Error::Forbidden {
+                ServerError::Policy
+            } else {
+                ServerError::Domain(error)
+            }
+        },
+    )?;
     let public_assets = if let Some(web_dir) = &config.web_dir {
         Some(assets::Assets::new(
             store.web_assets(web_dir).map_err(ServerError::Domain)?,
@@ -195,9 +236,9 @@ fn build_router(
         registry,
         store,
         product: config.product.clone(),
-        writable: config.writable,
         max_upload_bytes: config.max_upload_bytes,
-        auth: Arc::new(auth::Auth::new(config.key.as_deref())),
+        policy: policy.clone(),
+        transfers: config.transfer_control.clone(),
         cancellation,
         download_control: config.download_control.clone(),
     };
@@ -215,10 +256,13 @@ fn build_router(
     } else {
         router
     };
-    Ok(router.layer(middleware::from_fn_with_state(
-        request_control,
-        cancel_requests,
-    )))
+    Ok((
+        router.layer(middleware::from_fn_with_state(
+            request_control,
+            cancel_requests,
+        )),
+        policy,
+    ))
 }
 
 #[derive(Clone)]

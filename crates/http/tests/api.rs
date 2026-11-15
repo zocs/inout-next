@@ -211,7 +211,7 @@ async fn public_status_private_context_and_server_side_policy() {
     let context = json_body(fixture.request("GET", "/api/v1/context", &BEARER, "").await).await;
     assert_eq!(
         context["permissions"],
-        json!({"list":true,"download":true,"upload":false,"manage":false})
+        json!({"list":true,"download":true,"upload":false,"manage":false,"rename":false,"delete":false})
     );
     assert_eq!(context["capabilities"]["directory_copy"], false);
     assert_eq!(context["capabilities"]["directory_move"], false);
@@ -479,17 +479,17 @@ async fn paths_decode_once_and_upload_limits_and_manage_operations_work() {
 }
 
 #[tokio::test]
-async fn writable_without_key_is_rejected_and_stop_releases_listener() {
+async fn public_writable_startup_and_stop_release_the_listener() {
     let root = tempfile::tempdir().unwrap();
-    let mut invalid = ServerConfig::new(root.path().to_owned(), "127.0.0.1:0".parse().unwrap());
-    invalid.writable = true;
-    assert!(start(invalid).await.is_err());
-    let server = start(ServerConfig::new(
-        root.path().to_owned(),
-        "127.0.0.1:0".parse().unwrap(),
-    ))
-    .await
-    .unwrap();
+    let mut config = ServerConfig::new(root.path().to_owned(), "127.0.0.1:0".parse().unwrap());
+    config.writable = true;
+    let server = start(config).await.unwrap();
+    let policy = server.policy_control().status();
+    assert!(!policy.auth_required);
+    assert!(policy.permissions.upload);
+    assert!(policy.permissions.manage);
+    assert!(policy.permissions.rename);
+    assert!(!policy.permissions.delete);
     let address = server.address();
     assert!(tokio::net::TcpStream::connect(address).await.is_ok());
     tokio::time::timeout(Duration::from_secs(3), server.stop())

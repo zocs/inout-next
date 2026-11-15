@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::{transfers::TrackedStream, TransferKind, TransferState};
 use axum::{
     body::Body,
     extract::{
@@ -131,18 +132,22 @@ async fn method_not_allowed() -> Response {
     response
 }
 async fn status(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(json!({"product":state.product,"auth_required":state.auth.required()}))
+    let policy = state.policy.snapshot();
+    Json(
+        json!({"product":state.product,"auth_required":policy.auth.required(),"policy_revision":policy.revision}),
+    )
 }
 async fn context(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    state.auth.authorize(&headers, false)?;
-    let permissions = state.registry.permissions(state.writable);
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, false)?;
+    let permissions = &policy.permissions;
     Ok(Json(
         json!({"product":state.product,"root_label":"Shared files","modules":state.registry.enabled(),
-        "capabilities":{"file_move":permissions.manage && state.store.file_move_supported(), "directory_move":permissions.manage && state.store.directory_move_supported(), "directory_copy":false},
-        "permissions":permissions,"limits":{"max_upload_bytes":state.max_upload_bytes}}),
+        "capabilities":{"file_move":(permissions.manage || permissions.rename) && state.store.file_move_supported(), "directory_move":(permissions.manage || permissions.rename) && state.store.directory_move_supported(), "directory_copy":false},
+        "permissions":permissions,"policy_revision":policy.revision,"auth_required":policy.auth.required(),"limits":{"max_upload_bytes":state.max_upload_bytes}}),
     ))
 }
 #[derive(Deserialize)]
@@ -155,11 +160,11 @@ async fn login(
     request: Result<Json<Login>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(request) = request.map_err(|_| Error::Conflict)?;
-    let cookie = state.auth.login(&headers, &request.key)?;
+    let cookie = state.policy.snapshot().auth.login(&headers, &request.key)?;
     Ok((StatusCode::NO_CONTENT, [(http::header::SET_COOKIE, cookie)]).into_response())
 }
 async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Response, ApiError> {
-    let cookie = state.auth.logout(&headers)?;
+    let cookie = state.policy.snapshot().auth.logout(&headers)?;
     Ok((StatusCode::NO_CONTENT, [(http::header::SET_COOKIE, cookie)]).into_response())
 }
 #[derive(Deserialize)]
@@ -178,8 +183,9 @@ async fn entries(
     headers: HeaderMap,
     query: Result<Query<PathQuery>, QueryRejection>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    state.auth.authorize(&headers, false)?;
-    if !state.registry.permissions(state.writable).list {
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, false)?;
+    if !policy.permissions.list {
         return Err(Error::Forbidden.into());
     }
     let path = query_path(query, true)?;
@@ -192,42 +198,84 @@ async fn content(
     method: Method,
     query: Result<Query<PathQuery>, QueryRejection>,
 ) -> Result<Response, ApiError> {
-    state.auth.authorize(&headers, false)?;
-    if !state.registry.permissions(state.writable).download {
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, false)?;
+    if !policy.permissions.download {
         return Err(Error::Forbidden.into());
     }
     let path = query_path(query, false)?;
     let download_buffer = state.download_control.buffer_bytes();
-    let mut opened = state.store.open(&path, 0).await?;
-    let size = opened.entry.size.ok_or(Error::Unsupported)?;
+    let transfer = if method == Method::HEAD {
+        None
+    } else {
+        Some(state.transfers.observe(
+            TransferKind::Download,
+            path.as_str(),
+            None,
+            policy.revision,
+        )?)
+    };
+    let mut opened = match state.store.open(&path, 0).await {
+        Ok(opened) => opened,
+        Err(error) => {
+            if let Some(transfer) = &transfer {
+                transfer.finish(TransferState::Failed);
+            }
+            return Err(error.into());
+        }
+    };
+    let Some(size) = opened.entry.size else {
+        if let Some(transfer) = &transfer {
+            transfer.finish(TransferState::Failed);
+        }
+        return Err(Error::Unsupported.into());
+    };
     let range = if method == Method::HEAD {
         None
     } else {
-        parse_range(
+        match parse_range(
             headers
                 .get(http::header::RANGE)
                 .and_then(|value| value.to_str().ok()),
             size,
-        )
-        .map_err(|_| ApiError {
-            error: Error::InvalidRange,
-            size: Some(size),
-        })?
+        ) {
+            Ok(range) => range,
+            Err(_) => {
+                if let Some(transfer) = &transfer {
+                    transfer.finish(TransferState::Failed);
+                }
+                return Err(ApiError {
+                    error: Error::InvalidRange,
+                    size: Some(size),
+                });
+            }
+        }
     };
     let (start, length) = range
         .map(|(start, end)| (start, end - start + 1))
         .unwrap_or((0, size));
+    if let Some(transfer) = &transfer {
+        transfer.set_total(length);
+    }
     if start != 0 {
         // Position the original handle so metadata and content remain coherent
         // when its pathname is replaced. Storage retains a stream-only fallback.
-        opened.reader.advance(start).await?;
+        if let Err(error) = opened.reader.advance(start).await {
+            if let Some(transfer) = &transfer {
+                transfer.finish(TransferState::Failed);
+            }
+            return Err(error.into());
+        }
     }
     let body = if method == Method::HEAD {
         Body::empty()
     } else {
         let stream = ReaderStream::with_capacity(opened.reader.take(length), download_buffer)
             .take_until(state.cancellation.cancelled_owned());
-        Body::from_stream(stream)
+        Body::from_stream(TrackedStream::new(
+            stream,
+            transfer.expect("GET transfer lease"),
+        ))
     };
     let mut response = Response::new(body);
     *response.status_mut() = if range.is_some() {
@@ -236,6 +284,10 @@ async fn content(
         StatusCode::OK
     };
     let headers = response.headers_mut();
+    headers.insert(
+        "x-policy-revision",
+        policy.revision.to_string().parse().expect("numeric header"),
+    );
     headers.insert(
         http::header::CONTENT_LENGTH,
         length.to_string().parse().expect("numeric header"),
@@ -316,8 +368,9 @@ async fn upload(
     query: Result<Query<PathQuery>, QueryRejection>,
     body: Body,
 ) -> Result<Response, ApiError> {
-    state.auth.authorize(&headers, true)?;
-    if !state.registry.permissions(state.writable).upload {
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, true)?;
+    if !policy.permissions.upload {
         return Err(Error::Forbidden.into());
     }
     let path = query_path(query, false)?;
@@ -329,31 +382,49 @@ async fn upload(
     {
         return Err(Error::TooLarge.into());
     }
-    let stream = body.into_data_stream().map_err(std::io::Error::other);
+    let total = headers
+        .get(http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse().ok());
+    let transfer =
+        state
+            .transfers
+            .observe(TransferKind::Upload, path.as_str(), total, policy.revision)?;
+    let progress = transfer.progress();
+    let stream = body
+        .into_data_stream()
+        .inspect_ok(move |bytes| progress.add(bytes.len()))
+        .map_err(std::io::Error::other);
     let reader = Box::pin(StreamReader::new(stream));
     let entry = tokio::select! {
-        result = state.store.upload(&path, reader, state.max_upload_bytes) => result?,
+        result = state.store.upload(&path, reader, state.max_upload_bytes) => match result {
+            Ok(entry) => entry,
+            Err(error) => { transfer.finish(TransferState::Failed); return Err(error.into()); }
+        },
         _ = state.cancellation.cancelled() => return Err(Error::Conflict.into()),
     };
-    Ok((StatusCode::CREATED, Json(json!({"entry":entry}))).into_response())
+    transfer.finish(TransferState::Published);
+    Ok((
+        StatusCode::CREATED,
+        [("x-policy-revision", policy.revision.to_string())],
+        Json(json!({"entry":entry})),
+    )
+        .into_response())
 }
 #[derive(Deserialize)]
 struct PathBody {
     path: String,
-}
-fn manage(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
-    state.auth.authorize(headers, true)?;
-    if !state.registry.permissions(state.writable).manage {
-        return Err(Error::Forbidden.into());
-    }
-    Ok(())
 }
 async fn mkdir(
     State(state): State<AppState>,
     headers: HeaderMap,
     request: Result<Json<PathBody>, JsonRejection>,
 ) -> Result<Response, ApiError> {
-    manage(&state, &headers)?;
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, true)?;
+    if !policy.permissions.manage {
+        return Err(Error::Forbidden.into());
+    }
     let Json(request) = request.map_err(|_| Error::Conflict)?;
     let path = RelativePath::parse(&request.path, false)?;
     let entry = state.store.mkdir(&path).await?;
@@ -370,18 +441,52 @@ async fn operation(
     headers: HeaderMap,
     request: Result<Json<Operation>, JsonRejection>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    manage(&state, &headers)?;
+    let policy = state.policy.snapshot();
+    policy.auth.authorize(&headers, true)?;
     let Json(request) = request.map_err(|_| Error::Conflict)?;
     let source = RelativePath::parse(&request.source, false)?;
     let destination = RelativePath::parse(&request.destination, false)?;
     let entry = match request.action.as_str() {
         "rename" | "move" => {
+            if request.action == "rename" {
+                if !policy.permissions.rename
+                    || source.as_str().rsplit_once('/').map(|(parent, _)| parent)
+                        != destination
+                            .as_str()
+                            .rsplit_once('/')
+                            .map(|(parent, _)| parent)
+                {
+                    return Err(Error::Forbidden.into());
+                }
+            } else if !policy.permissions.manage {
+                return Err(Error::Forbidden.into());
+            }
             if !state.store.file_move_supported() && !state.store.directory_move_supported() {
                 return Err(Error::Unsupported.into());
             }
             state.store.move_entry(&source, &destination).await?
         }
-        "copy" => state.store.copy(&source, &destination).await?,
+        "copy" => {
+            if !policy.permissions.manage {
+                return Err(Error::Forbidden.into());
+            }
+            let transfer = state.transfers.observe(
+                TransferKind::Copy,
+                destination.as_str(),
+                None,
+                policy.revision,
+            )?;
+            match state.store.copy(&source, &destination).await {
+                Ok(entry) => {
+                    transfer.finish_copy(entry.size);
+                    entry
+                }
+                Err(error) => {
+                    transfer.finish(TransferState::Failed);
+                    return Err(error.into());
+                }
+            }
+        }
         _ => return Err(Error::Unsupported.into()),
     };
     Ok(Json(json!({"entry":entry})))
@@ -397,7 +502,11 @@ async fn remove(
     headers: HeaderMap,
     query: Result<Query<Remove>, QueryRejection>,
 ) -> Result<StatusCode, ApiError> {
-    manage(&state, &headers)?;
+    let policy = state.policy.snapshot();
+    if !policy.permissions.delete || !policy.auth.required() {
+        return Err(Error::Forbidden.into());
+    }
+    policy.auth.authorize(&headers, true)?;
     let Query(query) = query.map_err(|_| Error::InvalidPath)?;
     let path = RelativePath::parse(&query.path, false)?;
     state.store.remove(&path, query.recursive).await?;

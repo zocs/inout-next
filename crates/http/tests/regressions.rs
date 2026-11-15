@@ -4,7 +4,9 @@ use http::Request;
 #[cfg(unix)]
 use http_body_util::BodyExt;
 use share_domain::{Entry, EntryKind, Error, RelativePath};
-use share_http::{router_with_store, start, start_with_store, ServerConfig};
+use share_http::{
+    router_with_store, start, start_with_store, ServerConfig, TransferKind, TransferState,
+};
 use share_storage::{FileStore, FsStore, OpenFile, Reader};
 use std::{
     path::Path,
@@ -104,6 +106,7 @@ enum Mode {
     Open,
     Range,
     Copy,
+    UnknownCopy,
     List,
     Manage,
 }
@@ -192,7 +195,12 @@ impl FileStore for PendingStore {
     async fn move_entry(&self, from: &RelativePath, to: &RelativePath) -> Result<Entry, Error> {
         self.actual.move_entry(from, to).await
     }
-    async fn copy(&self, _: &RelativePath, to: &RelativePath) -> Result<Entry, Error> {
+    async fn copy(&self, from: &RelativePath, to: &RelativePath) -> Result<Entry, Error> {
+        if self.mode == Mode::UnknownCopy {
+            let mut entry = self.actual.copy(from, to).await?;
+            entry.size = None;
+            return Ok(entry);
+        }
         self.actual
             .upload(to, self.reader.lock().await.take().unwrap(), 100)
             .await
@@ -241,18 +249,23 @@ async fn check_pending_shutdown(mode: Mode, drop_server: bool) {
     let server = start_with_store(config(&root.path().join("must-not-be-opened")), provider)
         .await
         .unwrap();
+    let transfers = server.transfer_control();
     let mut connection = tokio::net::TcpStream::connect(server.address())
         .await
         .unwrap();
     let request = match mode {
         Mode::Open => "GET /api/v1/content?path=source HTTP/1.1\r\n",
         Mode::Range => "GET /api/v1/content?path=source HTTP/1.1\r\nRange: bytes=2-4\r\n",
-        Mode::Copy => "POST /api/v1/operations HTTP/1.1\r\nContent-Type: application/json\r\n",
+        Mode::Copy | Mode::UnknownCopy => {
+            "POST /api/v1/operations HTTP/1.1\r\nContent-Type: application/json\r\n"
+        }
         Mode::List => "GET /api/v1/entries?path= HTTP/1.1\r\n",
         Mode::Manage => "POST /api/v1/directories HTTP/1.1\r\nContent-Type: application/json\r\n",
     };
     let body = match mode {
-        Mode::Copy => r#"{"action":"copy","source":"source","destination":"copied"}"#,
+        Mode::Copy | Mode::UnknownCopy => {
+            r#"{"action":"copy","source":"source","destination":"copied"}"#
+        }
         Mode::Manage => r#"{"path":"made"}"#,
         _ => "",
     };
@@ -267,6 +280,26 @@ async fn check_pending_shutdown(mode: Mode, drop_server: bool) {
     tokio::time::timeout(Duration::from_secs(1), started.notified())
         .await
         .unwrap();
+    if matches!(mode, Mode::Open | Mode::Range | Mode::Copy) {
+        let admitted = transfers.snapshot();
+        assert_eq!(
+            admitted.active, 1,
+            "pending provider work belongs to an admitted transfer"
+        );
+        assert_eq!(admitted.records[0].state, TransferState::Active);
+        assert_eq!(
+            admitted.records[0].kind,
+            if mode == Mode::Copy {
+                TransferKind::Copy
+            } else {
+                TransferKind::Download
+            }
+        );
+        if mode == Mode::Open {
+            assert_eq!(admitted.records[0].total, None);
+            assert_eq!(admitted.records[0].bytes, 0);
+        }
+    }
     if drop_server {
         drop(server);
     } else {
@@ -287,6 +320,11 @@ async fn check_pending_shutdown(mode: Mode, drop_server: bool) {
     })
     .await
     .unwrap();
+    if matches!(mode, Mode::Open | Mode::Range | Mode::Copy) {
+        let interrupted = transfers.snapshot();
+        assert_eq!(interrupted.active, 0);
+        assert_eq!(interrupted.records[0].state, TransferState::Interrupted);
+    }
     if matches!(mode, Mode::Range | Mode::Copy) {
         assert!(writer.write_all(b"bcdef").await.is_err());
     }
@@ -322,6 +360,49 @@ async fn drop_cancels_range_prefix_reader() {
 #[tokio::test]
 async fn stop_cancels_pending_provider_open() {
     check_pending_shutdown(Mode::Open, false).await;
+}
+
+#[tokio::test]
+async fn a_copy_receipt_without_size_does_not_invent_observed_bytes() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("source"), b"copy-source").unwrap();
+    let provider = Arc::new(PendingStore {
+        actual: FsStore::new(root.path()).unwrap(),
+        mode: Mode::UnknownCopy,
+        reader: tokio::sync::Mutex::new(None),
+        started: Arc::new(Notify::new()),
+        released: Arc::new(AtomicUsize::new(0)),
+    });
+    let config = config(root.path());
+    let transfers = config.transfer_control.clone();
+    let router = router_with_store(&config, provider).unwrap();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/v1/operations")
+        .header("content-type", "application/json")
+        .header("authorization", "Bearer test-key")
+        .body(Body::from(
+            r#"{"action":"copy","source":"source","destination":"copied"}"#,
+        ))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), http::StatusCode::OK);
+    assert_eq!(
+        std::fs::read(root.path().join("copied")).unwrap(),
+        b"copy-source"
+    );
+    let snapshot = transfers.snapshot();
+    assert_eq!(snapshot.active, 0);
+    assert_eq!(snapshot.records[0].state, TransferState::Published);
+    assert_eq!(snapshot.records[0].kind, TransferKind::Copy);
+    assert_eq!(
+        snapshot.records[0].total, None,
+        "the provider did not supply a size receipt"
+    );
+    assert_eq!(
+        snapshot.records[0].bytes, 0,
+        "copy progress is opaque, not wire observation"
+    );
 }
 #[tokio::test]
 async fn stop_cancels_pending_list_and_manage_provider_calls() {

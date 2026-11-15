@@ -1,19 +1,47 @@
-use std::process::Command;
+use std::{
+    process::{Command, Stdio},
+    time::{Duration, Instant},
+};
 fn cli() -> Command {
     Command::new(env!("CARGO_BIN_EXE_share-server"))
 }
 
 #[test]
-fn root_is_required_and_writable_mode_rejects_missing_key() {
+fn root_is_required_and_an_explicit_blank_key_is_rejected() {
     let missing_root = cli().output().unwrap();
     assert!(!missing_root.status.success());
     let root = tempfile::tempdir().unwrap();
-    let no_key = cli()
-        .args(["--root", root.path().to_str().unwrap(), "--writable"])
-        .output()
+    let key = root.path().join("blank-key");
+    std::fs::write(&key, " \r\n").unwrap();
+    let mut blank_key = cli()
+        .args([
+            "--root",
+            root.path().to_str().unwrap(),
+            "--listen",
+            "127.0.0.1:0",
+            "--writable",
+            "--key-file",
+            key.to_str().unwrap(),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .unwrap();
-    assert!(!no_key.status.success());
-    assert!(String::from_utf8_lossy(&no_key.stderr).contains("access key"));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while blank_key.try_wait().unwrap().is_none() {
+        if Instant::now() > deadline {
+            let _ = blank_key.kill();
+            let _ = blank_key.wait();
+            panic!("an explicitly invalid key must fail before starting sharing");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let blank_key = blank_key.wait_with_output().unwrap();
+    assert!(!blank_key.status.success());
+    assert!(
+        blank_key.stdout.is_empty(),
+        "an invalid key must not start sharing"
+    );
 }
 
 #[test]

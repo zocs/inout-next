@@ -34,6 +34,9 @@ impl Auth {
             .is_some_and(|expected| bool::from(hash(key).ct_eq(&expected)))
     }
     pub fn authorize(&self, headers: &HeaderMap, mutation: bool) -> Result<(), ApiError> {
+        if mutation && headers.contains_key(http::header::ORIGIN) {
+            require_origin(headers)?;
+        }
         if !self.required() {
             return Ok(());
         }

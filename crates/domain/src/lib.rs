@@ -91,12 +91,16 @@ pub struct Entry {
     pub modified: Option<u64>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Permissions {
     pub list: bool,
     pub download: bool,
     pub upload: bool,
     pub manage: bool,
+    #[serde(default)]
+    pub rename: bool,
+    #[serde(default)]
+    pub delete: bool,
 }
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -228,6 +232,8 @@ impl ModuleRegistry {
             download: self.has("files"),
             upload: writable && self.has("uploads"),
             manage: writable && self.has("manage"),
+            rename: writable && self.has("manage"),
+            delete: writable && self.has("manage"),
         }
     }
 }
