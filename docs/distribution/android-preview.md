@@ -47,7 +47,7 @@ These results establish that emulator/release-APK combination. Physical arm64, a
 
 ## Build from source
 
-Use pinned Rust1.99.1, Node26.13.1, JDK17, Android API36/build-tools36.0.0 and NDK28.2.13676358. The committed text scaffold uses AGP8.13.1, Kotlin2.2.20 and Gradle8.14. Install the `aarch64-linux-android` Rust target and the corresponding SDK/NDK tools first.
+Use pinned Rust1.99.1, Node26.13.1, JDK17, Android API36/build-tools36.0.0 and NDK28.2.13676358. The committed text scaffold uses AGP8.13.1, Kotlin2.2.20 and Gradle8.14. Install the `aarch64-linux-android` Rust target and the corresponding SDK/NDK tools first. CI provisions Android command-line tools build13114758 and platform tools in an isolated SDK directory through a fixed-commit setup action before the locked target build.
 
 ```sh
 npm ci --prefix apps/web

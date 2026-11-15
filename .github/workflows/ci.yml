@@ -197,8 +197,17 @@ jobs:
         with:
           name: web-export
           path: apps/web/out
+      - name: Provision Android command-line tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/inout-next-android-sdk
+        with:
+          cmdline-tools-version: '13114758'
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
       - name: Pinned Android build tools
         run: |
+          sdkmanager --version
           sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
           npm ci --prefix apps/desktop
           python3 scripts/prepare_android_assets.py
