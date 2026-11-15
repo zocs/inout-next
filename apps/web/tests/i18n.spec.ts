@@ -132,6 +132,11 @@ for (const [languages, expected, language] of [
   [["ja-JP", "en-GB"], "en", "Language"], [["ja-JP", "th-TH"], "en", "Language"], [["zh-Hant-HK", "zh-CN"], "zh-Hant", "語言"],
   [["zh-Hans-HK", "en"], "zh-Hans", "语言"], [["zh-Hans-TW", "en"], "zh-Hans", "语言"], [["zh-Hans-MO", "en"], "zh-Hans", "语言"],
   [["zh-Hant-CN", "en"], "zh-Hant", "語言"], [["zh-HK", "en"], "zh-Hant", "語言"], [["zh-MO", "en"], "zh-Hant", "語言"],
+  [["zh-Hant-CN-x-hans", "en"], "zh-Hant", "語言"], [["zh-HK-x-hans", "en"], "zh-Hant", "語言"],
+  [["zh-Hans-HK-x-hant", "en"], "zh-Hans", "语言"], [["zh-CN-x-hant", "en"], "zh-Hans", "语言"], [["zh-CN-x-tw", "en"], "zh-Hans", "语言"],
+  [["zh-Hant-CN-x", "en"], "en", "Language"], [["zh-cmn-Hant", "en"], "en", "Language"], [["cmn-Hant", "en"], "zh-Hant", "語言"],
+  [["zh-Hant-CN-x", "zh-Hans-CN", "en"], "zh-Hans", "语言"], [["zh-cmn-Hant", "zh-Hant-TW", "en"], "zh-Hant", "語言"],
+  [["zh_Hant_TW", "en"], "zh-Hant", "語言"],
 ] as const) {
   test(`system languages ${languages.join(",")} resolve to ${expected}`, async ({ page, service }) => {
     await page.addInitScript(values => Object.defineProperty(navigator, "languages", { value: values }), [...languages]); await page.goto(service.url);

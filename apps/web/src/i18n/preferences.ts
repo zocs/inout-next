@@ -6,13 +6,14 @@ export function isLocalePreference(value: unknown): value is LocalePreference { 
 export function resolveLocale(languages: readonly string[], preference: LocalePreference): Locale {
   if (preference !== "system") return preference;
   for (const language of languages) {
-    const tag = language.toLowerCase().replaceAll("_", "-");
-    if (/^zh(?:-|$)/.test(tag)) {
-      if (/(?:^|-)hans(?:-|$)/.test(tag)) return "zh-Hans";
-      if (/(?:^|-)hant(?:-|$)/.test(tag)) return "zh-Hant";
-      return /(?:^|-)(?:tw|hk|mo)(?:-|$)/.test(tag) ? "zh-Hant" : "zh-Hans";
+    let tag: Intl.Locale;
+    try { tag = new Intl.Locale(language.replaceAll("_", "-")); } catch { continue; }
+    if (tag.language === "zh") {
+      if (tag.script === "Hans") return "zh-Hans";
+      if (tag.script === "Hant") return "zh-Hant";
+      return tag.region === "TW" || tag.region === "HK" || tag.region === "MO" ? "zh-Hant" : "zh-Hans";
     }
-    if (/^en(?:-|$)/.test(tag)) return "en";
+    if (tag.language === "en") return "en";
   }
   return "en";
 }
