@@ -21,13 +21,14 @@ Next.js remains the HTTP/browser manager. The final app uses Rust native renderi
 
 - Evaluate **Slint first, egui as the fallback** through the [native feasibility gates](docs/native-gui.md). Switch on an unresolved required-target, accessibility/distribution or matched-performance failure; an untested platform alone does not establish failure. Iced remains documented for comparison. No toolkit is adopted yet.
 - The renderer-free `share-host` controller, diagnostics and session are extracted. The opt-in Slint desktop trial has real setup/addresses, current-run receipts, three languages/four themes, native branding and confirmed Stop/close. Its two-worker Tokio bridge bounds commands, coalesces progress and preserves command-completion identity.
+- [Serial CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) passes all six jobs, including locked Slint tests, strict Clippy and optimized builds on five desktop targets. Five Slint ZIPs and the CLI/transitional packages are inspected against its exact 36-resource export. This completes the desktop compilation gate, including Windows i686; target GUI operation and adoption remain open.
 - Complete selected-renderer target/device and distribution checks, platform picker/grant adapters, persistent settings/OS motion preferences, live-setting/diagnostic controls and matched sustained presentation/resource measurements. Keep storage/providers and native lifecycle independent of widgets.
 - Prove selected-renderer Windows i686/real 32-bit OS, Android GameActivity or Slint API26 decision, Chinese input/TalkBack/16 KiB and a native iOS host/VoiceOver path.
 - Preserve pixel branding, native localized themes and confirmed Stop/close/cancel, with actual presentation/input/idle/energy and relocated-package measurements.
 
 ## 2. Desktop distribution and compatibility
 
-- Extend the actual Linux Slint trial checks to target-built packages, macOS/Windows native operation, installation and device validation.
+- Run the inspected Slint target packages through macOS/Windows native interaction, relocated/offline operation, installation and device validation; retain the separate accepted local Linux checks.
 - Windows32bit operating-system verification, installation/uninstall/upgrade and signing.
 - Separate human-visible native installer/package labels from stable resource/install identities, with emitted-package and installed-upgrade checks before changing the retained `Inout Next` labels.
 - Validate offline native Windows graphics/runtime packaging and actual 32-bit operation. Transitional Tauri WebView2 delivery has its own runtime/architecture boundary.

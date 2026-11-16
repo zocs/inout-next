@@ -53,6 +53,7 @@ __pycache__/
 
 # Local development records; keep product documentation public.
 /docs/handoff.md
+/docs/requirements-current.md
 /docs/reviews/
 /docs/superpowers/
 /docs/validation.md

@@ -1,0 +1,11 @@
+# Local requirements, handoff and development evidence.
+/.local/
+/.superpowers/
+/.impeccable/
+/docs/handoff.md
+/docs/requirements-current.md
+/docs/reviews/
+/docs/superpowers/
+/docs/validation.md
+/docs/validation/
+/docs/windows-debugging.md

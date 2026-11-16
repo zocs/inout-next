@@ -15,7 +15,7 @@ The Linux x64 desktop checkpoint uses Rust 1.99.1 and Node 26.13.1. Its export a
 
 The export grew by 22,310 bytes compared with the earlier 32-file export. The CLI and pages deliver no Python or Node runtime. The native executable excludes external webview libraries and is not an AppImage-size measurement. An older local native executable has insufficient build provenance for attributing growth specifically to diagnostics or branding; total native diagnostics memory and startup frame times remain unmeasured.
 
-## Verified CLI delivery
+## Published CLI delivery
 
 [Desktop CI at c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passed all five serial targets. These downloaded packages were checked against that run's own 35-file, 1,050,660-byte web export, including executable architecture, archive contents and hashes.
 
@@ -31,7 +31,7 @@ Each archive includes35exported web resources totalling1.00MiB before compressio
 
 For context, [dufs0.47.0](https://github.com/sigoden/dufs/releases/tag/v0.47.0) Windowsx64 ZIP is1.68MiB and Linuxx64-musl tar.gz is1.96MiB. Different compression formats, libc targets and feature sets prevent treating these sizes as an exact feature-parity comparison. A modern static Next page does not require delivering a Next server.
 
-## Verified native packages
+## Published transitional native packages
 
 The six desktop packages come from the same c004d68 CI checkpoint. Extraction verifies the native CPU/subsystem and every packaged web resource; it is separate from installing or running the GUI on a device. Both macOS bundles succeeded on their first packaging attempt, so that run does not demonstrate an actual resource-busy recovery. The Android row comes from preview.2's separately accepted [CI at 4dd4b51](https://github.com/zocs/inout-next/actions/runs/43704226914), followed by direct preview signing.
 
@@ -114,6 +114,39 @@ The normal Linux dependency graph selects winit/FemtoVG and contains no Tauri/Wr
 One traced launch reaches host-ready at 118.270 ms and first/ready render callbacks at 276.133/276.155 ms. These are individual callback markers before confirmed display, not cold-start, median, FPS or input-to-display results. A preceding functional Slint checkpoint was sampled for 65.34 seconds with 66 observations, a running loopback service, completed receipts, warm font/renderer caches and no GUI/transfer/accessibility observation during sampling. Median RSS/PSS/private memory was 99.45/88.24/83.32 MiB with 13 threads. No CPU-tick increase was detected at 10 ms accounting resolution. That earlier checkpoint remains separate from the current completion-correction package; neither interval establishes zero actual CPU, complete GPU memory, energy cost or an intrinsic toolkit ranking.
 
 Native interaction checks cover byte-exact relocated transfers, optional-key/public-write policy, actual folder selection/cancellation, multiple address selection/copy, external browser navigation and confirmed Stop/normal-close cleanup. Current-run receipts and canceled interruption preserve the listener/admitted body; durable history/resume and individual cancellation remain pending. Three languages/four themes and explicit startup reduced motion are implemented. Native OS motion policy, assistive/CJK input, Windows32/offline/installed operation, mobile/Apple/F-Droid distribution and matched sustained presentation measurements remain independent adoption gates. See [native evaluation](../native-gui.md) and [trial usage/licensing](../../apps/native-slint/README.md).
+
+## Slint trial serial CI packages
+
+[CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) completes all six jobs serially on 2026-11-16. All five desktop targets pass locked core/host, Tauri composition and Slint tests, strict Clippy and optimized builds. Linux also passes 56 tool and 131 Chromium cases, with no skipped, unexpected or flaky browser results, plus streamed 128 MiB and relocated 8 MiB integrity/cleanup checks. [Platform status](../platforms.md#ci) records exact test counts. These trial artifacts are separate from both the local functional package above and published Tauri previews.
+
+This CI's own export contains **36 files / 1,084,607 bytes**, including **1,011,196 raw JavaScript bytes** and **312,635 gzip bytes** measured separately per file. Five CLI ZIPs, five Slint ZIPs, six transitional desktop packages and the unsigned Android APK match these exact web resources. Native ZIP inspection also checks product metadata, source/framework notices, archive checksums and actual ELF/PE/Mach-O architecture. Build tools are absent from the delivered runtime.
+
+| Target | Slint executable | Slint + HTTP export + notices ZIP | CLI + HTTP export ZIP |
+| --- | ---: | ---: | ---: |
+| Linux x64 | 18,714,064 bytes / 17.85MiB | 9,008,964 bytes / 8.59MiB | 1.65MiB |
+| Windows x86 | 11,938,304 bytes / 11.39MiB | 6,830,899 bytes / 6.51MiB | 1.39MiB |
+| Windows x64 | 12,506,624 bytes / 11.93MiB | 6,903,747 bytes / 6.58MiB | 1.49MiB |
+| macOS ARM64 | 11,625,904 bytes / 11.09MiB | 6,491,529 bytes / 6.19MiB | 1.53MiB |
+| macOS Intel | 12,594,120 bytes / 12.01MiB | 6,798,155 bytes / 6.48MiB | 1.56MiB |
+
+The CI Linux Slint executable directly imports GLIBC through **2.35**, compared with **2.43** in the separate local build above. Its direct library requirements include fontconfig, libc, libm and the GCC/runtime loader. Graphics drivers, fonts, display/dialog/clipboard services, the external browser and their transitive library requirements are not bundled or fully audited by this ZIP inspection. No Ubuntu18.04, complete minimum-runtime or target-device clearance follows from the direct import ceiling.
+
+Windows Slint executables have the expected x86/x64 PE machine and GUI subsystem2; CLI executables use subsystem3. The 6.58MiB Windows x64 Slint ZIP and FileInfra's 15.42MiB GUI ZIP describe different runtimes and feature sets, so the delivery-byte comparison does not establish relative memory, throughput or offline operation. Slint does not embed WebView; actual Windows/macOS GUI, relocated/offline and installed behavior remain pending. Source remains MIT with separately included Slint royalty-free desktop terms; mobile/store licensing and final renderer adoption are still independent gates.
+
+The same run retains these transitional Tauri packages:
+
+| Target / package | Bytes | MiB |
+| --- | ---: | ---: |
+| Linux x64 AppImage | 82,946,552 | 79.10 |
+| Linux x64 deb | 4,692,272 | 4.47 |
+| Windows x86 NSIS | 2,868,486 | 2.74 |
+| Windows x64 NSIS | 3,085,443 | 2.94 |
+| macOS ARM64 DMG | 4,412,551 | 4.21 |
+| macOS Intel DMG | 4,507,479 | 4.30 |
+
+Both macOS bundles succeed on their first attempt; no resource-busy recovery is exercised in this run. AppImage/deb/NSIS/DMG outputs remain Tauri packages with the platform webview and compatibility requirements documented above. They are not Slint installers or replacements for the published preview assets.
+
+The transitional unsigned arm64 APK is **16,149,684 bytes (15.40 MiB)**, with one **13,304,624-byte Rust library** and this CI's same 36 indexed web resources. Seven Kotlin cases and both actual locked release-library compilation children pass; both source lockfiles remain unchanged. Manifest checks retain `inout`, the `.preview` ID, code100001, minAPI24 and targetAPI36. Exact raw resources, single ABI and ELF/native ZIP16KiB alignment pass inspection, while signature verification confirms it is unsigned. There is no Slint APK, new signing/install/emulator/device/16KiB runtime or store acceptance; the signed 15.39MiB preview.2 retains its separate provenance.
 
 ## Exploratory Rust GUI comparison
 

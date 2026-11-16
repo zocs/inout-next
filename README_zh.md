@@ -56,6 +56,8 @@ cargo run --manifest-path apps/native-slint/Cargo.toml --locked
 
 优化版 ZIP 打包、系统依赖及独立的 MIT/框架许可说明见[原生试验指南](apps/native-slint/README.md)。运行包不需要构建工具；原生试验不代表安装、旧系统、移动端或商店验收完成。
 
+[3d0e656 的 Slint 试验 CI 产物](https://github.com/zocs/inout-next/actions/runs/43844556784)提供 Linux x64、Windows x86/x64 和 macOS ARM64/x64 ZIP。下载对应平台的 artifact 后，完整解压其中的 `inout-next-0.1.0-<target>-native-slint-trial.zip`。它们是试验产物，与已发布的预览安装包及 CLI ZIP 分开；各平台体积和运行依赖见[本轮 CI 包测量](docs/distribution/size-and-runtime.md#slint-trial-serial-ci-packages)。
+
 ## 过渡 Tauri 宿主
 
 安装所在平台的 Tauri 构建依赖，然后执行：
@@ -112,7 +114,9 @@ Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主�
 
 [桌面检查点 c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) 已按顺序通过全部五个目标。下载后的五份 CLI ZIP、六份原生包已核对程序架构及本轮测试的全部 35 个网页资源，Debian 包与 Windows 安装器的生成身份检查也已通过。产物验证与安装、真机、离线运行及签名验收分别记录。
 
-[CI 工作流](.github/workflows/ci.yml) 使用仓库级单队列：Linux 验证、Android arm64、Windows x86/x64，最后 macOS arm64/x64；矩阵均设置 `max-parallel: 1`。Android 复用 Linux 已测网页导出，验证 Cargo 子进程锁文件、优化后的未签名 APK、manifest、资源、ABI、ELF 和原生 ZIP 对齐，再进行直接预览签名。macOS 只编译一次，随后仅对 `hdiutil create` 的资源繁忙错误最多尝试三次打包；其他错误立即失败。Windows 离线便携版和旧 Linux 兼容版仍有独立里程碑。
+[CI 工作流](.github/workflows/ci.yml) 使用仓库级单队列：Linux 验证、Android arm64、Windows x86/x64，最后 macOS arm64/x64；矩阵均设置 `max-parallel: 1`。各桌面目标分别测试、检查和构建 Slint，并在 CLI 与过渡 Tauri 产物旁提供独立原生 ZIP。Android 继续构建 Tauri 前台组合，复用 Linux 已测网页导出，验证 Cargo 子进程锁文件、优化后的未签名 APK、manifest、资源、ABI、ELF 和原生 ZIP 对齐；直接预览签名在产物验收后单独进行。macOS 只编译一次，随后仅对 `hdiutil create` 的资源繁忙错误最多尝试三次打包；其他错误立即失败。Windows 离线便携版和旧 Linux 兼容版仍有独立里程碑。
+
+[3d0e656 的 CI 43844556784](https://github.com/zocs/inout-next/actions/runs/43844556784)六项任务全部成功，实际运行区间没有重叠。各桌面目标通过 15 项 Tauri 组合及 14 项 Slint 测试；核心测试分别为 Linux 88 项、Windows 各 80 项、macOS 各 86 项。Linux 另通过 56 项工具、131 项浏览器用例及 128 MiB 流式、8 MiB 移动目录运行检查。Android 通过七项 Kotlin 用例和两个锁定依赖的 arm64 编译子进程。五份 Slint ZIP、五份 CLI ZIP、六份过渡桌面包和一份未签名 Tauri APK，均匹配本轮精确的 36 文件 / 1,084,607 字节网页导出。这证明目标构建与产物检查通过；各平台原生实际运行、签名、商店及正式选型仍分别验收。
 
 Android preview.2 来自 [4dd4b51 的 CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914)，六个目标全部串行通过。签名后的 arm64 APK 为 15.39MiB；[安装指南](docs/distribution/android-preview.md) 记录精确字节、校验值、各桌面目标32项原生测试、53工具/91浏览器/7Kotlin测试，以及单独的模拟器运行证据。
 

@@ -12,6 +12,8 @@
 
 The local functional Linux trial is separate from the earlier exploratory toolkit fixtures and published transitional previews. Its native executable is 17.88 MiB and its ZIP with the 36-file web export is 8.79 MiB; [native evaluation](docs/native-gui.md) and [size/runtime guidance](docs/distribution/size-and-runtime.md) record scope and requirements. No renderer adoption, replacement release, Slint APK or store clearance follows from these changes.
 
+[CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) passes all six jobs serially. Desktop tests pass with Linux 88 / Windows 80 each / macOS 86 each core cases, plus 15 Tauri composition and 14 Slint cases on every desktop target. Linux passes 56 tool and 131 browser cases and streamed/relocated integrity checks; Android passes seven Kotlin cases and two locked compilation children. Five CLI ZIPs, five Slint trial ZIPs, six transitional desktop packages and one unsigned Tauri arm64 APK pass architecture/resource inspection against the exact 36-file / 1,084,607-byte export. The CI Linux Slint executable/ZIP are 17.85/8.59 MiB with direct GLIBC imports through 2.35; the local package above and historical releases remain separate. Both macOS bundles succeed on their first attempt. Target GUI operation, full runtime compatibility and signing/store gates remain open.
+
 ### Earlier unreleased localization and live admission controls
 
 - Add local English, Simplified Chinese and Traditional Chinese catalogs, system-language selection and evergreen/tangerine/ocean/berry themes with validated product-independent preferences, cached formatting and stable file/transfer state.

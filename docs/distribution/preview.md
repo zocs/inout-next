@@ -4,6 +4,8 @@
 
 These released GUI packages use the transitional Tauri host. The current source also has a separate [Slint native desktop trial](../../apps/native-slint/README.md), with no embedded WebView. Its `native-slint-trial.zip` packages include the native executable, exact `web/` export and source/framework notices; they are separate from the server ZIPs and published installers below. Slint is evaluated first, with egui as the fallback. This source trial does not replace preview.1/preview.2 or establish installed/offline, mobile, signing or store acceptance.
 
+[CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) provides inspected Slint trial ZIPs for all five desktop targets after passing their locked tests, strict Clippy and optimized builds. Download the trial from that run's platform artifact using the native guide; the release links and installation instructions below continue to describe preview.1's Tauri packages. Current CI artifacts are not a replacement release.
+
 ## Choose a GUI package
 
 | System | Release asset | Runtime requirement |

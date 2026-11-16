@@ -6,6 +6,8 @@ Status: experimental0.1.0 source, 2026-11-16; [desktop preview.1](distribution/p
 
 One device starts a Rust HTTP file service for a chosen desktop directory or the Android preview's app-private storage. Other devices browse and manage its files through a modern Next.js interface without installing an application. The final application uses a Rust-rendered native GUI; Next.js is the HTTP/browser manager. The CLI is the headless composition. Existing Tauri desktop/Android previews are transitional; an opt-in functional Slint desktop trial is implemented. [Native renderer evaluation](native-gui.md) follows Slint first, egui as the fallback, with required-target, input/accessibility, distribution and measured-performance gates.
 
+The native application may develop its own layout, components and motion. The browser manager provides an aesthetic reference; its page structure is not a native GUI requirement. Design the host around choosing what to share, starting the service, finding its address and understanding transfers. Retain configurable pixel branding, clear status, local language support and confirmation/transfer ownership while validating native input, accessibility and performance.
+
 ## Experience carried forward
 
 FileInfra supplies experience in native lifecycle, authentication, offline tools, Android notifications/tiles, signing, portable packaging and honest compatibility verification. The archived inout-tauri shows why bundled executable discovery, writable-directory execution and incomplete Android storage integration need redesigned boundaries. The new project implements its own service instead of retaining dufs.
@@ -70,11 +72,11 @@ Default upload limit is 2 GiB, configurable. The initial release promises contin
 
 ## Platform targets
 
-The existing Tauri target results apply to transitional previews. A new renderer independently verifies Windows i686 on a real 32-bit OS, Linux compatibility, macOS architectures, Android minimum/current OS and iOS. Slint's API26 mobile floor must not silently replace the API24 goal; egui's GameActivity/AccessKit and custom iOS host are separate gates. Native startup, actual presented frames, CJK fonts/IME, idle/energy and total package/GPU/process costs follow the [evaluation protocol](native-gui.md).
+The existing Tauri target results apply to transitional previews. [Serial CI at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) independently tests/builds Slint on all five desktop targets and inspects their native ZIPs. Actual Windows i686 operation on a real 32-bit OS, Linux runtime compatibility, macOS GUI operation, Android minimum/current OS and iOS remain required. Slint's API26 mobile floor must not silently replace the API24 goal; egui's GameActivity/AccessKit and custom iOS host are separate gates. Native startup, actual presented frames, CJK fonts/IME, idle/energy and total package/GPU/process costs follow the [evaluation protocol](native-gui.md).
 
-- Windows x86/x64: core and Tauri builds; portable delivery needs correct-architecture WebView2 and actual moved-folder/offline tests.
-- Linux x64/arm64: standalone service and desktop packages. Ubuntu 18.04/glibc 2.27 compatibility is an independent headless target; Tauri GUI needs a separate WebKitGTK compatibility decision.
-- macOS Intel/Apple Silicon: core and Tauri, followed by real packaging, signing and device checks.
+- Windows x86/x64: CLI, Tauri and opt-in Slint tests/builds. Slint still needs actual 32-bit OS, moved-folder/offline and installed behavior checks; transitional Tauri also needs correct-architecture WebView2.
+- Linux x64/arm64: x64 service/desktop packages and local Slint interaction are verified; arm64 remains planned. Ubuntu 18.04/glibc 2.27 compatibility is an independent headless target, with separate Slint graphics/font and transitional WebKitGTK compatibility decisions.
+- macOS Intel/Apple Silicon: CLI, Tauri and Slint tests/builds and inspected packages, followed by native GUI operation, signing and device checks.
 - Android API24+ is the declared minimum, with compile/target36. The initial arm64 APK uses the Rust library, private storage and foreground-only host. API36 x86_64/4 KiB emulator execution is verified separately from physical arm64, actual16 KiB operation and API24 runtime. SAF, native foreground Service, notifications/tiles and production/store signing remain milestones.
 - iOS remains a later feasibility/adapter milestone.
 - Modern Next browser requirements apply. A basic page for old Chromium/WebViews is a separate compatibility milestone.

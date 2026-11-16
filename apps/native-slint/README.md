@@ -2,6 +2,8 @@
 
 This opt-in Slint client controls the real inout Rust service. It renders through winit/FemtoVG and does not embed a WebView. Next.js remains the static HTTP manager opened by connecting browsers. The existing Tauri desktop/Android releases retain their separate preview status.
 
+Current trial artifacts come from [serial CI at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784), with locked tests, strict Clippy and optimized builds passing on Linux x64, Windows x86/x64 and macOS ARM64/x64. On the run page, download `inout-next-<target>` and select its `inout-next-0.1.0-<target>-native-slint-trial.zip`. Compare its digest with the accompanying `.zip.sha256`, extract the complete ZIP and run `share-native-slint` (`share-native-slint.exe` on Windows). Keep `web/` beside the executable. CLI ZIPs and Tauri installers in the same artifacts have different compositions. [Target measurements](../../docs/distribution/size-and-runtime.md#slint-trial-serial-ci-packages) and package inspection do not establish target GUI operation, installation, signing or adoption.
+
 Choose or enter a folder, choose local/LAN access, port and upload/management permissions, and start sharing. The access key is optional. Public uploads and general management can be explicitly enabled; published deletion requires configured-key authentication. The connection panel displays the effective running settings and actual addresses. Choose an address to open it in an external browser or copy it. A failed browser handoff shows a recoverable message so the address can be copied and opened manually.
 
 Stop and closing a running host require confirmation. Keep sharing cancels the request without replacing the listener or an admitted transfer. Confirmed interruption shuts down owned work. Transfer receipts cover the current sharing run and reset at the next successful Start. Sent download bytes do not establish saving on another device. Durable resume/history, individual cancellation, native safe-open and live-setting editors remain later work.
@@ -23,6 +25,8 @@ python3 scripts/package_native_slint.py --binary apps/native-slint/target/releas
 When using an explicit `CARGO_TARGET_DIR` or `--target`, pass that actual output binary to the packaging script. Extract the complete ZIP and run `share-native-slint` (`share-native-slint.exe` on Windows). Keep `web/` beside it; release builds have no repository/current-directory fallback. Build tools are not runtime dependencies.
 
 Linux requires a graphical X11 or Wayland session, compatible OpenGL graphics, fontconfig/FreeType, xkbcommon, the applicable display libraries and desktop file-dialog/clipboard services. A system browser handles Open in browser. An archive of the executable/resources does not bundle those OS libraries or establish Ubuntu 18.04/fully offline compatibility. macOS signing/sandboxing and Windows installed/offline behavior have separate gates.
+
+The Ubuntu22.04 CI executable directly imports GLIBC through 2.35; the separate local functional build imports through 2.43. These direct-symbol ceilings do not establish the minimum versions of all transitive dependencies or successful operation on an older system.
 
 The application name/description/version come from `product.json` at compilation; rebranding requires rebuilding. Native installation/signing identity remains in `config/native-identity.json`. The fixed internal executable/crate names are independent of display branding.
 

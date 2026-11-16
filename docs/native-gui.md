@@ -6,6 +6,8 @@ The application direction is a Rust-rendered GUI. Next.js continues to export th
 
 The selected evaluation order is **Slint first, then egui/eframe if Slint cannot meet the requirements**. **Iced** remains a separately assessed desktop alternative. This order does not establish final adoption or complete platform support. The renderer-free service/session boundary allows another Rust renderer to reuse the same ownership and transfer contracts.
 
+The native GUI can use its own layout, components and motion. The Next.js manager is an aesthetic reference; it does not prescribe the application's page structure. Favor native sharing tasks and platform interaction conventions, preserving configurable pixel branding, readable local languages and transfer/confirmation contracts. The current trial's palette and two-column layout are implemented choices, and may evolve independently of the browser manager.
+
 ## Candidate fit
 
 Released source and official documentation were checked on 2026-11-15.
@@ -33,6 +35,12 @@ Local optimized Linux verification covers real relocated-package upload/download
 The locked AccessKit AT-SPI bridge lacks EditableText and reports disabled buttons as enabled/sensitive. Direct reactive control state and application guards block both physical and forced semantic background activation, but the incorrect accessibility metadata is still an adoption gate. Full screen-reader operation, Chinese composing input and platform motion policy require independent checks.
 
 The current local Linux trial executable is 18,752,320 bytes (17.88 MiB); its ZIP with the exact 36-file / 1,084,605-byte browser export and licence notices is 9,216,822 bytes (8.79 MiB). It requires the target OS graphics, font, display and desktop services; it does not bundle those libraries or require runtime Node/Python/WebView. These functional-package sizes are separate from the throwaway comparison below. Source remains MIT; the included Slint royalty-free desktop terms and attribution are documented in [THIRD_PARTY.md](../apps/native-slint/THIRD_PARTY.md). F-Droid/Apple licensing and mobile API26/Skia are unresolved independent gates.
+
+## Desktop target CI
+
+[CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) passes Linux x64, Android arm64 packaging, Windows x86/x64 and macOS ARM64/x64 in six nonoverlapping jobs. Every desktop target passes 14 Slint and 15 Tauri composition tests, strict Clippy and optimized builds. [Platform status](platforms.md#ci) records the conditional core counts and Linux/browser/Android checks. Five Slint trial ZIPs, five CLI ZIPs, six transitional desktop packages and an unsigned Tauri APK match that run's exact 36-file / 1,084,607-byte browser export.
+
+The CI Linux Slint executable is 18,714,064 bytes (17.85 MiB) and its complete trial ZIP is 9,008,964 bytes (8.59 MiB), with direct GLIBC imports through 2.35. [All target package measurements](distribution/size-and-runtime.md#slint-trial-serial-ci-packages) remain separate from the local functional package above and exploratory fixtures below. Actual PE/Mach-O architecture and notices are inspected; the CI does not launch Slint GUI windows on Windows/macOS or establish the full Linux runtime floor. Android still builds Tauri and has no Slint APK. Target operation, installed/offline behavior, input/accessibility, mobile/store licensing and matched sustained presentation measurements remain adoption gates.
 
 ## Exploratory Linux measurements
 

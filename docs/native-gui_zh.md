@@ -4,6 +4,8 @@ inout 的应用方向是 Rust 原生绘制的 GUI，Next.js 继续提供通过 H
 
 按照用户选择，当前验证顺序是 **先试 Slint，无法满足要求时再切换到 egui/eframe**；Iced 保留为单独评估的桌面方向备选。正式采用前仍需通过各目标平台的实际检查。控制器和会话所有权已经独立于渲染器，切换 Rust GUI 可以复用同一服务和传输契约。
 
+原生 GUI 可以独立设计布局、组件和动画。Next.js 管理器提供审美参考，应用的页面结构可以围绕分享任务及平台操作习惯重新组织。保留可配置的点阵品牌、易读的本地语言界面以及传输和二次确认契约；当前试验的配色与双栏布局属于已实现的选择，后续可以独立于浏览器管理器演进。
+
 ## 三个候选的适配情况
 
 官方文档与发布源码核对日期为 2026-11-15。
@@ -33,6 +35,12 @@ Slint 的 Android 后端实现了 InputConnection 和输入组合状态处理，
 锁定的 AccessKit AT-SPI 适配缺少 EditableText，并把禁用按钮报告为可用。直接响应式控件状态和应用动作保护可以阻止物理及强制语义后台激活，但无障碍状态报告错误仍是正式采用前的关卡。完整读屏、中文输入组合和各平台动态效果偏好需单独验证。
 
 当前本地 Linux 功能试验的可执行文件为 18,752,320 字节（17.88 MiB），包含精确的 36 文件 / 1,084,605 字节浏览器导出及许可说明的 ZIP 为 9,216,822 字节（8.79 MiB）。运行依赖目标系统图形、字体、显示及桌面服务，不捆绑这些系统库，也不需要运行时 Node/Python/WebView。这些体积与下方一次性对照程序分别记录。项目源码继续使用 MIT，Slint 无版税桌面条款及署名另见[第三方说明](../apps/native-slint/THIRD_PARTY.md)；F-Droid/Apple 许可及移动端 API26/Skia 仍未验收。
+
+## 桌面目标 CI
+
+[3d0e656 的 CI 43844556784](https://github.com/zocs/inout-next/actions/runs/43844556784)已通过 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64，六项任务的实际区间没有重叠。各桌面目标通过 14 项 Slint、15 项 Tauri 组合测试、严格 Clippy 和优化构建。[平台状态](platforms.md#ci)记录各平台核心测试数量及 Linux、浏览器和 Android 检查。五份 Slint 试验 ZIP、五份 CLI ZIP、六份过渡桌面包和一份未签名 Tauri APK，均匹配本轮精确的 36 文件 / 1,084,607 字节浏览器导出。
+
+本轮 CI 的 Linux Slint 可执行文件为 18,714,064 字节（17.85 MiB），完整试验 ZIP 为 9,008,964 字节（8.59 MiB），直接 GLIBC 导入最高为 2.35。[各平台包测量](distribution/size-and-runtime.md#slint-trial-serial-ci-packages)与上方本地功能包、下方初测程序分别记录。已核对实际 PE/Mach-O 架构和许可文件；CI 未在 Windows/macOS 上打开 Slint GUI，也未证明完整的 Linux 运行依赖下限。Android 继续构建 Tauri，尚无 Slint APK。各平台实际运行、安装及离线体验、输入和无障碍、移动端/商店许可与持续显示性能仍是正式采用前的关卡。
 
 ## 已完成的 Linux 初步测量
 
