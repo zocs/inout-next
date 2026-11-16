@@ -1,0 +1,31 @@
+export global NativeTheme {
+    in-out property <int> index: 0;
+    out property <color> paper: #f6f4ef;
+    out property <color> surface: #ffffff;
+    out property <color> ink: #192821;
+    out property <color> muted: #59645e;
+    out property <color> border: #d8ddd6;
+    out property <color> error: #a3302a;
+    out property <color> error-bg: #fff1ed;
+    out property <color> shell: index == 1 ? #492e20 : index == 2 ? #183c50 : index == 3 ? #422d49 : #203c33;
+    out property <color> shell-muted: index == 1 ? #eed6c7 : index == 2 ? #ccdee9 : index == 3 ? #e5d4e9 : #cbd7cf;
+    out property <color> accent: index == 1 ? #984414 : index == 2 ? #176587 : index == 3 ? #7d3984 : #22624e;
+    out property <color> secondary: index == 1 ? #f3e8dd : index == 2 ? #e5eef2 : index == 3 ? #eee5ef : #e9eee8;
+}
+
+export component Heading inherits Text {
+    font-size: 22px;
+    font-weight: 650;
+    color: NativeTheme.ink;
+    wrap: word-wrap;
+}
+
+export component Body inherits Text {
+    font-size: 14px;
+    color: NativeTheme.ink;
+    wrap: word-wrap;
+}
+
+export component Hint inherits Body {
+    color: NativeTheme.muted;
+}

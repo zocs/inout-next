@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased — localization, live admission controls and native GUI evaluation
+## Unreleased — Slint native desktop trial and reusable host
+
+- Extract the renderer-free controller, capability and diagnostic contracts into `share-host`; retain Tauri public composition and add `HostSession` for interruption confirmation, bounded observation, stopped receipts and next-run reset.
+- Notify transfer observers on admission/finalization while leaving per-block progress atomic-only. Use a two-worker Tokio bridge, 16 queued commands, active/dirty 250 ms sampling and a coalesced latest-state delivery.
+- Add an opt-in Slint 1.18.1 winit/FemtoVG desktop app with native folder selection, optional-key sharing, actual address selection/copy/external browser, three local languages, four themes, the product-aware dot-matrix wordmark and readiness-driven startup with explicit reduced motion.
+- Require confirmation for Stop and normal window-close while running; cancellation preserves the same listener and admitted body. Retain current-run receipts after stopping and reset them at the next successful Start. Durable recovery/history and individual cancellation remain pending.
+- Preserve accepted action ownership through FIFO command IDs and completion watermarks, so passive progress cannot unlock confirmation controls or consume focus restoration. Retain localized recovery feedback when the OS browser handoff fails.
+- Package a separate native Slint trial ZIP with the exact HTTP browser export and source/framework notices. Source remains MIT; Slint royalty-free desktop attribution/terms and mobile/store licensing are separate. Add locked desktop trial verification/builds to the existing single serial CI queue.
+- Select Slint first with egui as the fallback. Keep AT-SPI editable-text/disabled-state reporting, CJK/assistive input, displayed-frame performance, installed/offline distribution and Slint mobile/Apple/F-Droid requirements as explicit adoption gates.
+
+The local functional Linux trial is separate from the earlier exploratory toolkit fixtures and published transitional previews. Its native executable is 17.88 MiB and its ZIP with the 36-file web export is 8.79 MiB; [native evaluation](docs/native-gui.md) and [size/runtime guidance](docs/distribution/size-and-runtime.md) record scope and requirements. No renderer adoption, replacement release, Slint APK or store clearance follows from these changes.
+
+### Earlier unreleased localization and live admission controls
 
 - Add local English, Simplified Chinese and Traditional Chinese catalogs, system-language selection and evergreen/tangerine/ocean/berry themes with validated product-independent preferences, cached formatting and stable file/transfer state.
 - Preserve the publication-check warning after a lost upload response; resolve actual Chinese script/region subtags without confusing private-use tokens; keep browsing usable for unrepresentable timestamps.
@@ -9,7 +21,7 @@
 - Define Rust native rendering for the final app, retaining Next.js for HTTP browsers and Tauri as a transitional preview. Document egui/Slint/Iced tradeoffs, exploratory paired Linux measurements and the unpassed target/input/accessibility/licensing gates in English and Chinese.
 - Synchronize the live-permission upload regression with actual admitted transfer progress, preserving its real paused body and publication/revision checks across desktop platforms.
 
-[CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) passes all six serial targets for this source. Every desktop target passes 33 native tests; Linux passes 53 tool/131 browser cases, and Android passes seven Kotlin cases and locked arm64 compilation. Five server ZIPs, six desktop packages and the unsigned APK pass architecture/resource inspection against the exact 36-file export. [Platform status](docs/platforms.md) and [package measurements](docs/distribution/size-and-runtime.md) record the checkpoint and its limits.
+[CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) passes all six serial targets for the earlier localization/live-admission source, before host extraction and Slint composition. Every desktop target passes 33 Tauri native tests; Linux passes 53 tool/131 browser cases, and Android passes seven Kotlin cases and locked arm64 compilation. Five server ZIPs, six desktop packages and the unsigned APK pass architecture/resource inspection against the exact 36-file export. [Platform status](docs/platforms.md) and [package measurements](docs/distribution/size-and-runtime.md) record the historical checkpoint and its limits.
 
 Existing desktop preview.1 and Android preview.2 assets remain separate earlier releases. No Rust-rendered application preview or stable release is published by these changes.
 

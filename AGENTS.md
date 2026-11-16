@@ -1,6 +1,6 @@
 # Working on inout-next
 
-This is an independent Rust file service, Next.js static UI and Tauri application. Use FileInfra and the archived inout-tauri as experience and protocol references. The new implementation has no dufs dependency or copied dufs server.
+This is an independent Rust file service, Next.js static HTTP manager and opt-in Slint native desktop trial. Existing Tauri desktop/Android packages are transitional previews. Slint is evaluated first, with egui as the fallback. Use FileInfra and the archived inout-tauri as experience and protocol references. The new implementation has no dufs dependency or copied dufs server.
 
 ## Boundaries
 

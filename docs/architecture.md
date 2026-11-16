@@ -1,13 +1,15 @@
 # Architecture
 
-The runtime is an independently implemented Rust file service. Next.js exports static browser assets; current Tauri hosts own window/service lifecycle. The target application uses a Rust-rendered GUI with a renderer-independent controller, keeping Next.js for HTTP browsers. Node builds the web UI and Python supports configuration/packaging/verification; neither is a delivered file-server runtime or request handler.
+The runtime is an independently implemented Rust file service. Next.js exports static HTTP/browser assets. Renderer-free `share-host` supplies the application controller, diagnostics and session. The opt-in Slint desktop trial renders without WebView; existing Tauri desktop/Android compositions remain transitional. Node builds the web UI and Python supports configuration/packaging/verification; neither is a delivered file-server runtime or request handler.
 
 ```mermaid
 flowchart TB
   web["Next.js static UI + module slots"] -->|same-origin /api/v1| http["Rust HTTP modules + auth/policy"]
   cli["CLI host"] --> lifecycle["Shared service lifecycle"]
-  desktop["Tauri host"] --> lifecycle
-  android["Android foreground host / Rust JNI"] --> lifecycle
+  native["Slint native desktop / bounded Tokio bridge"] --> host["share-host controller / session / diagnostics"]
+  desktop["Transitional Tauri host"] --> host
+  android["Android foreground host / Rust JNI"] --> host
+  host --> lifecycle
   foregroundService["Future Android foreground Service"] -.-> lifecycle
   lifecycle --> http
   http --> storage["FileStore interface"]
@@ -18,6 +20,7 @@ flowchart TB
   product["product.json"] --> web
   product --> lifecycle
   product --> desktop
+  product --> native
   product --> android
   identity["Stable native installation metadata"] --> desktop
   identity --> android
@@ -37,7 +40,9 @@ The shell owns selection focus through the shared callback contract. Explicit in
 
 ## Contracts and lifecycle
 
-The [native GUI evaluation](native-gui.md) keeps egui as the first feasibility candidate, Slint as the documented mobile/declarative alternative and Iced as a desktop fallback. Toolkit adoption is undecided. The intended UI event loop dispatches bounded messages to an application-owned Rust runtime; Tokio handles networking/asynchronous storage without blocking widget callbacks. Pickers, storage grants, native lifecycle, branding and signing remain separate adapters. The current `HostController` still resides in the Tauri composition; extracting it before the final GUI/live-settings work is pending.
+The [native GUI evaluation](native-gui.md) follows Slint first, with egui as the fallback; toolkit adoption remains undecided. `HostController`, capabilities, resource discovery and diagnostics now live in `share-host`, with Tauri public reexports preserving existing composition. `HostSession` owns sanitized snapshots, Stop/close confirmation, bounded cleanup and current-run receipts. Neither layer depends on Tauri or Slint. Pickers, grants, native lifecycle, branding and signing remain separate adapters.
+
+The independent Slint workspace selects winit/FemtoVG/accessibility with defaults disabled. Its UI event loop owns widgets; a two-worker Tokio runtime owns session/network work behind a16-command queue. Admission/finalization notifications wake an idle bridge; per-block byte counts remain atomic-only. Active/dirty progress is sampled at250ms and delivered through one coalesced state slot. FIFO command IDs and a completion watermark travel with every snapshot, so an older sample cannot unlock a pending action and a later passive sample cannot erase its acknowledgement. Locale/theme updates reuse the same session and transfer model. Confirmed interruption owns shutdown; cancellation leaves the listener and admitted bodies intact. Stopped receipts reset only at the next successful Start.
 
 The API uses `/api/v1` and stable JSON models documented in `contracts/api-v1.md`. Static assets and API share an origin. Browser downloads use HttpOnly session cookies; data uploads use streams rather than whole-file conversion.
 
@@ -47,7 +52,7 @@ A host builds a service configuration, binds a listener and gets a handle contai
 
 `PolicyControl` publishes immutable permission/authentication snapshots atomically. `PolicyUpdate` supplies the expected revision, six action flags and `KeyUpdate::{Keep,Replace,Remove}`. Stale/invalid changes preserve the whole current snapshot; mounted-module availability cannot be expanded by a permission edit. Explicit public upload/general-management/rename is permitted, while deletion requires a configured key and authenticated admission. Permission-only edits retain the same session store; key replacement supplies a new one. Every admitted handler and GET body retains its snapshot independently of later changes. The control is Rust application authority, with no public HTTP settings endpoint.
 
-`RunningServer::transfer_control()` exposes bounded process-local observations. Leases cover pending provider work, uploads/copies and GET response bodies; HEAD creates no transfer. Chunk-level counts and terminal publication/served/interrupted/failed states need no sampler. At most 1,024 active and 200 terminal records are retained. Known-size copy receipts report the published logical size; unknown-size copies remain unmeasured. Served means downstream body bytes rather than recipient-side saving. Native history and permission IPC/UI integration remain pending, including browser provider ownership across permission/authentication changes.
+`RunningServer::transfer_control()` exposes bounded process-local observations. Leases cover pending provider work, uploads/copies and GET response bodies; HEAD creates no transfer. Chunk-level counts and terminal publication/served/interrupted/failed states need no server sampler. At most 1,024 active and 200 terminal records are retained. A watch subscription notifies admission/finalization, independently of per-block progress. Known-size copy receipts report the published logical size; unknown-size copies remain unmeasured. Served means downstream body bytes rather than recipient-side saving. Slint displays current-run receipts; durable history/safe-open, live permission IPC/UI and browser ownership across authentication changes remain pending.
 
 Downloads use a 128 KiB default read buffer. `DownloadControl` holds one validated shared setting, accepting 16–128 KiB in 16 KiB increments; handlers snapshot it once at request entry, so an adjustment affects subsequent requests. Buffer tuning adds no sampler or HTTP configuration endpoint; transfer observations separately count yielded chunks. Hosts obtain the application-side handle from `RunningServer::download_control()`.
 
@@ -91,6 +96,6 @@ The F-Droid recipe must build web/Rust/Android outputs from one public source/lo
 
 ## Current status
 
-The Rust, CLI, web, desktop and Android foreground compositions are implemented. [Desktop preview.1](distribution/preview.md) and [Android foreground preview.2](distribution/android-preview.md) have separate package provenance and usage scopes. Android release-APK runtime checks use an API36 x86_64/4 KiB emulator and actual HTTP/browser/accessibility operations; physical arm64/16 KiB/Wi-Fi remain separate. Windows native picker, manager, supported writable operations and shutdown have bounded runtime validation; installation/offline/store signing remain separate. Built UI patterns are in [DESIGN.md](../DESIGN.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md), and support boundaries in [platforms](platforms.md). Seek-aware ranges and configurable bounded download buffers are implemented. A storage blocking executor, durable transfer recovery, SAF/foreground Service and Apple/store adapters remain extensions. Dynamic executable plugins are excluded from store baselines.
+The Rust, CLI, web, renderer-free host/session, Slint desktop trial and transitional Tauri desktop/Android foreground compositions are implemented. Local Slint verification covers real relocated transfers, native folder/address/browser/clipboard interaction, language/theme preservation, bounded current-run receipts and confirmed interruption/cleanup. [Desktop preview.1](distribution/preview.md) and [Android foreground preview.2](distribution/android-preview.md) retain their separate earlier package provenance and usage scopes. Android release-APK runtime checks use an API36 x86_64/4 KiB emulator and actual HTTP/browser/accessibility operations; physical arm64/16 KiB/Wi-Fi and Slint mobile remain separate. Windows Tauri picker, manager, supported writable operations and shutdown have bounded runtime validation; selected-renderer device/assistive/installation/offline/store acceptance remains separate. Built UI patterns are in [DESIGN.md](../DESIGN.md), delivery costs in [package size and runtime](distribution/size-and-runtime.md), and support boundaries in [platforms](platforms.md). Seek-aware ranges and configurable bounded download buffers are implemented. A storage blocking executor, durable transfer recovery, SAF/foreground Service and Apple/store adapters remain extensions. Dynamic executable plugins are excluded from store baselines.
 
 Future [network-address recommendations and QR presentation](network-selection.md) sit beside host lifecycle through platform network snapshots/events and a separate selector. Recent connections are one signal alongside explicit choice, confirmed hotspot state and verified successful use. Recommendations use the actual port and change displayed URLs without migrating a live listener. The current host only enumerates IPv4 LAN addresses; platform classifiers, change subscriptions, feedback and QR rendering require their own implementation and device validation.

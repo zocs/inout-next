@@ -55,7 +55,7 @@
 
 [2.5.5](https://developer.apple.com/app-store/review/guidelines/#software-requirements) 要求 IPv6-only 可用：现有 native/CLI 的 IPv4 假设须在 Apple 候选版验证 IPv6 地址显示、绑定、URL、连接和下载。静态 Next 页面继续用于 HTTP 浏览器文件管理器，最终应用计划采用 Rust 原生 GUI，现有 WebKit/Tauri 宿主属于过渡预览；[4.2](https://developer.apple.com/app-store/review/guidelines/#minimum-functionality) 要求超过网站包装的实际用途。真实原生目录选择、共享服务控制、停止/权限和平台文件交互是应交付的产品能力，单纯加载网页不构成通过。
 
-Rust GUI 选型另见[原生评估](../native-gui.md)。egui 需要 Android GameActivity/AccessKit 与单独的 iOS Metal 宿主验收；Slint 的 Android API26 下限、强制 Skia、Android 无障碍桥接及 GPL/royalty-free/commercial 分发选择都需要提前解决，不能沿用 Tauri 的设备和签名检查作为新渲染器的验收。F-Droid 要验证实际自由软件依赖和源码构建，免版税费用为零不等于已满足收录许可；Apple 分发同样需要对应渠道条款和产物验证。
+Rust GUI 选型另见[原生评估](../native-gui.md)，当前按用户选择先试 Slint，不满足要求时再切换 egui。Slint 桌面试验已控制真实 Rust 服务，不嵌入 WebView；项目源码继续使用 MIT，另附 Slint 无版税桌面条款和关于窗口署名，不代表 F-Droid/Apple 渠道已获许可验收。锁定的 AT-SPI 适配缺少 EditableText 且错误报告禁用按钮状态，完整辅助输入/读屏仍有独立关卡。Slint 的 Android API26 下限、强制 Skia、Android 无障碍桥接及 GPL/royalty-free/commercial 分发选择都需要提前解决，不能沿用 Tauri 的设备和签名检查作为新渲染器的验收，也不静默提高现有 Android API24 下限。egui 的回退路线同样需要 Android GameActivity/AccessKit 与单独的 iOS Metal 宿主验收。F-Droid 要验证实际自由软件依赖和源码构建，免版税费用为零不等于已满足收录许可；Apple 分发同样需要对应渠道条款和产物验证。
 
 ### Mac App Store 沙盒与打包
 
@@ -114,7 +114,7 @@ Rust GUI 选型另见[原生评估](../native-gui.md)。egui 需要 Android Game
 
 [Android 前台 preview.2](android-preview.md) 已实现私有共享目录、原始网页资源校验、前后台停止/手动重启和能力约束。[CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914) 六个目标串行通过；其 arm64 APK 经独立预览证书签名后为15.39MiB，manifest、单 ABI、全部资源、ELF/native ZIP 16 KiB 对齐和签名检查通过。相同应用源码的 API36 x86_64/4 KiB 模拟器 APK 通过实际 HTTP/浏览器操作与生命周期验证。真实 arm64、16 KiB 运行、双设备 Wi-Fi、API24/WebView、AAB 和商店签名仍须分别验收，不能由对齐检查或模拟器结果替代。
 
-2026-11-15 产品补充：应用显示名为 **inout**，仓库/slug 保留 `inout-next`；[签名与应用身份](signing.md) 说明与 FileInfra 共用证书时的独立包名、signature 权限及渠道影响。原生临时诊断通过五秒内激活名称按钮五次开启，仅执行受限本机调参和只读回环测速，没有遥测或公开 HTTP 控制接口。按 [Apple 审核指南 2.3.1](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata)，候选版应在审核备注中明确说明入口、用途和步骤，不能以隐藏发现方式隐瞒审核功能；数据清单和候选版说明同步包含诊断行为。商店产物、真机与商店审核关卡仍需独立验收。
+2026-11-15 产品补充：应用显示名为 **inout**，仓库/slug 保留 `inout-next`；[签名与应用身份](signing.md) 说明与 FileInfra 共用证书时的独立包名、signature 权限及渠道影响。过渡 Tauri 宿主的原生临时诊断通过五秒内激活名称按钮五次开启，仅执行受限本机调参和只读回环测速，没有遥测或公开 HTTP 控制接口；Slint 试验尚未提供诊断编辑器。按 [Apple 审核指南 2.3.1](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata)，候选版应在审核备注中明确说明入口、用途和步骤，不能以隐藏发现方式隐瞒审核功能；数据清单和候选版说明同步包含诊断行为。商店产物、真机与商店审核关卡仍需独立验收。
 
 | Gate | 要交付的可核查结果 | 当前状态 |
 | --- | --- | --- |

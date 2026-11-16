@@ -1,4 +1,4 @@
-use share_desktop_lib::{HostController, StartOptions};
+use share_host::{HostController, StartOptions};
 
 struct Fixture {
     _temp: tempfile::TempDir,

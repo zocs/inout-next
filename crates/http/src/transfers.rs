@@ -12,6 +12,7 @@ use std::{
     task::{Context, Poll},
     time::{SystemTime, UNIX_EPOCH},
 };
+use tokio::sync::watch;
 
 const HISTORY_LIMIT: usize = 200;
 const ACTIVE_LIMIT: usize = 1024;
@@ -35,7 +36,7 @@ pub enum TransferState {
     Failed = 4,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TransferRecord {
     pub id: u64,
     pub kind: TransferKind,
@@ -51,7 +52,7 @@ pub struct TransferRecord {
     pub finished_ms: Option<u64>,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct TransferSnapshot {
     pub active: usize,
     pub records: Vec<TransferRecord>,
@@ -105,12 +106,35 @@ struct Ledger {
 
 /// Bounded application observation, with no sampler and no HTTP authority route.
 /// Received/served bytes do not establish durability or recipient-side saving.
-#[derive(Clone, Default)]
-pub struct TransferControl(Arc<Mutex<Ledger>>);
+#[derive(Clone)]
+pub struct TransferControl {
+    ledger: Arc<Mutex<Ledger>>,
+    changes: watch::Sender<()>,
+}
+
+impl Default for TransferControl {
+    fn default() -> Self {
+        let (changes, _) = watch::channel(());
+        Self {
+            ledger: Arc::new(Mutex::new(Ledger::default())),
+            changes,
+        }
+    }
+}
 
 impl TransferControl {
+    /// Subscribe before taking a snapshot, then await admission/finalization.
+    /// Live byte progress remains an atomic counter for hosts to sample only
+    /// while work is active; no per-block notification or sampler is added.
+    pub fn subscribe(&self) -> watch::Receiver<()> {
+        self.changes.subscribe()
+    }
+
     pub fn snapshot(&self) -> TransferSnapshot {
-        let ledger = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        let ledger = self
+            .ledger
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let records: Vec<_> = ledger
             .records
             .values()
@@ -132,7 +156,10 @@ impl TransferControl {
         total: Option<u64>,
         revision: u64,
     ) -> Result<TransferLease, Error> {
-        let mut ledger = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        let mut ledger = self
+            .ledger
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         if ledger.active >= ACTIVE_LIMIT {
             return Err(Error::Conflict);
         }
@@ -155,6 +182,8 @@ impl TransferControl {
         ledger.sequence = id;
         ledger.active += 1;
         ledger.records.insert(id, observation.clone());
+        drop(ledger);
+        self.changes.send_replace(());
         Ok(TransferLease {
             control: self.clone(),
             observation,
@@ -205,7 +234,7 @@ impl TransferLease {
     pub fn finish(&self, state: TransferState) {
         let mut ledger = self
             .control
-            .0
+            .ledger
             .lock()
             .unwrap_or_else(|error| error.into_inner());
         if self.observation.state() != TransferState::Active {
@@ -220,6 +249,8 @@ impl TransferLease {
                 ledger.records.remove(&id);
             }
         }
+        drop(ledger);
+        self.control.changes.send_replace(());
     }
     fn finish_download(&self) {
         let complete = self
@@ -285,6 +316,64 @@ impl Drop for TrackedStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn subscriptions_wake_for_admission_and_finalization_without_per_block_events() {
+        let control = TransferControl::default();
+        let mut changes = control.subscribe();
+        assert!(!changes.has_changed().unwrap());
+        let lease = control
+            .observe(TransferKind::Upload, "资料.bin", Some(3), 7)
+            .unwrap();
+        assert!(
+            changes.has_changed().unwrap(),
+            "admission must wake an idle UI"
+        );
+        changes.borrow_and_update();
+        let active = control.snapshot();
+        assert_eq!(active.active, 1);
+        assert_eq!(active.records[0].path, "资料.bin");
+        assert_eq!(active.records[0].policy_revision, 7);
+        lease.progress().add(3);
+        assert_eq!(control.snapshot().records[0].bytes, 3);
+        assert!(
+            !changes.has_changed().unwrap(),
+            "progress must remain coalesced"
+        );
+        lease.finish(TransferState::Published);
+        assert!(
+            changes.has_changed().unwrap(),
+            "publication must wake the UI"
+        );
+        changes.borrow_and_update();
+        let finished = control.snapshot();
+        assert_eq!(finished.active, 0);
+        assert_eq!(finished.records[0].state, TransferState::Published);
+        drop(lease);
+        assert!(
+            !changes.has_changed().unwrap(),
+            "finalization must be idempotent"
+        );
+    }
+
+    #[test]
+    fn a_late_subscriber_can_snapshot_active_work_then_receive_its_interruption() {
+        let control = TransferControl::default();
+        let lease = control
+            .observe(TransferKind::Download, "late.bin", Some(9), 1)
+            .unwrap();
+        let mut changes = control.subscribe();
+        changes.borrow_and_update();
+        let active = control.snapshot();
+        assert_eq!(active.active, 1);
+        assert_eq!(active.records[0].path, "late.bin");
+        drop(lease);
+        assert!(changes.has_changed().unwrap());
+        assert_eq!(
+            control.snapshot().records[0].state,
+            TransferState::Interrupted
+        );
+    }
 
     #[test]
     fn full_active_capacity_rejects_work_and_releases_one_slot_on_drop() {

@@ -4,6 +4,8 @@ Checked against the linked official guidance on 2026-11-15. The repository is `i
 
 The CLI's `--key-file` and native access-key generator provide HTTP authentication tokens. They are separate from application-signing keys and certificates.
 
+The opt-in [Slint desktop trial](../../apps/native-slint/README.md) has separate unsigned executable/resource ZIPs, not replacement installers or store packages. It preserves product and native-identity configuration and introduces no new certificate, keystore alias, package ID or migration. Extracting or running a trial ZIP does not establish installed upgrades, signing continuity or a mobile/store channel. Source remains MIT; Slint framework distribution terms are separately included and do not determine an application's signer.
+
 ## Reusing FileInfra's Android certificate
 
 Different Android package IDs can use the same signing certificate. FileInfra uses `cc.merr.fileinfra`; the candidate identity for this project is `io.github.zocs.inoutnext`. With these different IDs, the applications install independently, keep separate application data and do not replace each other. Reusing the certificate does not migrate FileInfra data or make inout an update to FileInfra.

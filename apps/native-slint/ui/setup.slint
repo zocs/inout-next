@@ -1,0 +1,103 @@
+import { CheckBox, LineEdit } from "std-widgets.slint";
+import { NativeButton } from "controls.slint";
+import { Labels } from "text.slint";
+import { Heading, Body, Hint } from "theme.slint";
+
+export component SharingSetup inherits Rectangle {
+    in property <Labels> labels;
+    in property <bool> enabled;
+    in property <bool> running;
+    in property <bool> busy;
+    in-out property <string> folder;
+    in-out property <string> port: "5000";
+    in-out property <string> key;
+    in-out property <bool> network: true;
+    in-out property <bool> uploads: false;
+    in-out property <bool> manage: false;
+    callback folder-edited();
+    callback choose-folder();
+    callback start-sharing();
+    callback stop-sharing();
+    public function focus-start() { start-button.focus(); }
+    public function focus-stop() { stop-button.focus(); }
+
+    min-width: 280px;
+    min-height: layout.min-height;
+    VerticalLayout {
+        layout := VerticalLayout {
+            spacing: 8px;
+            alignment: start;
+            Heading { text: root.labels.share-folder; }
+            Hint { text: root.labels.intro; }
+            Rectangle { height: 8px; }
+            Body { text: root.labels.folder; font-weight: 600; }
+            LineEdit {
+                text <=> root.folder;
+                enabled: root.enabled && !root.running;
+                accessible-label: root.labels.folder;
+                min-height: 42px;
+                edited => { root.folder-edited(); }
+            }
+            NativeButton {
+                text: root.labels.choose-folder;
+                available: root.enabled && !root.running && !root.busy;
+                min-height: 40px;
+                activated => { root.choose-folder(); }
+            }
+            Hint { text: root.labels.folder-hint; }
+            Rectangle { height: 8px; }
+            Body { text: root.labels.key; font-weight: 600; }
+            LineEdit {
+                text <=> root.key;
+                input-type: password;
+                accessible-label: root.labels.key;
+                // The draft is not part of host snapshots or accessibility values.
+                accessible-value: "";
+                enabled: root.enabled && !root.running;
+                min-height: 42px;
+            }
+            Hint { text: root.labels.key-hint; }
+            CheckBox {
+                text: root.labels.upload;
+                checked <=> root.uploads;
+                enabled: root.enabled && !root.running;
+                min-height: 40px;
+            }
+            CheckBox {
+                text: root.labels.manage;
+                checked <=> root.manage;
+                enabled: root.enabled && !root.running;
+                min-height: 40px;
+            }
+            CheckBox {
+                text: root.labels.network;
+                checked <=> root.network;
+                enabled: root.enabled && !root.running;
+                min-height: 40px;
+            }
+            Body { text: root.labels.port; font-weight: 600; }
+            LineEdit {
+                text <=> root.port;
+                accessible-label: root.labels.port;
+                enabled: root.enabled && !root.running;
+                min-height: 42px;
+            }
+            Hint { text: root.labels.port-hint; }
+            Rectangle { height: 8px; }
+            start-button := NativeButton {
+                visible: !root.running;
+                text: root.busy ? root.labels.busy : root.labels.start;
+                available: root.enabled && !root.busy && !root.folder.is-empty;
+                min-height: 44px;
+                activated => { root.start-sharing(); }
+            }
+            stop-button := NativeButton {
+                visible: root.running;
+                text: root.labels.stop;
+                available: root.enabled && !root.busy;
+                min-height: 44px;
+                activated => { root.stop-sharing(); }
+            }
+        }
+    }
+}

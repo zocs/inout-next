@@ -1,0 +1,313 @@
+import { ComboBox, Palette, ScrollView } from "std-widgets.slint";
+import { NativeButton } from "controls.slint";
+import { NativeTheme, Body, Hint } from "theme.slint";
+import { MatrixDot, Wordmark } from "wordmark.slint";
+import { Labels } from "text.slint";
+import { SharingSetup } from "setup.slint";
+import { Connection } from "connection.slint";
+import { TransferRow, Transfers } from "transfers.slint";
+import { AboutCard } from "about.slint";
+export { NativeTheme, MatrixDot, Labels, TransferRow }
+
+export component AppWindow inherits Window {
+    in property <string> product-name;
+    in property <string> product-version;
+    in property <string> product-description;
+    in property <Labels> labels;
+    in property <[MatrixDot]> wordmark-dots;
+    in property <int> wordmark-columns;
+    in property <bool> ready;
+    in property <bool> resources-ready: true;
+    in property <bool> running;
+    in-out property <bool> busy;
+    in-out property <bool> picker-busy;
+    in property <bool> confirming;
+    in property <bool> closing;
+    in property <string> problem;
+    in property <string> notice;
+    in property <string> effective-settings;
+    in property <string> shared-folder;
+    in property <[string]> addresses;
+    in property <string> selected-address;
+    in property <[TransferRow]> transfers;
+    in-out property <int> address-index;
+    in-out property <int> locale-index;
+    in-out property <string> folder;
+    in-out property <string> port: "5000";
+    in-out property <string> key;
+    in-out property <bool> network: true;
+    in-out property <bool> uploads: false;
+    in-out property <bool> manage: false;
+    in-out property <bool> reduce-motion;
+    in-out property <bool> opening-visible: true;
+    in-out property <float> opening-opacity: 1;
+    private property <bool> about-visible;
+    private property <bool> controls-enabled: ready && !confirming && !about-visible && !busy;
+    callback start-sharing();
+    callback stop-sharing();
+    callback choose-folder();
+    callback folder-edited();
+    callback locale-selected(int);
+    callback address-selected(int);
+    callback copy-address();
+    callback browser-result(bool);
+    callback cancel-interrupt();
+    callback confirm-interrupt();
+    callback refresh();
+    callback picker-ready();
+
+    title: product-name;
+    preferred-width: 980px;
+    preferred-height: 820px;
+    min-width: 680px;
+    min-height: 620px;
+    background: NativeTheme.paper;
+    default-font-size: 14px;
+    init => { Palette.color-scheme = ColorScheme.light; }
+
+    public function show-confirmation() { root.hide-about(); confirmation.show(); }
+    public function hide-confirmation() { confirmation.close(); }
+    public function focus-start() { setup.focus-start(); }
+    public function focus-stop() { setup.focus-stop(); }
+    public function show-about() {
+        if !root.confirming {
+            root.about-visible = true;
+            about.show();
+        }
+    }
+    public function hide-about() {
+        if root.about-visible {
+            root.about-visible = false;
+            about.close();
+            if !root.confirming { about-button.focus(); }
+        }
+    }
+
+    MenuBar {
+        Menu {
+            title: root.labels.about;
+            MenuItem {
+                title: root.labels.about;
+                enabled: !root.confirming && !root.about-visible;
+                activated => { root.show-about(); }
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: 0;
+        Rectangle {
+            min-height: header.min-height;
+            background: NativeTheme.shell;
+            header := HorizontalLayout {
+                padding: 20px;
+                spacing: 20px;
+                Wordmark {
+                    name: root.product-name;
+                    dots: root.wordmark-dots;
+                    columns: root.wordmark-columns;
+                    ink: NativeTheme.surface;
+                    vertical-stretch: 0;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout {
+                    spacing: 5px;
+                    Text { text: root.labels.language; font-size: 12px; color: NativeTheme.shell-muted; }
+                    ComboBox {
+                        model: ["English", "简体中文", "繁體中文"];
+                        current-index <=> root.locale-index;
+                        enabled: !root.confirming && !root.about-visible;
+                        accessible-label: root.labels.language;
+                        accessible-description: self.current-value;
+                        min-height: 40px;
+                        selected => { root.locale-selected(self.current-index); }
+                    }
+                }
+                about-button := NativeButton {
+                    text: root.labels.about;
+                    available: !root.confirming && !root.about-visible;
+                    min-height: 40px;
+                    activated => { root.show-about(); }
+                }
+                VerticalLayout {
+                    spacing: 5px;
+                    Text { text: root.labels.theme; font-size: 12px; color: NativeTheme.shell-muted; }
+                    ComboBox {
+                        model: [root.labels.evergreen, root.labels.tangerine, root.labels.ocean, root.labels.berry];
+                        current-index <=> NativeTheme.index;
+                        enabled: !root.confirming && !root.about-visible;
+                        accessible-label: root.labels.theme;
+                        accessible-description: self.current-value;
+                        min-height: 40px;
+                    }
+                }
+            }
+        }
+        ScrollView {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 24px;
+                if !root.problem.is-empty: Rectangle {
+                    min-height: error-layout.min-height;
+                    background: NativeTheme.error-bg;
+                    border-radius: 7px;
+                    accessible-role: text;
+                    accessible-label: root.problem;
+                    accessible-live-region: assertive;
+                    error-layout := VerticalLayout {
+                        padding: 14px;
+                        Body { text: root.problem; color: NativeTheme.error; }
+                    }
+                }
+                if !root.notice.is-empty: Body { text: root.notice; color: NativeTheme.accent; }
+                HorizontalLayout {
+                    spacing: 24px;
+                    alignment: start;
+                    setup := SharingSetup {
+                        labels: root.labels;
+                        enabled: root.controls-enabled && root.resources-ready;
+                        running: root.running;
+                        busy: root.busy || root.picker-busy;
+                        folder <=> root.folder;
+                        key <=> root.key;
+                        port <=> root.port;
+                        network <=> root.network;
+                        uploads <=> root.uploads;
+                        manage <=> root.manage;
+                        horizontal-stretch: 1;
+                        vertical-stretch: 0;
+                        folder-edited => { root.folder-edited(); }
+                        choose-folder => { root.choose-folder(); }
+                        start-sharing => { root.start-sharing(); }
+                        stop-sharing => { root.stop-sharing(); }
+                    }
+                    Connection {
+                        labels: root.labels;
+                        running: root.running;
+                        enabled: root.controls-enabled;
+                        addresses: root.addresses;
+                        selected-address: root.selected-address;
+                        effective-settings: root.effective-settings;
+                        shared-folder: root.shared-folder;
+                        address-index <=> root.address-index;
+                        horizontal-stretch: 1;
+                        vertical-stretch: 0;
+                        address-selected(index) => { root.address-selected(index); }
+                        copy-address => { root.copy-address(); }
+                        browser-result(opened) => { root.browser-result(opened); }
+                    }
+                }
+                Rectangle { height: 1px; background: NativeTheme.border; }
+                Transfers { labels: root.labels; records: root.transfers; }
+            }
+        }
+    }
+
+    confirmation := PopupWindow {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: min(root.width - 48px, 440px);
+        height: confirm-layout.min-height;
+        close-policy: no-auto-close;
+        forward-focus: cancel-button;
+        accessible-role: groupbox;
+        accessible-label: root.closing ? root.labels.confirm-close : root.labels.confirm-stop;
+        FocusScope {
+            key-pressed(event) => {
+                if event.text == Key.Tab || event.text == Key.Backtab {
+                    if !root.busy {
+                        if cancel-button.has-focus { confirm-button.focus(); }
+                        else { cancel-button.focus(); }
+                    }
+                    return accept;
+                }
+                if event.text == Key.Escape && !root.busy {
+                    root.cancel-interrupt();
+                    return accept;
+                }
+                return reject;
+            }
+            Rectangle {
+            background: NativeTheme.surface;
+            border-radius: 14px;
+            confirm-layout := VerticalLayout {
+                padding: 28px;
+                spacing: 16px;
+                Body {
+                    text: root.closing ? root.labels.confirm-close : root.labels.confirm-stop;
+                    font-size: 21px;
+                    font-weight: 650;
+                }
+                Hint { text: root.labels.confirm-message; }
+                HorizontalLayout {
+                    spacing: 12px;
+                    cancel-button := NativeButton {
+                        text: root.labels.cancel;
+                        available: !root.busy;
+                        min-height: 44px;
+                        activated => { root.cancel-interrupt(); }
+                    }
+                    confirm-button := NativeButton {
+                        text: root.busy ? root.labels.busy : root.labels.confirm;
+                        available: !root.busy;
+                        min-height: 44px;
+                        activated => { root.confirm-interrupt(); }
+                    }
+                }
+            }
+            }
+            }
+    }
+
+    about := PopupWindow {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: min(root.width - 48px, 440px);
+        height: about-card.min-height;
+        close-policy: no-auto-close;
+        forward-focus: about-card;
+        accessible-role: groupbox;
+        accessible-label: root.labels.about;
+        FocusScope {
+            key-pressed(event) => {
+                if event.text == Key.Escape {
+                    root.hide-about();
+                    return accept;
+                }
+                if event.text == Key.Tab || event.text == Key.Backtab {
+                    about-card.focus-close();
+                    return accept;
+                }
+                return reject;
+            }
+            about-card := AboutCard {
+                labels: root.labels;
+                product-name: root.product-name;
+                product-version: root.product-version;
+                product-description: root.product-description;
+                close => { root.hide-about(); }
+            }
+        }
+    }
+
+    if root.opening-visible: Rectangle {
+        background: NativeTheme.paper;
+        opacity: root.opening-opacity;
+        accessible-role: none;
+        animate opacity { duration: root.reduce-motion ? 0ms : 160ms; easing: ease-out; }
+        VerticalLayout {
+            alignment: center;
+            spacing: 20px;
+            Wordmark {
+                name: root.product-name;
+                dots: root.wordmark-dots;
+                columns: root.wordmark-columns;
+                ink: NativeTheme.accent;
+                unit: 6px;
+                horizontal-stretch: 0;
+                vertical-stretch: 0;
+            }
+            Hint { text: root.labels.opening; horizontal-alignment: center; accessible-role: none; }
+        }
+    }
+}

@@ -3188,24 +3188,17 @@ dependencies = [
 name = "share-desktop"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "futures-util",
- "http-body-util",
- "hyper",
- "hyper-util",
- "if-addrs",
- "percent-encoding",
  "rand",
  "serde",
  "serde_json",
  "share-domain",
+ "share-host",
  "share-http",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tempfile",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -3215,6 +3208,24 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "share-host"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "if-addrs",
+ "percent-encoding",
+ "serde",
+ "share-domain",
+ "share-http",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

@@ -84,7 +84,7 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 
 The locally verified localization/permission integration exports 36 files totalling 1,084,605 bytes. JavaScript totals 1,011,194 raw bytes and 312,634 gzip bytes, measured separately per file. The same export passes 131 Chromium cases, including locale/theme changes during a real upload and public-write/action-visibility checks. These figures describe the current local source export; the earlier release-package measurements above retain their own exports and provenance.
 
-## Current CI packages
+## Historical localization/admission CI packages
 
 [CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) completes all six serial targets on 2026-11-16. Its own tested export has 36 files / 1,084,607 bytes, including 1,011,196 raw JavaScript bytes and 312,635 gzip bytes measured separately per file. The source passes 131 Chromium cases, with no skipped, unexpected or flaky results. Downloaded packages are checked against this export, separately from the local export and earlier releases above.
 
@@ -99,7 +99,23 @@ The locally verified localization/permission integration exports 36 files totall
 
 The unsigned APK is **16,099,144 bytes**, with one 13,254,104-byte arm64 Rust library and the same 36 indexed web resources. Exact manifest, single-ABI, ELF/native ZIP alignment and two locked compilation children pass inspection; signature/install/device/16 KiB runtime acceptance is separate. The desktop packages still use Tauri and their platform webviews, with the same dependency/offline/old-Linux boundaries above. These CI artifacts are an unreleased source checkpoint; the separately signed 15.39MiB Android preview.2 and published desktop preview.1 retain their own package provenance.
 
-## Rust-rendered GUI evaluation
+## Functional Slint desktop trial
+
+The current opt-in Slint desktop client controls the real service without a WebView. It is separate from the published Tauri previews and the throwaway toolkit fixtures below. Local optimized Linux packaging uses the trial's own exact browser export and source/framework notices, and is verified by running outside the checkout with an unrelated working directory.
+
+| Local trial item | Bytes | MiB |
+| --- | ---: | ---: |
+| Slint native executable | 18,752,320 | 17.88 |
+| Exact static HTTP export, 36 files | 1,084,605 | 1.03 |
+| Native executable + web + notices ZIP | 9,216,822 | 8.79 |
+
+The normal Linux dependency graph selects winit/FemtoVG and contains no Tauri/Wry/WebKit, Skia or software-renderer runtime. Loaded mappings of the tested process contain no embedded browser, Node or Python runtime. The executable directly needs fontconfig, libc, libm and the GCC/runtime loader; OpenGL/GLX, X11, xkbcommon and FreeType are also loaded through OS services. These libraries, graphics drivers, fonts, desktop dialog/clipboard services and the external browser are not bundled by the ZIP. The local executable imports GLIBC symbols through **2.43**, so this local archive is not an Ubuntu22.04/18.04 compatibility artifact. A target build and its complete dependency/runtime floor must be inspected separately.
+
+One traced launch reaches host-ready at 118.270 ms and first/ready render callbacks at 276.133/276.155 ms. These are individual callback markers before confirmed display, not cold-start, median, FPS or input-to-display results. A preceding functional Slint checkpoint was sampled for 65.34 seconds with 66 observations, a running loopback service, completed receipts, warm font/renderer caches and no GUI/transfer/accessibility observation during sampling. Median RSS/PSS/private memory was 99.45/88.24/83.32 MiB with 13 threads. No CPU-tick increase was detected at 10 ms accounting resolution. That earlier checkpoint remains separate from the current completion-correction package; neither interval establishes zero actual CPU, complete GPU memory, energy cost or an intrinsic toolkit ranking.
+
+Native interaction checks cover byte-exact relocated transfers, optional-key/public-write policy, actual folder selection/cancellation, multiple address selection/copy, external browser navigation and confirmed Stop/normal-close cleanup. Current-run receipts and canceled interruption preserve the listener/admitted body; durable history/resume and individual cancellation remain pending. Three languages/four themes and explicit startup reduced motion are implemented. Native OS motion policy, assistive/CJK input, Windows32/offline/installed operation, mobile/Apple/F-Droid distribution and matched sustained presentation measurements remain independent adoption gates. See [native evaluation](../native-gui.md) and [trial usage/licensing](../../apps/native-slint/README.md).
+
+## Exploratory Rust GUI comparison
 
 The [native GUI evaluation](../native-gui.md) records a separate exploratory Linux x86_64/X11/Intel comparison of egui 0.37/Glow and Slint 1.18.1/FemtoVG. Both throwaway fixtures use the real Rust service, the same optimized profile and 10,000 filename rows with system-font fallback. Thirty warm launches and six checksum-verified, deliberately throttled 64 MiB workloads passed.
 
@@ -107,6 +123,6 @@ Populated render-callback medians are 125.96/181.08 ms, before OS presentation. 
 
 ## Python and repository language percentages
 
-Python supports product/configuration synchronization, key/icon generation, packaging, identity/runtime checks and tool tests. These files are development tools, not HTTP request handlers. Node builds the static Next assets. Tauri uses the resulting local assets with its platform webview.
+Python supports product/configuration synchronization, key/icon generation, packaging, identity/runtime checks and tool tests. These files are development tools, not HTTP request handlers. Node builds the static Next assets. Transitional Tauri uses local assets with its platform webview; Slint renders its own native controls and serves the packaged export to external browsers.
 
 GitHub's language percentages describe detected source-code volume. They do not measure executable composition, memory, CPU time or request latency. Moving a build helper from Python to Rust would not accelerate a download path that never executes that helper. Keep runtime profiling and archive contents as the evidence for performance/size decisions.

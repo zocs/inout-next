@@ -2,9 +2,9 @@
 
 [简体中文](native-gui_zh.md)
 
-The planned application uses a Rust-rendered GUI. Next.js continues to export the HTTP file manager used by connecting browsers. The existing Tauri desktop and Android releases are transitional previews; no Rust-rendered application preview is released yet.
+The application direction is a Rust-rendered GUI. Next.js continues to export the HTTP file manager used by connecting browsers. An opt-in Slint desktop trial now controls the real file service without a WebView. The existing Tauri desktop and Android releases are transitional previews; the Slint trial has not replaced those releases.
 
-The first feasibility candidate is **egui/eframe**, with **Slint** retained as the alternative for declarative UI and its documented mobile integration. **Iced** remains a desktop fallback. This is an evaluation order, not final adoption or complete platform support.
+The selected evaluation order is **Slint first, then egui/eframe if Slint cannot meet the requirements**. **Iced** remains a separately assessed desktop alternative. This order does not establish final adoption or complete platform support. The renderer-free service/session boundary allows another Rust renderer to reuse the same ownership and transfer contracts.
 
 ## Candidate fit
 
@@ -19,6 +19,20 @@ Released source and official documentation were checked on 2026-11-15.
 All three can render without WebView. Custom drawing does not imply stock OS widgets, complete mobile integration or an automatic performance advantage. Desktop renderer results do not predict Slint's mobile Skia footprint or egui's proposed iOS Metal host.
 
 The workspace's Rust 1.99 requirement exceeds the examined package floors: Slint 1.92, Iced 1.88 and egui/eframe 1.95. Renderer features and companion versions must remain explicit rather than silently shipping multiple backends.
+
+## Functional Slint desktop trial
+
+[apps/native-slint](../apps/native-slint/README.md) is an independent workspace excluded from the core's default build, with locked Slint/slint-build 1.18.1, winit, FemtoVG and desktop accessibility. Its setup includes native folder selection, an optional masked access key, public upload/management choices, LAN or loopback access and an effective bound port. Actual addresses can be selected, copied and opened in the system browser. A failed browser handoff retains localized instructions to copy the address and open it manually. Product metadata and the compiled 5×7 wordmark remain independent of installation/signing identity.
+
+English, Simplified Chinese and Traditional Chinese are typed local catalogs. Four themes recolor the authored surfaces. Language/theme changes preserve drafts, the listener and admitted transfers. The startup exit follows controller readiness; `INOUT_NATIVE_REDUCE_MOTION=1` disables its motion. Preferences are temporary, and automatic native OS motion-preference detection is pending.
+
+Stop and closing a running app request confirmation before service cleanup. Keep sharing preserves the listener and admitted body. Confirmed stopping releases owned work, retains bounded current-run transfer receipts and leaves the next Start explicit. The next successful Start resets those receipts. Sent download bytes do not establish saving on the receiving device. Durable history/resume, individual cancellation, safe-open, QR/network recommendations and native live-setting/diagnostic editors remain separate work.
+
+Local optimized Linux verification covers real relocated-package upload/download integrity, public deletion denial, paused-upload preservation through language/theme changes and canceled interruption, stopped receipt retention, keyboard confirmation and About behavior. The native suite has 14 cases; the separate HTTP browser manager has 131 passing Chromium cases. These checks do not establish mobile, installed-package or assistive-device acceptance.
+
+The locked AccessKit AT-SPI bridge lacks EditableText and reports disabled buttons as enabled/sensitive. Direct reactive control state and application guards block both physical and forced semantic background activation, but the incorrect accessibility metadata is still an adoption gate. Full screen-reader operation, Chinese composing input and platform motion policy require independent checks.
+
+The current local Linux trial executable is 18,752,320 bytes (17.88 MiB); its ZIP with the exact 36-file / 1,084,605-byte browser export and licence notices is 9,216,822 bytes (8.79 MiB). It requires the target OS graphics, font, display and desktop services; it does not bundle those libraries or require runtime Node/Python/WebView. These functional-package sizes are separate from the throwaway comparison below. Source remains MIT; the included Slint royalty-free desktop terms and attribution are documented in [THIRD_PARTY.md](../apps/native-slint/THIRD_PARTY.md). F-Droid/Apple licensing and mobile API26/Skia are unresolved independent gates.
 
 ## Exploratory Linux measurements
 
@@ -41,11 +55,13 @@ Idle memory samples come from three short runs each. No CPU-tick increase was de
 
 ## Runtime boundaries
 
-The native UI event loop owns widgets and rendering. An application-owned Rust controller owns service state, permissions, transfer observations and explicit shutdown. Tokio runs networking and asynchronous storage work; UI callbacks send bounded commands and receive snapshots without blocking the UI thread. Progress updates should be coalesced independently of transferred chunks, with a bounded refresh rate and no idle animation loop.
+The native UI event loop owns widgets and rendering. `share-host` owns the renderer-free controller and `HostSession`, including sanitized state, interruption confirmation, bounded receipts and cleanup. Tauri reexports the controller contracts; Slint composes the session through a two-worker Tokio bridge with 16 queued commands. Networking and asynchronous storage stay outside the UI thread. Transfer admission/finalization notify the observer; per-block progress remains atomic-only. Active/dirty observations use a 250 ms sampling interval, while idle observation waits. One queued latest-state delivery coalesces progress. FIFO command IDs and a persistent completion watermark prevent a passive sample from releasing an accepted action's busy/focus ownership.
 
 Provider grants, platform pickers and lifecycle adapters remain separate from the renderer. Surface recreation, language/theme changes and hiding a panel must not implicitly cancel admitted transfers. Explicit Stop/close/cancel flows require the intended user confirmation; OS termination and crash recovery need their own protocol. Android Service ownership and iOS foreground/finite background rules remain platform work whichever renderer is chosen.
 
-Branding comes from `product.json`; native installation/signing identity remains in `config/native-identity.json`. The pixel wordmark and readiness-driven, reduced-motion startup are product requirements for the new renderer. Current CSS transitions and Tauri package checks do not establish native animation smoothness or upgrade compatibility.
+Branding comes from `product.json`; native installation/signing identity remains in `config/native-identity.json`. The Slint trial implements the pixel wordmark and readiness-driven startup with explicit reduced motion. Current CSS transitions, Slint render callbacks and Tauri package checks do not establish displayed-frame smoothness or upgrade compatibility.
+
+Switch to egui if a reproducible required-target failure remains, an essential input/accessibility/distribution requirement cannot be met, or matched sustained measurements show an unacceptable resource cost. An untested target remains a verification task, rather than evidence that Slint has failed.
 
 ## Adoption and performance gates
 

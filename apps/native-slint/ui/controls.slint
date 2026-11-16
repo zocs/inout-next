@@ -1,0 +1,17 @@
+import { Button } from "std-widgets.slint";
+
+// Standard widget semantic activation can invoke its callback even when
+// disabled. Check application availability for every activation path while
+// keeping keyboard focus and appearance on the standard reactive binding.
+export component NativeButton inherits Button {
+    in property <bool> available;
+    callback activated();
+    enabled: root.available;
+    accessible-enabled: root.available;
+    accessible-action-default => {
+        if root.available { root.activated(); }
+    }
+    clicked => {
+        if root.available { root.activated(); }
+    }
+}

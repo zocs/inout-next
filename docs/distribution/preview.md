@@ -2,6 +2,8 @@
 
 [Download v0.1.0-preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1). This is a prerelease for testing, with package version 0.1.0. The five desktop targets were built and tested at [c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553); the preview tag adds product documentation without changing the application. [Android v0.1.0-preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2) has a separate arm64 APK and [foreground-sharing scope](android-preview.md). iOS remains scheduled for later adaptation and device validation.
 
+These released GUI packages use the transitional Tauri host. The current source also has a separate [Slint native desktop trial](../../apps/native-slint/README.md), with no embedded WebView. Its `native-slint-trial.zip` packages include the native executable, exact `web/` export and source/framework notices; they are separate from the server ZIPs and published installers below. Slint is evaluated first, with egui as the fallback. This source trial does not replace preview.1/preview.2 or establish installed/offline, mobile, signing or store acceptance.
+
 ## Choose a GUI package
 
 | System | Release asset | Runtime requirement |

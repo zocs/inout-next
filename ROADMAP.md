@@ -13,26 +13,27 @@
 
 These foundations are implemented. [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five serial targets and inspection of five CLI ZIPs/six native packages against its tested export, alongside the recorded core comparison and streamed/relocated checks. The Android extension adds private-host, Kotlin/index, real package and emulator HTTP/browser/lifecycle coverage described below. Current0.1.0 is experimental; target/device/offline/store readiness remains separate.
 
-Unreleased localization/live-policy source also passes [six-target serial CI at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175). Its five server ZIPs, six transitional desktop packages and unsigned arm64 APK are inspected against the exact 36-resource export. This verifies the source checkpoint; selected-renderer/device and release milestones below remain open.
+The earlier unreleased localization/live-policy source passes [six-target serial CI at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175). Its five server ZIPs, six transitional desktop packages and unsigned arm64 APK are inspected against the exact 36-resource export. That run precedes host extraction and the Slint trial; selected-renderer/device and release milestones below remain open.
 
 ## Native renderer migration
 
 Next.js remains the HTTP/browser manager. The final app uses Rust native rendering; current Tauri packages remain transitional previews.
 
-- Complete [egui/Slint/Iced feasibility gates](docs/native-gui.md), retaining egui first under API24/permissive-distribution goals and Slint as the documented mobile/declarative alternative. The Linux comparison is exploratory; no toolkit is adopted yet.
-- Extract the application controller/runtime from Tauri before final GUI/live-permission work. Keep Tokio, storage/providers, pickers/grants, branding, diagnostics and native lifecycle behind independent contracts.
+- Evaluate **Slint first, egui as the fallback** through the [native feasibility gates](docs/native-gui.md). Switch on an unresolved required-target, accessibility/distribution or matched-performance failure; an untested platform alone does not establish failure. Iced remains documented for comparison. No toolkit is adopted yet.
+- The renderer-free `share-host` controller, diagnostics and session are extracted. The opt-in Slint desktop trial has real setup/addresses, current-run receipts, three languages/four themes, native branding and confirmed Stop/close. Its two-worker Tokio bridge bounds commands, coalesces progress and preserves command-completion identity.
+- Complete selected-renderer target/device and distribution checks, platform picker/grant adapters, persistent settings/OS motion preferences, live-setting/diagnostic controls and matched sustained presentation/resource measurements. Keep storage/providers and native lifecycle independent of widgets.
 - Prove selected-renderer Windows i686/real 32-bit OS, Android GameActivity or Slint API26 decision, Chinese input/TalkBack/16 KiB and a native iOS host/VoiceOver path.
 - Preserve pixel branding, native localized themes and confirmed Stop/close/cancel, with actual presentation/input/idle/energy and relocated-package measurements.
 
 ## 2. Desktop distribution and compatibility
 
-- Actual Linux/macOS GUI, installation and device verification after current native target builds.
+- Extend the actual Linux Slint trial checks to target-built packages, macOS/Windows native operation, installation and device validation.
 - Windows32bit operating-system verification, installation/uninstall/upgrade and signing.
 - Separate human-visible native installer/package labels from stable resource/install identities, with emitted-package and installed-upgrade checks before changing the retained `Inout Next` labels.
-- Offline Windows WebView2 distribution with explicit runtime/architecture requirements.
+- Validate offline native Windows graphics/runtime packaging and actual 32-bit operation. Transitional Tauri WebView2 delivery has its own runtime/architecture boundary.
 - Reduce Linux native runtime-packaging cost while retaining required libraries and truthful compatibility.
 - Safe Windows move/rename and directory copy where storage guarantees permit them.
-- LinuxARM64 runtime and an explicit Ubuntu18.04/glibc2.27/WebKitGTK compatibility strategy.
+- LinuxARM64 runtime and an explicit Ubuntu18.04/glibc2.27 native graphics/font/runtime strategy, with transitional WebKitGTK limits recorded separately.
 
 ## Connection experience
 
@@ -63,10 +64,10 @@ Remaining Android milestones:
 
 ## 4. Transfer reliability and optional modules
 
-Current source supplies atomic Rust permission/key updates, independent rename/delete authorization and bounded process-local transfer observations. Already-admitted bodies/provider work retain their policy. The HTTP manager has English/Simplified/Traditional catalogs and four themes; language/theme changes preserve task state. Existing release packages precede these source updates.
+Current source supplies atomic Rust permission/key updates, independent rename/delete authorization and bounded process-local transfer observations. Already-admitted bodies/provider work retain their policy. The HTTP manager and Slint trial have English/Simplified/Traditional catalogs and four themes; language/theme changes preserve task state. Slint supplies current-run receipts and confirmed Stop/close with cancellation that preserves sharing. Existing release packages precede these source updates.
 
 - Integrate native live settings and browser ownership across permission/authentication changes without cancelling admitted transfers; retain the mounted-module availability boundary.
-- Add confirmed cancellation/close/Stop and native transfer history/safe-open, single-file/common-directory sharing and configurable browser previews. Durable resume and crash recovery require persisted protocols beyond the current process-local ledger.
+- Extend confirmation to individual transfer cancellation and browser close/authentication flows. Add durable native history/safe-open, single-file/common-directory sharing and configurable browser previews. Current-run Slint receipts do not establish persistent history; durable resume and crash recovery require persisted protocols beyond the process-local ledger.
 
 - Extend matched core buffer/range measurements to physical LAN, slow clients, real disks and target devices; keep runtime tuning bounded and optional.
 - Persistent resumable uploads, cancellation/retry/crash recovery and multi-GiB/slow-client/concurrency measurements.

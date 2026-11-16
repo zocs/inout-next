@@ -1,4 +1,4 @@
-use share_desktop_lib::{resolve_web_dir, HostController, StartOptions};
+use share_host::{resolve_web_dir, HostController, StartOptions};
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

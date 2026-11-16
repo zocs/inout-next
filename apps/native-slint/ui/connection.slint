@@ -1,0 +1,69 @@
+import { ComboBox, LineEdit } from "std-widgets.slint";
+import { NativeButton } from "controls.slint";
+import { Labels } from "text.slint";
+import { NativeTheme, Heading, Body, Hint } from "theme.slint";
+
+export component Connection inherits Rectangle {
+    in property <Labels> labels;
+    in property <bool> running;
+    in property <bool> enabled;
+    in property <[string]> addresses;
+    in property <string> selected-address;
+    in property <string> effective-settings;
+    in property <string> shared-folder;
+    in-out property <int> address-index: 0;
+    callback address-selected(int);
+    callback copy-address();
+    callback browser-result(bool);
+    min-width: 280px;
+    min-height: layout.min-height;
+    background: NativeTheme.secondary;
+    border-radius: 12px;
+
+    layout := VerticalLayout {
+        alignment: start;
+        padding: 22px;
+        spacing: 12px;
+        Heading {
+            text: root.running ? root.labels.running : root.labels.stopped;
+            accessible-live-region: polite;
+        }
+        if root.running: Body {
+            text: root.shared-folder;
+            wrap: char-wrap;
+            accessible-label: root.labels.folder + ": " + root.shared-folder;
+        }
+        if root.running: Hint { text: root.effective-settings; }
+        Rectangle { height: 8px; }
+        Body { text: root.labels.address; font-weight: 600; }
+        if !root.running: Hint { text: root.labels.no-address; }
+        if root.running: ComboBox {
+            model: root.addresses;
+            current-index <=> root.address-index;
+            accessible-label: root.labels.address;
+            accessible-description: self.current-value;
+            enabled: root.enabled;
+            min-height: 42px;
+            selected => { root.address-selected(self.current-index); }
+        }
+        if root.running: LineEdit {
+            text: root.selected-address;
+            read-only: true;
+            enabled: root.enabled;
+            accessible-label: root.labels.address;
+            min-height: 42px;
+        }
+        if root.running: NativeButton {
+            text: root.labels.copy-address;
+            available: root.enabled;
+            min-height: 40px;
+            activated => { root.copy-address(); }
+        }
+        if root.running: NativeButton {
+            text: root.labels.open-browser;
+            available: root.enabled;
+            min-height: 40px;
+            activated => { root.browser-result(Platform.open-url(root.selected-address)); }
+        }
+    }
+}

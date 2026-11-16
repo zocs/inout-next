@@ -1,8 +1,8 @@
 # inout
 
-An independent Rust HTTP file service, a static Next.js file manager, and Tauri desktop/Android hosts. Share a folder on desktop or app-private files in the Android foreground preview, then browse, upload, download or manage them from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
+An independent Rust HTTP file service, a static Next.js file manager and an opt-in Slint native desktop trial. Existing Tauri desktop/Android packages remain transitional previews. Share a folder on desktop or app-private files in the Android foreground preview, then browse, upload, download or manage them from another device's browser. Product branding, storage providers, feature modules and native lifecycle have separate interfaces. The app is **inout**; the repository and distribution slug remain **inout-next**.
 
-The planned application uses a Rust-rendered native GUI, with Next.js retained for the HTTP/browser manager. Existing Tauri packages are transitional previews. [Native GUI evaluation](docs/native-gui.md) compares egui, Slint and Iced, records an exploratory Linux measurement and defines the target/input/accessibility gates before adoption.
+The final application uses a Rust-rendered native GUI, with Next.js retained for the HTTP/browser manager. **Slint is tried first; egui is the fallback** if required platform, accessibility, distribution or measured performance gates cannot be met. The functional desktop trial controls the real Rust service without WebView. [Native GUI evaluation](docs/native-gui.md) distinguishes this trial, exploratory comparisons and adoption; no replacement native release is published yet.
 
 This is an experimental **0.1.0 preview**. Download [desktop preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) or [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2), with separate [desktop](docs/distribution/preview.md) and [Android](docs/distribution/android-preview.md) usage guides. [CI](https://github.com/zocs/inout-next/actions) covers Linux x64, Android arm64 packaging, Windows x86/x64 and macOS ARM64/x64 in one serial queue. Android runtime checks use an API 36 x86_64 emulator with 4 KiB pages; physical arm64, 16 KiB operation and two-device Wi-Fi remain unverified. Installation, offline distribution and store acceptance have separate milestones in the [platform matrix](docs/platforms.md). iOS adaptation is scheduled later. No stable release is published yet.
 
@@ -42,7 +42,21 @@ Other devices use the sharing computer's LAN address. An access key protects all
 
 Current source includes English, Simplified Chinese and Traditional Chinese, system-language selection and four local themes. Changing language/theme preserves file and transfer state. These additions and the optional-key write policy are unreleased source changes; the existing preview downloads retain their earlier behavior.
 
-## Use the desktop host
+## Try the native desktop app
+
+Build the static web export above, install the target's native graphics/font prerequisites, then:
+
+```sh
+cargo run --manifest-path apps/native-slint/Cargo.toml --locked
+```
+
+Choose a folder, local/LAN access, port and permissions, then start sharing. A key is optional; deletion requires configured-key authentication. Select an actual address to copy it or open it in your system browser. Stop and closing a running host ask for confirmation; Keep sharing preserves the listener and admitted transfers. Current-run transfer receipts remain after Stop and reset at the next successful Start. Language/theme changes preserve sharing and drafts.
+
+The trial supplies English, Simplified/Traditional Chinese, four themes and a native dot-matrix wordmark with a bounded readiness-driven startup. Preferences are temporary; `INOUT_NATIVE_REDUCE_MOTION=1` disables startup motion. Native OS motion detection, persistent history/resume, individual cancellation, QR and live-setting/diagnostic controls remain pending. Linux input/layout checks do not establish complete screen-reader or CJK input support; the linked accessibility bridge has declared adoption gates.
+
+For optimized native ZIP packaging, system dependencies and separate MIT/framework licence terms, see the [native trial guide](apps/native-slint/README.md). Build tools are not runtime dependencies. The trial archive does not establish installation, old-OS, mobile or store acceptance.
+
+## Use the transitional Tauri host
 
 Install the Tauri prerequisites for your platform, then:
 
@@ -80,10 +94,13 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
 cargo fmt --all -- --check
 cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+cargo fmt --manifest-path apps/native-slint/Cargo.toml -- --check
 cargo test --workspace --locked
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+cargo test --manifest-path apps/native-slint/Cargo.toml --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+cargo clippy --manifest-path apps/native-slint/Cargo.toml --all-targets --locked -- -D warnings
 cargo build -p share-cli --locked
 npm --prefix apps/web run test:e2e
 python3 scripts/verify_runtime.py --mib 128
@@ -95,11 +112,13 @@ The Android extension adds real asset/index, Kotlin filesystem, private-host and
 
 [Desktop checkpoint c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) passes all five targets serially. Its five CLI ZIPs and six native packages match the expected executable architectures and all 35 tested web resources; emitted Debian and Windows installer identity checks also pass. Package verification remains separate from installed/device/offline/signing readiness.
 
-The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue: Linux verification, Android arm64, Windows x86/x64, then macOS arm64/x64; every matrix has `max-parallel: 1`. Android reuses the Linux-tested web export, builds an optimized unsigned APK with locked Cargo children, and checks its manifest/resources/ABI/ELF/native ZIP alignment. Direct preview signing follows artifact acceptance. macOS compiles once, then permits at most three total bundle attempts for the specific `hdiutil create` resource-busy error; other errors remain fatal. Offline Windows packages remain a separate milestone.
+The [GitHub workflow](.github/workflows/ci.yml) has one repository-wide queue: Linux verification, Android arm64, Windows x86/x64, then macOS arm64/x64; every matrix has `max-parallel: 1`. Each desktop target separately tests/lints/builds the Slint trial and packages its native ZIP alongside the CLI and transitional Tauri outputs. Android continues to build the Tauri foreground composition, reusing the Linux-tested web export with locked Cargo children and manifest/resource/ABI/ELF/native ZIP alignment checks. Direct preview signing follows artifact acceptance. macOS compiles once, then permits at most three total bundle attempts for the specific `hdiutil create` resource-busy error; other errors remain fatal. Offline Windows packages remain a separate milestone.
+
+Local Slint integration passes 88 core/host, 15 Tauri composition, 14 Slint and 56 tool cases, strict Clippy/fmt, and 131 browser cases. Actual Linux native checks include relocated transfer hashes, picker selection/cancellation, address copy/selection, browser navigation and confirmed Stop/normal-close cleanup with a paused upload. The local optimized native executable/ZIP are 17.88/8.79 MiB, with the exact 36-file browser export. [Size/runtime guidance](docs/distribution/size-and-runtime.md) separates this local package's system-library requirements and measured limits from CI and releases.
 
 Android preview.2 comes from [CI 43704226914 at 4dd4b51](https://github.com/zocs/inout-next/actions/runs/43704226914), with all six targets passing serially. The signed arm64 APK is 15.39MiB; its [guide](docs/distribution/android-preview.md) records exact bytes/checksums, 32 native tests per desktop target, 53 tool/91 browser/seven Kotlin cases and the separate emulator runtime evidence.
 
-The unreleased localization/live-policy checkpoint passes [CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) across all six serial targets. Every desktop target passes 33 native tests; Linux also passes 53 tool and 131 browser cases, and Android passes seven Kotlin cases plus locked arm64 compilation and actual APK inspection. The five server ZIPs, six desktop packages and unsigned APK match that run's 36 tested web resources. [Platform status](docs/platforms.md) records core-test counts and remaining device gates; [package measurements](docs/distribution/size-and-runtime.md) distinguish this checkpoint from the published previews.
+The earlier localization/live-policy checkpoint passes [CI 43744797175 at abeabd1](https://github.com/zocs/inout-next/actions/runs/43744797175) across all six serial targets, before host extraction and Slint composition. Every desktop target passes 33 Tauri native tests; Linux also passes 53 tool and 131 browser cases, and Android passes seven Kotlin cases plus locked arm64 compilation and actual APK inspection. The five server ZIPs, six desktop packages and unsigned APK match that run's 36 tested web resources. [Platform status](docs/platforms.md) records core-test counts and remaining device gates; [package measurements](docs/distribution/size-and-runtime.md) distinguish this historical checkpoint from the published previews and current trial.
 
 ```sh
 cargo build -p share-cli --release --locked

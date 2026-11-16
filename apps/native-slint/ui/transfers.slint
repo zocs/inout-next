@@ -1,0 +1,72 @@
+import { ListView } from "std-widgets.slint";
+import { Labels } from "text.slint";
+import { NativeTheme, Heading, Hint } from "theme.slint";
+
+export struct TransferRow {
+    path: string, kind: string, state: string, accounting: string,
+    active: bool, failed: bool, progress: float, known-total: bool,
+}
+
+export component Transfers inherits Rectangle {
+    in property <Labels> labels;
+    in property <[TransferRow]> records;
+    min-height: layout.min-height;
+    VerticalLayout {
+        layout := VerticalLayout {
+            alignment: start;
+            spacing: 8px;
+            Heading { text: root.labels.transfers; font-size: 18px; }
+            Hint { text: root.labels.transfer-hint; }
+            if root.records.length == 0: Hint { text: root.labels.no-transfers; }
+            if root.records.length > 0: ListView {
+                preferred-height: min(240px, root.records.length * 82px);
+                min-height: 82px;
+                for record in root.records: Rectangle {
+                    height: 82px;
+                    accessible-role: list-item;
+                    accessible-label: record.path + ", " + record.kind + ", " + record.state + ", " + record.accounting;
+                    VerticalLayout {
+                        padding-top: 10px;
+                        padding-bottom: 10px;
+                        spacing: 5px;
+                        Text {
+                            text: record.path;
+                            overflow: elide;
+                            font-size: 14px;
+                            color: NativeTheme.ink;
+                            accessible-role: none;
+                        }
+                        HorizontalLayout {
+                            Text {
+                                text: record.kind + " · " + record.state;
+                                font-size: 13px;
+                                color: record.failed ? NativeTheme.error : NativeTheme.muted;
+                                accessible-role: none;
+                            }
+                            Text {
+                                text: record.accounting;
+                                horizontal-alignment: right;
+                                font-size: 13px;
+                                color: NativeTheme.muted;
+                                accessible-role: none;
+                            }
+                        }
+                        Rectangle {
+                            height: 4px;
+                            border-radius: 2px;
+                            background: NativeTheme.border;
+                            visible: record.active && record.known-total;
+                            Rectangle {
+                                width: parent.width * record.progress;
+                                height: parent.height;
+                                border-radius: 2px;
+                                background: NativeTheme.accent;
+                            }
+                        }
+                    }
+                    Rectangle { y: parent.height - 1px; height: 1px; background: NativeTheme.border; }
+                }
+            }
+        }
+    }
+}

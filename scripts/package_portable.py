@@ -71,21 +71,12 @@ for filesystem/platform limitations and validated targets.
     return inputs
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--target", choices=sorted(TARGETS), required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
+def write_archive(archive_path: Path, inputs: dict[str, tuple[bytes, int]]) -> str:
+    """Publish a deterministic runtime ZIP and checksum after input validation."""
     temporary = None
     try:
-        product = load_product(args.root)
-        inputs = runtime_inputs(args.root, args.binary, args.target)
-        inputs["product.json"] = ((json.dumps(product, ensure_ascii=False, indent=2) + "\n").encode("utf-8"), 0o644)
-        args.output.mkdir(parents=True, exist_ok=True)
-        archive_path = args.output / f'{product["slug"]}-{product["version"]}-{args.target}-server.zip'
-        with tempfile.NamedTemporaryFile(prefix=".package-", suffix=".tmp", dir=args.output, delete=False) as stream:
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(prefix=".package-", suffix=".tmp", dir=archive_path.parent, delete=False) as stream:
             temporary = Path(stream.name)
         with ZipFile(temporary, "w", compression=ZIP_DEFLATED) as archive:
             for name, (contents, mode) in sorted(inputs.items()):
@@ -99,14 +90,30 @@ def main() -> int:
         os.replace(temporary, archive_path)
         temporary = None
         archive_path.with_suffix(".zip.sha256").write_text(f"{digest}  {archive_path.name}\n", encoding="ascii")
+        return digest
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--binary", type=Path, required=True)
+    parser.add_argument("--target", choices=sorted(TARGETS), required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        product = load_product(args.root)
+        inputs = runtime_inputs(args.root, args.binary, args.target)
+        inputs["product.json"] = ((json.dumps(product, ensure_ascii=False, indent=2) + "\n").encode("utf-8"), 0o644)
+        archive_path = args.output / f'{product["slug"]}-{product["version"]}-{args.target}-server.zip'
+        digest = write_archive(archive_path, inputs)
         print(f"Packaged {archive_path.name} (SHA-256 {digest}).")
         return 0
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"Packaging error: {error}", file=sys.stderr)
         return 1
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

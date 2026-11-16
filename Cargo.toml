@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "apps/cli"]
-exclude = ["apps/desktop/src-tauri"]
+exclude = ["apps/desktop/src-tauri", "apps/native-slint"]
 resolver = "2"
 
 [workspace.package]

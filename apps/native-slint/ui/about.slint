@@ -1,0 +1,33 @@
+import { AboutSlint } from "std-widgets.slint";
+import { NativeButton } from "controls.slint";
+import { Labels } from "text.slint";
+import { NativeTheme, Body, Hint } from "theme.slint";
+
+export component AboutCard inherits Rectangle {
+    in property <Labels> labels;
+    in property <string> product-name;
+    in property <string> product-version;
+    in property <string> product-description;
+    callback close();
+    public function focus-close() { close-button.focus(); }
+    forward-focus: close-button;
+    min-height: layout.min-height;
+    background: NativeTheme.surface;
+    border-radius: 14px;
+
+    layout := VerticalLayout {
+        padding: 28px;
+        spacing: 16px;
+        Body { text: root.labels.about; font-size: 21px; font-weight: 650; }
+        Body { text: root.product-name + " · " + root.product-version; font-weight: 600; }
+        Hint { text: root.product-description; }
+        Hint { text: root.labels.preview; }
+        AboutSlint { height: 96px; }
+        close-button := NativeButton {
+            text: root.labels.close-about;
+            available: true;
+            min-height: 44px;
+            activated => { root.close(); }
+        }
+    }
+}

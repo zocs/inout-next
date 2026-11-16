@@ -1,0 +1,31 @@
+export struct MatrixDot { x: int, y: int }
+
+export component Wordmark inherits Rectangle {
+    in property <string> name;
+    in property <[MatrixDot]> dots;
+    in property <int> columns;
+    in property <color> ink;
+    in property <length> unit: 3.5px;
+    preferred-width: columns > 0 ? columns * unit : 180px;
+    preferred-height: 7 * unit;
+    accessible-role: text;
+    accessible-label: name;
+
+    for dot in dots : Rectangle {
+        x: dot.x * root.unit + root.unit * 0.16;
+        y: dot.y * root.unit + root.unit * 0.16;
+        width: root.unit * 0.68;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: root.ink;
+        accessible-role: none;
+    }
+    if root.columns == 0 : Text {
+        text: root.name;
+        color: root.ink;
+        font-size: root.unit * 6;
+        font-weight: 650;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+}

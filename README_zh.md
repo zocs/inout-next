@@ -1,8 +1,8 @@
 # inout
 
-独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和 Tauri 桌面/Android 宿主。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
+独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和可独立构建的 Slint 原生桌面试验。现有 Tauri 桌面/Android 安装包保留为过渡预览。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-后续应用采用 Rust 原生绘制的 GUI，Next.js 继续用于通过 HTTP 访问的浏览器文件管理器。现有 Tauri 安装包属于过渡预览。[原生 GUI 评估](docs/native-gui_zh.md)记录 egui、Slint、Iced 的取舍、Linux 初测结果，以及正式选型前的平台、输入法和无障碍验收要求。
+最终应用采用 Rust 原生绘制的 GUI，Next.js 继续用于通过 HTTP 访问的浏览器文件管理器。**先验证 Slint，不合适再切换 egui**；平台、无障碍、分发许可及实际性能是采用条件。当前桌面试验已直接控制真实 Rust 服务，不嵌入 WebView。[原生 GUI 评估](docs/native-gui_zh.md)区分功能试验、初测和正式选型，目前尚未发布替代原生应用。
 
 目前是实验性 **0.1.0 preview**。可下载[桌面 preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) 或 [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2)，使用说明分别见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
 
@@ -42,7 +42,21 @@ cargo run -p share-cli --locked -- \
 
 当前源码支持英语、简体中文、繁体中文、跟随系统语言及四种本地主题。切换语言或主题保留文件操作与传输状态。这些功能及可不设密钥的写入策略属于尚未发布的源码更新；现有 preview 下载包保留原先行为。
 
-## 桌面宿主
+## 试用原生桌面应用
+
+完成上面的网页导出，并安装目标系统的图形和字体构建依赖，然后执行：
+
+```sh
+cargo run --manifest-path apps/native-slint/Cargo.toml --locked
+```
+
+选择目录、仅本机或局域网访问、端口和权限后启动分享。口令可选，删除需要配置口令并通过认证。可选择实际分享地址，复制或在系统浏览器打开。停止和关闭正在分享的应用需要确认；“继续分享”保留监听和已接纳的传输。本轮传输记录在停止后保留，下一次成功启动时重置。语言、主题切换保留共享和输入内容。
+
+试验支持英语、简繁中文、四种主题、原生点阵字标及跟随真实就绪状态结束的短启动动画。偏好暂不持久保存；启动前设置 `INOUT_NATIVE_REDUCE_MOTION=1` 可关闭启动动画。系统减少动态效果检测、持久记录和续传、单任务取消、二维码、实时设置及诊断控件尚待实现。Linux 的输入和布局验证不代表完整读屏或中文输入法验收；当前无障碍桥接存在明确的采用前检查项。
+
+优化版 ZIP 打包、系统依赖及独立的 MIT/框架许可说明见[原生试验指南](apps/native-slint/README.md)。运行包不需要构建工具；原生试验不代表安装、旧系统、移动端或商店验收完成。
+
+## 过渡 Tauri 宿主
 
 安装所在平台的 Tauri 构建依赖，然后执行：
 
@@ -80,10 +94,13 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
 cargo fmt --all -- --check
 cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+cargo fmt --manifest-path apps/native-slint/Cargo.toml -- --check
 cargo test --workspace --locked
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+cargo test --manifest-path apps/native-slint/Cargo.toml --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+cargo clippy --manifest-path apps/native-slint/Cargo.toml --all-targets --locked -- -D warnings
 cargo build -p share-cli --locked
 npm --prefix apps/web run test:e2e
 python3 scripts/verify_runtime.py --mib 128
@@ -99,7 +116,9 @@ Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主�
 
 Android preview.2 来自 [4dd4b51 的 CI 43704226914](https://github.com/zocs/inout-next/actions/runs/43704226914)，六个目标全部串行通过。签名后的 arm64 APK 为 15.39MiB；[安装指南](docs/distribution/android-preview.md) 记录精确字节、校验值、各桌面目标32项原生测试、53工具/91浏览器/7Kotlin测试，以及单独的模拟器运行证据。
 
-尚未发布的多语言与实时权限核心检查点已通过 [abeabd1 的 CI 43744797175](https://github.com/zocs/inout-next/actions/runs/43744797175)，六个目标全部串行成功。各桌面目标通过33项宿主测试，Linux另通过53项工具和131项浏览器测试；Android通过七项Kotlin测试、锁定依赖的arm64实际编译及APK检查。五份服务端ZIP、六份桌面包和未签名APK均与本轮已测试的36个网页资源一致。[平台状态](docs/platforms.md)记录核心测试数量与尚未完成的设备验收，[体积报告](docs/distribution/size-and-runtime.md)分别记录本检查点和已发布预览的测量。
+较早的多语言与实时权限核心检查点已通过 [abeabd1 的 CI 43744797175](https://github.com/zocs/inout-next/actions/runs/43744797175)，六个目标全部串行成功。各桌面目标通过33项 Tauri 宿主测试，Linux另通过53项工具和131项浏览器测试；Android通过七项Kotlin测试、锁定依赖的arm64实际编译及APK检查。五份服务端ZIP、六份桌面包和未签名APK均与该轮已测试的36个网页资源一致。该 CI 早于宿主抽取和 Slint 试验，不能作为新原生源码的 CI 验收。[平台状态](docs/platforms.md)记录核心测试数量与尚未完成的设备验收，[体积报告](docs/distribution/size-and-runtime.md)分别记录各检查点和已发布预览的测量。
+
+Slint 集成本地通过 88 项核心/宿主、15 项 Tauri 组合、14 项 Slint、56 项工具及 131 项浏览器测试，并通过严格 Clippy 和格式检查。Linux 原生交互验证覆盖移出源码目录后的传输哈希、系统文件夹选择/取消、地址选择/复制、外部浏览器访问以及暂停上传期间的停止/正常关闭确认与清理。当前本地优化可执行文件/ZIP 为 17.88/8.79 MiB，包含精确的 36 文件浏览器导出；[体积与运行报告](docs/distribution/size-and-runtime.md)分别记录本地包的系统依赖、测量限制及 CI/发布产物。
 
 ```sh
 cargo build -p share-cli --release --locked

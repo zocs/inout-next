@@ -28,7 +28,7 @@ jobs:
   linux:
     name: Linux checks, browser flows and packages
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     outputs:
       product_slug: ${{ steps.product.outputs.slug }}
     steps:
@@ -52,11 +52,11 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock', 'apps/native-slint/Cargo.lock') }}
       - name: Linux native prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2 libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libegl1-mesa-dev fonts-dejavu-core
       - name: Product and portable packaging checks
         id: product
         run: |
@@ -83,10 +83,13 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check
+          cargo fmt --manifest-path apps/native-slint/Cargo.toml --check
           cargo test --workspace --locked
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+          cargo test --manifest-path apps/native-slint/Cargo.toml --locked
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path apps/native-slint/Cargo.toml --all-targets --locked -- -D warnings
           cargo build -p share-cli --locked
       - name: Real browser interactions
         working-directory: apps/web
@@ -100,7 +103,9 @@ jobs:
           cargo build -p share-cli --release --locked
           python3 scripts/package_portable.py --binary target/release/share-server --target linux-x64 --output .local/packages
           npm --prefix apps/desktop run tauri -- build --target x86_64-unknown-linux-gnu --bundles appimage,deb --config '{"build":{"beforeBuildCommand":""}}' -- --locked
-          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked --test host asset_lookup_prefers_packaged_mapping_and_rejects_partial_folders
+          cargo test -p share-host --release --locked --test host asset_lookup_prefers_packaged_mapping_and_rejects_partial_folders
+          cargo build --manifest-path apps/native-slint/Cargo.toml --release --locked --target x86_64-unknown-linux-gnu
+          python3 scripts/package_native_slint.py --binary target/x86_64-unknown-linux-gnu/release/share-native-slint --target linux-x64 --output .local/packages
       - name: Verify emitted Debian identity across display rename
         run: python3 scripts/verify_native_identity.py --binary target/x86_64-unknown-linux-gnu/release/share-desktop --target x86_64-unknown-linux-gnu --bundle deb --report .local/verification/native-identity-linux-x64.json
       - name: Verify relocated Linux portable server
@@ -192,7 +197,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock', 'apps/native-slint/Cargo.lock') }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-export
@@ -241,7 +246,7 @@ jobs:
     name: Windows ${{ matrix.name }} tests and packages
     needs: [linux, android]
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       RUSTFLAGS: '-C target-feature=+crt-static'
     strategy:
@@ -275,7 +280,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock', 'apps/native-slint/Cargo.lock') }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-export
@@ -285,32 +290,39 @@ jobs:
           npm ci --prefix apps/desktop
           cargo test --workspace --locked --target ${{ matrix.target }}
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked --target ${{ matrix.target }}
+          cargo test --manifest-path apps/native-slint/Cargo.toml --locked --target ${{ matrix.target }}
           cargo clippy --workspace --all-targets --locked --target ${{ matrix.target }} -- -D warnings
           cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked --target ${{ matrix.target }} -- -D warnings
+          cargo clippy --manifest-path apps/native-slint/Cargo.toml --all-targets --locked --target ${{ matrix.target }} -- -D warnings
       - name: Target server and native bundles
         run: |
           cargo build -p share-cli --release --locked --target ${{ matrix.target }}
           python3 scripts/package_portable.py --binary target/${{ matrix.target }}/release/share-server.exe --target ${{ matrix.portable }} --output .local/packages
           npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --bundles nsis --config '{"build":{"beforeBuildCommand":""}}' -- --locked
+          cargo build --manifest-path apps/native-slint/Cargo.toml --release --locked --target ${{ matrix.target }}
+          python3 scripts/package_native_slint.py --binary target/${{ matrix.target }}/release/share-native-slint.exe --target ${{ matrix.portable }} --output .local/packages
       - name: Verify rendered NSIS identity across display rename
         run: python3 scripts/verify_native_identity.py --binary target/${{ matrix.target }}/release/share-desktop.exe --target ${{ matrix.target }} --bundle nsis --report .local/verification/native-identity-${{ matrix.portable }}.json
       - name: Verify native PE architecture and GUI subsystem
         run: |
           python3 - <<'PY'
           import json, pathlib, struct
-          path = pathlib.Path('target/${{ matrix.target }}/release/share-desktop.exe')
-          data = path.read_bytes()
-          if data[:2] != b'MZ':
-              raise SystemExit('Native artifact is not a PE executable')
-          pe = struct.unpack_from('<I', data, 0x3c)[0]
-          if data[pe:pe + 4] != b'PE\0\0':
-              raise SystemExit('Native artifact has no PE header')
-          machine = struct.unpack_from('<H', data, pe + 4)[0]
-          subsystem = struct.unpack_from('<H', data, pe + 24 + 68)[0]
           expected = 0x14c if '${{ matrix.name }}' == 'x86' else 0x8664
-          if machine != expected or subsystem != 2:
-              raise SystemExit('Native artifact must have the declared architecture and Windows GUI subsystem')
-          report = {'architecture': '${{ matrix.name }}', 'machine': hex(machine), 'subsystem': subsystem}
+          artifacts = []
+          for name in ('share-desktop.exe', 'share-native-slint.exe'):
+              path = pathlib.Path('target/${{ matrix.target }}/release') / name
+              data = path.read_bytes()
+              if data[:2] != b'MZ':
+                  raise SystemExit(f'{name} is not a PE executable')
+              pe = struct.unpack_from('<I', data, 0x3c)[0]
+              if data[pe:pe + 4] != b'PE\0\0':
+                  raise SystemExit(f'{name} has no PE header')
+              machine = struct.unpack_from('<H', data, pe + 4)[0]
+              subsystem = struct.unpack_from('<H', data, pe + 24 + 68)[0]
+              if machine != expected or subsystem != 2:
+                  raise SystemExit(f'{name} must have the declared architecture and Windows GUI subsystem')
+              artifacts.append({'file': name, 'machine': hex(machine), 'subsystem': subsystem, 'bytes': len(data)})
+          report = {'architecture': '${{ matrix.name }}', 'artifacts': artifacts}
           output = pathlib.Path('.local/verification/native-pe-${{ matrix.portable }}.json')
           output.parent.mkdir(parents=True, exist_ok=True)
           output.write_text(json.dumps(report, indent=2) + '\n')
@@ -331,7 +343,7 @@ jobs:
     name: macOS ${{ matrix.name }} checks and packages
     needs: [linux, windows]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       max-parallel: 1
       fail-fast: true
@@ -365,7 +377,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock', 'apps/native-slint/Cargo.lock') }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-export
@@ -375,8 +387,10 @@ jobs:
           npm ci --prefix apps/desktop
           cargo test --workspace --locked
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+          cargo test --manifest-path apps/native-slint/Cargo.toml --locked
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path apps/native-slint/Cargo.toml --all-targets --locked -- -D warnings
       - name: Target server and native bundles
         run: |
           cargo build -p share-cli --release --locked --target ${{ matrix.target }}
@@ -384,6 +398,8 @@ jobs:
           npm --prefix apps/desktop run tauri -- build --target ${{ matrix.target }} --no-bundle --config '{"build":{"beforeBuildCommand":""}}' -- --locked
           python3 scripts/bundle_macos.py --report .local/verification/native-bundle-${{ matrix.portable }}.json -- \
             npm --prefix apps/desktop run tauri -- bundle --ci --target ${{ matrix.target }} --bundles app,dmg
+          cargo build --manifest-path apps/native-slint/Cargo.toml --release --locked --target ${{ matrix.target }}
+          python3 scripts/package_native_slint.py --binary target/${{ matrix.target }}/release/share-native-slint --target ${{ matrix.portable }} --output .local/packages
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}

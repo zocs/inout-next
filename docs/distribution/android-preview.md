@@ -2,6 +2,8 @@
 
 [Download v0.1.0-preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2). This experimental inout Android arm64 preview has package version `0.1.0` and shares files in the app's own storage with a browser on another device. The [desktop preview](preview.md) remains a separate download. Android's native foreground Service, SAF folder grants, local file import/manager and store distribution are later milestones.
 
+This release uses the transitional Tauri/System WebView host. The separate [Slint native desktop trial](../../apps/native-slint/README.md) controls the extracted Rust host/session without WebView, but has no validated Android composition or APK. Slint's API26/Skia, Android input/accessibility, Service/SAF, arm64 and 16 KiB runtime require independent work. The released preview's API24 minimum, `.preview` ID, certificate and foreground lifetime below remain its actual scope.
+
 ## Install and connect
 
 1. Use an arm64 Android device. The declared minimum is Android 7 / API24; actual runtime validation currently uses API36/x86_64, so minimum-OS and physical arm64 operation remain unverified. Keep Android System WebView current.
