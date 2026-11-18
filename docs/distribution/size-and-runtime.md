@@ -148,6 +148,19 @@ Both macOS bundles succeed on their first attempt; no resource-busy recovery is 
 
 The transitional unsigned arm64 APK is **16,149,684 bytes (15.40 MiB)**, with one **13,304,624-byte Rust library** and this CI's same 36 indexed web resources. Seven Kotlin cases and both actual locked release-library compilation children pass; both source lockfiles remain unchanged. Manifest checks retain `inout`, the `.preview` ID, code100001, minAPI24 and targetAPI36. Exact raw resources, single ABI and ELF/native ZIP16KiB alignment pass inspection, while signature verification confirms it is unsigned. There is no Slint APK, new signing/install/emulator/device/16KiB runtime or store acceptance; the signed 15.39MiB preview.2 retains its separate provenance.
 
+## Windows source build with software fallback
+
+The Windows-only software-renderer fallback and explicit native language/theme value actions have separate optimized source-build measurements:
+
+| Target | Native executable bytes | MiB |
+| --- | ---: | ---: |
+| Windows x86 | 13,051,904 | 12.45 |
+| Windows x64 | 13,569,536 | 12.94 |
+
+Both pinned Rust/MSVC builds pass14 native tests and strict Clippy. Actual Windows10x64 operation passes default-renderer startup, localized value/label and theme retention, CJK-root files, public-write policy and each same2MiB upload through presentation changes and canceled Stop/close. Final disk/download hashes, confirmed Stop, normal exit and zero listener/stage checks pass. [Native evaluation](../native-gui.md#windows-default-renderer-and-input) retains the remaining selection/IME/assistive, real32bit OS, installed/offline and presentation gates.
+
+These are source-built executables tested with the earlier CI's exact36-file/1,084,607-byte browser resources. They are separate from that run's complete ZIP sizes above and the future new CI packages; no newly measured local ZIP size is inferred. The added renderer is Windows-only. Linux/macOS feature graphs and all historical FileInfra, Tauri, core-transfer and exploratory measurements remain unchanged. There is no Node/Python/WebView app runtime; OS fonts/desktop services and an external browser still have their own costs. Callback readiness does not measure displayed frames, throughput, memory or energy.
+
 ## Exploratory Rust GUI comparison
 
 The [native GUI evaluation](../native-gui.md) records a separate exploratory Linux x86_64/X11/Intel comparison of egui 0.37/Glow and Slint 1.18.1/FemtoVG. Both throwaway fixtures use the real Rust service, the same optimized profile and 10,000 filename rows with system-font fallback. Thirty warm launches and six checksum-verified, deliberately throttled 64 MiB workloads passed.

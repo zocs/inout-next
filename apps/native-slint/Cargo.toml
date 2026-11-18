@@ -27,6 +27,11 @@ rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal",
 arboard = { version = "=3.7.0", default-features = false, optional = true }
 sys-locale = { version = "=0.3.2", optional = true }
 
+[target.'cfg(windows)'.dependencies]
+# Keep FemtoVG first. Slint's winit backend tries this renderer if Windows has
+# no suitable OpenGL driver, including basic-display and virtual-machine hosts.
+slint = { version = "=1.18.1", default-features = false, features = ["renderer-software"], optional = true }
+
 [build-dependencies]
 slint-build = { version = "=1.18.1", optional = true }
 

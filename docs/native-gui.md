@@ -2,7 +2,7 @@
 
 [简体中文](native-gui_zh.md)
 
-The application direction is a Rust-rendered GUI. Next.js continues to export the HTTP file manager used by connecting browsers. An opt-in Slint desktop trial now controls the real file service without a WebView. The existing Tauri desktop and Android releases are transitional previews; the Slint trial has not replaced those releases.
+The application direction is a Rust-rendered GUI. Next.js currently exports the HTTP file manager used by connecting browsers; the [technology direction](../ROADMAP.md#technology-direction) plans to preserve React components with a Vite build. An opt-in Slint desktop trial now controls the real file service without a WebView. The existing Tauri desktop and Android releases are transitional previews; the Slint trial has not replaced those releases.
 
 The selected evaluation order is **Slint first, then egui/eframe if Slint cannot meet the requirements**. **Iced** remains a separately assessed desktop alternative. This order does not establish final adoption or complete platform support. The renderer-free service/session boundary allows another Rust renderer to reuse the same ownership and transfer contracts.
 
@@ -24,7 +24,7 @@ The workspace's Rust 1.99 requirement exceeds the examined package floors: Slint
 
 ## Functional Slint desktop trial
 
-[apps/native-slint](../apps/native-slint/README.md) is an independent workspace excluded from the core's default build, with locked Slint/slint-build 1.18.1, winit, FemtoVG and desktop accessibility. Its setup includes native folder selection, an optional masked access key, public upload/management choices, LAN or loopback access and an effective bound port. Actual addresses can be selected, copied and opened in the system browser. A failed browser handoff retains localized instructions to copy the address and open it manually. Product metadata and the compiled 5×7 wordmark remain independent of installation/signing identity.
+[apps/native-slint](../apps/native-slint/README.md) is an independent workspace excluded from the core's default build, with locked Slint/slint-build 1.18.1, winit, preferred FemtoVG and desktop accessibility. Windows also enables software rendering when OpenGL initialization fails; Linux/macOS renderer features are unchanged. Its setup includes native folder selection, an optional masked access key, public upload/management choices, LAN or loopback access and an effective bound port. Actual addresses can be selected, copied and opened in the system browser. A failed browser handoff retains localized instructions to copy the address and open it manually. Product metadata and the compiled 5×7 wordmark remain independent of installation/signing identity.
 
 English, Simplified Chinese and Traditional Chinese are typed local catalogs. Four themes recolor the authored surfaces. Language/theme changes preserve drafts, the listener and admitted transfers. The startup exit follows controller readiness; `INOUT_NATIVE_REDUCE_MOTION=1` disables its motion. Preferences are temporary, and automatic native OS motion-preference detection is pending.
 
@@ -34,7 +34,19 @@ Local optimized Linux verification covers real relocated-package upload/download
 
 The locked AccessKit AT-SPI bridge lacks EditableText and reports disabled buttons as enabled/sensitive. Direct reactive control state and application guards block both physical and forced semantic background activation, but the incorrect accessibility metadata is still an adoption gate. Full screen-reader operation, Chinese composing input and platform motion policy require independent checks.
 
-The current local Linux trial executable is 18,752,320 bytes (17.88 MiB); its ZIP with the exact 36-file / 1,084,605-byte browser export and licence notices is 9,216,822 bytes (8.79 MiB). It requires the target OS graphics, font, display and desktop services; it does not bundle those libraries or require runtime Node/Python/WebView. These functional-package sizes are separate from the throwaway comparison below. Source remains MIT; the included Slint royalty-free desktop terms and attribution are documented in [THIRD_PARTY.md](../apps/native-slint/THIRD_PARTY.md). F-Droid/Apple licensing and mobile API26/Skia are unresolved independent gates.
+The current local Linux trial executable is 18,752,320 bytes (17.88 MiB); its ZIP with the exact 36-file / 1,084,605-byte browser export and licence notices is 9,216,822 bytes (8.79 MiB). It requires the target OS graphics, font, display and desktop services; it does not bundle those libraries or require runtime Node/Python/WebView. These functional-package sizes are separate from the throwaway comparison below. Source remains MIT; the included Slint royalty-free2.0 terms permit general-purpose desktop/mobile applications with attribution, as documented in [THIRD_PARTY.md](../apps/native-slint/THIRD_PARTY.md). F-Droid free-source/channel selection, Apple distribution obligations and actual mobile integration remain independent gates.
+
+## Windows default renderer and input
+
+Windows source handles hosts where the preferred FemtoVG renderer cannot initialize an OpenGL2 driver, using Slint's existing fallback factories. The pinned Fluent ComboBox exposes a readable value but lacks a value-write handler. Language/theme controls explicitly validate enabled state and current model values, then update the existing locale callback or theme index binding. Standard pointer/keyboard callbacks remain in place; presentation changes do not recreate the service owner.
+
+Both x86/x64 source builds pass14 native tests, strict Clippy and optimized compilation with the pinned Rust/MSVC toolchain. Actual standard-user Windows10x64 checks pass default-renderer window startup, Simplified/Traditional/English values and localized labels, theme retention, invalid/disabled value rejection and normal idle close. This is x86 execution on an x64 OS; a real32bit OS remains untested.
+
+Functional fixtures retain the exact earlier CI browser resources with each new executable. Both native setups use a literal CJK directory and actual bound loopback address; real file download, packaged page200, anonymous directory creation201 and published deletion403/file retention pass. Each original2MiB PUT stays pending on the same connection through actual language/theme changes and canceled Stop/normal close, then completes with201 and matching disk/download length and SHA-256. Confirmed Stop and normal close leave no listener or unpublished stage.
+
+[Windows source-build sizes](distribution/size-and-runtime.md#windows-source-build-with-software-fallback) are separate from the historical CI packages below. These checks use native accessibility and actual service/filesystem evidence. Standard option selection, scrolling/offscreen receipts, IME/screen readers, installed/offline packages, real32bit Windows, presented frames, input latency and energy remain separate gates.
+
+Pinned Slint Android uses native-activity/Skia with an API26 minimum. Its platform helper forwards IME composition and Back; this source evidence does not validate the application's mobile input, TalkBack, arm64/16KiB or lifecycle. Persistent Service ownership, SAF and iOS hosting require separate adapters. No Slint APK is built or released by this desktop work; the existing Tauri preview retains API24 and its signing identity.
 
 ## Desktop target CI
 

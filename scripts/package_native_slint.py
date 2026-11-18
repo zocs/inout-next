@@ -33,8 +33,10 @@ The access key is optional. Public upload/management can be explicitly enabled;
 published deletion requires configured-key authentication. HTTP does not encrypt
 files or access keys. Confirm Stop/close only when you intend to interrupt sharing.
 
-This trial uses Slint with winit/FemtoVG. It requires compatible OS graphics,
-fonts, clipboard and file-dialog services. Linux also requires the libraries
+This trial uses Slint with winit and prefers FemtoVG. Windows can fall back to
+software rendering when a suitable OpenGL driver is unavailable. Compatible OS
+graphics (or that fallback), fonts, clipboard and file-dialog services are required.
+Linux also requires the libraries
 listed in README.md. This ZIP does not establish offline/old-OS installation,
 device, signing or store acceptance. Node, Python and WebView are not app runtimes.
 Preferences are temporary. INOUT_NATIVE_REDUCE_MOTION=1 disables startup motion;

@@ -121,6 +121,16 @@ export component AppWindow inherits Window {
                         accessible-description: self.current-value;
                         min-height: 40px;
                         selected => { root.locale-selected(self.current-index); }
+                        // The bundled ComboBox exposes a value but has no SetValue handler.
+                        accessible-action-set-value(value) => {
+                            let index = value == self.model[0] ? 0
+                                : value == self.model[1] ? 1
+                                : value == self.model[2] ? 2 : -1;
+                            if self.enabled && index >= 0 {
+                                self.current-index = index;
+                                root.locale-selected(index);
+                            }
+                        }
                     }
                 }
                 about-button := NativeButton {
@@ -139,6 +149,13 @@ export component AppWindow inherits Window {
                         accessible-label: root.labels.theme;
                         accessible-description: self.current-value;
                         min-height: 40px;
+                        accessible-action-set-value(value) => {
+                            let index = value == self.model[0] ? 0
+                                : value == self.model[1] ? 1
+                                : value == self.model[2] ? 2
+                                : value == self.model[3] ? 3 : -1;
+                            if self.enabled && index >= 0 { self.current-index = index; }
+                        }
                     }
                 }
             }

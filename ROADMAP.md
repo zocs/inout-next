@@ -17,14 +17,27 @@ The earlier unreleased localization/live-policy source passes [six-target serial
 
 ## Native renderer migration
 
-Next.js remains the HTTP/browser manager. The final app uses Rust native rendering; current Tauri packages remain transitional previews.
+The static browser manager remains the HTTP interface for other devices; its build direction is under [Technology direction](#technology-direction). The final app uses Rust native rendering; current Tauri packages remain transitional previews.
 
 - Evaluate **Slint first, egui as the fallback** through the [native feasibility gates](docs/native-gui.md). Switch on an unresolved required-target, accessibility/distribution or matched-performance failure; an untested platform alone does not establish failure. Iced remains documented for comparison. No toolkit is adopted yet.
 - The renderer-free `share-host` controller, diagnostics and session are extracted. The opt-in Slint desktop trial has real setup/addresses, current-run receipts, three languages/four themes, native branding and confirmed Stop/close. Its two-worker Tokio bridge bounds commands, coalesces progress and preserves command-completion identity.
 - [Serial CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) passes all six jobs, including locked Slint tests, strict Clippy and optimized builds on five desktop targets. Five Slint ZIPs and the CLI/transitional packages are inspected against its exact 36-resource export. This completes the desktop compilation gate, including Windows i686; target GUI operation and adoption remain open.
+- Windows-only software fallback and native language/theme value actions now pass local x86/x64 tests, strict Clippy, optimized builds and actual Windows10x64 startup/file/paused-transfer checks. The [verification scope](docs/native-gui.md#windows-default-renderer-and-input) retains real32bit OS, standard selection/IME/assistive, installed/offline and presented-frame gates. The preceding CI artifacts do not contain these fixes; new serial CI/package inspection is pending.
 - Complete selected-renderer target/device and distribution checks, platform picker/grant adapters, persistent settings/OS motion preferences, live-setting/diagnostic controls and matched sustained presentation/resource measurements. Keep storage/providers and native lifecycle independent of widgets.
 - Prove selected-renderer Windows i686/real 32-bit OS, Android GameActivity or Slint API26 decision, Chinese input/TalkBack/16 KiB and a native iOS host/VoiceOver path.
 - Preserve pixel branding, native localized themes and confirmed Stop/close/cancel, with actual presentation/input/idle/energy and relocated-package measurements.
+
+## Technology direction
+
+Rust remains the implementation language for the domain, storage, HTTP and host layers, with axum/hyper/Tokio as the HTTP stack. Transfer cost in this service follows its I/O strategy, storage and the network link rather than the language, so a C/C++, Go or Zig rewrite would discard validated containment, staged-publication and cancellation behavior without a user-visible gain. Framework use stays confined to `share-http`; storage, domain and host layers remain independent of it.
+
+- **Browser manager build.** Keep the React components, module/slot contracts and tested DOM/accessibility behavior. Plan to replace the Next.js static export with a plain static bundler: the project uses no server rendering, framework routing or image optimization, and the framework client runtime is the largest part of the first-load script. The replacement must keep a Node-free runtime, same-origin `/api/v1` use, the prerendered startup markup and the existing browser suite, and must change the packaged-asset layout checks in the host, Android and packaging tools together. A smaller React-compatible runtime is a separate later step gated by the full browser suite. Until that work is verified, Next.js remains the build tool for every shipped export.
+- **Old browsers and WebViews.** The lightweight fallback page under [transfer reliability](#4-transfer-reliability-and-optional-modules) stays the route for old devices, independent of the bundler. Lower bundler targets or legacy bundles need their own device checks before any support claim.
+- **Public-asset delivery.** Add negotiated compression and cache validators to the immutable asset snapshot, inside its existing bounds. User-file downloads stay uncompressed attachments with unchanged Range behavior.
+- **Blocking storage work.** Move synchronous upload writes, durability flushes and large listings off async workers, preserving future-owned cancellation and unpublished-stage cleanup. This matters most for the two-worker native bridge and slow removable or mobile storage.
+- **Download CPU.** Consider a lower-copy read path only when target-device profiling shows a CPU limit.
+- **Delivered size and dependencies.** Strip symbols from the CLI release build, evaluate further release-profile settings by measurement, and remove unused dependencies.
+- **Portability tooling.** Evaluate a static musl CLI and a pinned-glibc cross-link for the Ubuntu18.04/glibc2.27 and LinuxARM64 goals. These change build tooling only and need real target runs.
 
 ## 2. Desktop distribution and compatibility
 

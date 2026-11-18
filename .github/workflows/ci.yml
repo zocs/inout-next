@@ -328,6 +328,25 @@ jobs:
           output.write_text(json.dumps(report, indent=2) + '\n')
           print(json.dumps(report))
           PY
+      - name: Native Slint startup, locale/theme choices and normal close
+        id: native_slint_startup
+        shell: powershell
+        run: |
+          $Product = Get-Content product.json -Raw -Encoding UTF8 | ConvertFrom-Json
+          $Archive = Join-Path '.local/packages' ($Product.slug + '-' + $Product.version + '-${{ matrix.portable }}-native-slint-trial.zip')
+          $Expected = (Get-Content ($Archive + '.sha256') -Raw).Split(' ')[0].Trim()
+          if ((Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) { throw 'Native archive checksum differs' }
+          $Package = Join-Path $env:RUNNER_TEMP ('inout-native-startup-' + [Guid]::NewGuid().ToString('N'))
+          Expand-Archive $Archive $Package
+          ./scripts/verify_native_slint_windows.ps1 -BinaryPath (Join-Path $Package 'share-native-slint.exe') -ExpectedTitle $Product.name -ReportPath '.local/verification/native-slint-startup-${{ matrix.portable }}.json' -VerifyChoices
+      - name: Preserve native startup failure evidence
+        if: ${{ always() && steps.native_slint_startup.outcome == 'failure' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}-native-startup-failure
+          path: .local/verification/native-slint-startup-${{ matrix.portable }}.json*
+          if-no-files-found: warn
+          retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ needs.linux.outputs.product_slug }}-${{ matrix.portable }}
@@ -336,6 +355,7 @@ jobs:
             target/${{ matrix.target }}/release/bundle/nsis/*.exe
             .local/verification/native-pe-*.json
             .local/verification/native-identity-${{ matrix.portable }}.json
+            .local/verification/native-slint-startup-${{ matrix.portable }}.json*
           if-no-files-found: error
           retention-days: 14
 

@@ -2,7 +2,7 @@
 
 独立实现的 Rust HTTP 文件服务、静态 Next.js 文件管理页面和可独立构建的 Slint 原生桌面试验。现有 Tauri 桌面/Android 安装包保留为过渡预览。桌面端选择共享目录，Android 前台预览版使用应用私有存储，其他设备通过浏览器上传、下载和管理文件。品牌配置、存储提供者、功能模块和原生生命周期分开设计，便于替换名称或扩展平台。应用显示名为 **inout**，仓库及分发 slug 保留 **inout-next**。
 
-最终应用采用 Rust 原生绘制的 GUI，Next.js 继续用于通过 HTTP 访问的浏览器文件管理器。**先验证 Slint，不合适再切换 egui**；平台、无障碍、分发许可及实际性能是采用条件。当前桌面试验已直接控制真实 Rust 服务，不嵌入 WebView。[原生 GUI 评估](docs/native-gui_zh.md)区分功能试验、初测和正式选型，目前尚未发布替代原生应用。
+最终应用采用 Rust 原生绘制的 GUI。Next.js 当前负责构建 HTTP 浏览器文件管理器，[计划迁移到 Vite + React](ROADMAP.md#technology-direction)，保留组件与文件服务契约。**先验证 Slint，不合适再切换 egui**；平台、无障碍、分发许可及实际性能是采用条件。当前桌面试验已直接控制真实 Rust 服务，不嵌入 WebView。[原生 GUI 评估](docs/native-gui_zh.md)区分功能试验、初测和正式选型，目前尚未发布替代原生应用。
 
 目前是实验性 **0.1.0 preview**。可下载[桌面 preview.1](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.1) 或 [Android arm64 preview.2](https://github.com/zocs/inout-next/releases/tag/v0.1.0-preview.2)，使用说明分别见[桌面预览指南](docs/distribution/preview.md)和 [Android 预览指南](docs/distribution/android-preview.md)。[CI](https://github.com/zocs/inout-next/actions) 在同一串行队列中覆盖 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64。Android 运行检查使用 API 36、4 KiB 页面、x86_64 模拟器；arm64 实机、16 KiB 实际运行及两台设备 Wi-Fi 传输尚未验证。安装、离线运行和商店验收分别记录，具体见[平台状态](docs/platforms.md)。iOS 适配安排在后续。尚无稳定正式版本。
 
@@ -56,7 +56,9 @@ cargo run --manifest-path apps/native-slint/Cargo.toml --locked
 
 优化版 ZIP 打包、系统依赖及独立的 MIT/框架许可说明见[原生试验指南](apps/native-slint/README.md)。运行包不需要构建工具；原生试验不代表安装、旧系统、移动端或商店验收完成。
 
-[3d0e656 的 Slint 试验 CI 产物](https://github.com/zocs/inout-next/actions/runs/43844556784)提供 Linux x64、Windows x86/x64 和 macOS ARM64/x64 ZIP。下载对应平台的 artifact 后，完整解压其中的 `inout-next-0.1.0-<target>-native-slint-trial.zip`。它们是试验产物，与已发布的预览安装包及 CLI ZIP 分开；各平台体积和运行依赖见[本轮 CI 包测量](docs/distribution/size-and-runtime.md#slint-trial-serial-ci-packages)。
+Windows 源码保留 FemtoVG 优先，并在 OpenGL 初始化失败时使用软件渲染后备；语言与主题控件验证原生无障碍写值。源码构建的 x86/x64 均通过 Windows10x64 实际启动、语言读回、中文目录文件操作，以及语言/主题切换和取消停止、关闭期间原上传连接的连续性检查，随后正常清理。[Windows 验证范围](docs/native-gui_zh.md#windows-默认渲染器与输入)另列真正32位系统、标准下拉选择、输入法/读屏、安装及离线体验和实际显示帧等未完成关卡。
+
+[3d0e656 的历史 Slint 试验 CI 产物](https://github.com/zocs/inout-next/actions/runs/43844556784)提供 Linux x64、Windows x86/x64 和 macOS ARM64/x64 ZIP，早于上述 Windows 后备和写值修复。下载对应平台的 artifact 后，完整解压其中的 `inout-next-0.1.0-<target>-native-slint-trial.zip`。它们是试验产物，与已发布的预览安装包及 CLI ZIP 分开；各平台体积和运行依赖见[该轮 CI 包测量](docs/distribution/size-and-runtime.md#slint-trial-serial-ci-packages)。
 
 ## 过渡 Tauri 宿主
 
