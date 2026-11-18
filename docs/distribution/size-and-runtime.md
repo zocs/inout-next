@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measurements record experimental checkpoints from 2026-11-15–16, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds and verified CI packages are identified separately below. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute separate verified CI packages; no stable release is published yet.
+Measurements record experimental checkpoints from 2026-11-15–18, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical CI and the current [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
 
 ## Local desktop checkpoint
 
@@ -117,7 +117,7 @@ Native interaction checks cover byte-exact relocated transfers, optional-key/pub
 
 ## Slint trial serial CI packages
 
-[CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) completes all six jobs serially on 2026-11-16. All five desktop targets pass locked core/host, Tauri composition and Slint tests, strict Clippy and optimized builds. Linux also passes 56 tool and 131 Chromium cases, with no skipped, unexpected or flaky browser results, plus streamed 128 MiB and relocated 8 MiB integrity/cleanup checks. [Platform status](../platforms.md#ci) records exact test counts. These trial artifacts are separate from both the local functional package above and published Tauri previews.
+[Historical CI 43844556784 at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) completes all six jobs serially on 2026-11-16. All five desktop targets pass locked core/host, Tauri composition and Slint tests, strict Clippy and optimized builds. Linux also passes 56 tool and 131 Chromium cases, with no skipped, unexpected or flaky browser results, plus streamed 128 MiB and relocated 8 MiB integrity/cleanup checks. These artifacts precede the Windows fallback/input fixes; their measurements remain separate from current CI, the local functional package above and published Tauri previews.
 
 This CI's own export contains **36 files / 1,084,607 bytes**, including **1,011,196 raw JavaScript bytes** and **312,635 gzip bytes** measured separately per file. Five CLI ZIPs, five Slint ZIPs, six transitional desktop packages and the unsigned Android APK match these exact web resources. Native ZIP inspection also checks product metadata, source/framework notices, archive checksums and actual ELF/PE/Mach-O architecture. Build tools are absent from the delivered runtime.
 
@@ -131,7 +131,7 @@ This CI's own export contains **36 files / 1,084,607 bytes**, including **1,011,
 
 The CI Linux Slint executable directly imports GLIBC through **2.35**, compared with **2.43** in the separate local build above. Its direct library requirements include fontconfig, libc, libm and the GCC/runtime loader. Graphics drivers, fonts, display/dialog/clipboard services, the external browser and their transitive library requirements are not bundled or fully audited by this ZIP inspection. No Ubuntu18.04, complete minimum-runtime or target-device clearance follows from the direct import ceiling.
 
-Windows Slint executables have the expected x86/x64 PE machine and GUI subsystem2; CLI executables use subsystem3. The 6.58MiB Windows x64 Slint ZIP and FileInfra's 15.42MiB GUI ZIP describe different runtimes and feature sets, so the delivery-byte comparison does not establish relative memory, throughput or offline operation. Slint does not embed WebView; actual Windows/macOS GUI, relocated/offline and installed behavior remain pending. Source remains MIT with separately included Slint royalty-free desktop terms; mobile/store licensing and final renderer adoption are still independent gates.
+Windows Slint executables have the expected x86/x64 PE machine and GUI subsystem2; CLI executables use subsystem3. The historical 6.58MiB Windows x64 Slint ZIP and FileInfra's 15.42MiB GUI ZIP describe different runtimes and feature sets, so the delivery-byte comparison does not establish relative memory, throughput or offline operation. Slint does not embed WebView; that CI provides no Windows/macOS GUI, relocated/offline or installed acceptance. Source remains MIT with separately included Slint royalty-free desktop terms; mobile/store licensing and final renderer adoption are independent gates.
 
 The same run retains these transitional Tauri packages:
 
@@ -159,7 +159,40 @@ The Windows-only software-renderer fallback and explicit native language/theme v
 
 Both pinned Rust/MSVC builds pass14 native tests and strict Clippy. Actual Windows10x64 operation passes default-renderer startup, localized value/label and theme retention, CJK-root files, public-write policy and each same2MiB upload through presentation changes and canceled Stop/close. Final disk/download hashes, confirmed Stop, normal exit and zero listener/stage checks pass. [Native evaluation](../native-gui.md#windows-default-renderer-and-input) retains the remaining selection/IME/assistive, real32bit OS, installed/offline and presentation gates.
 
-These are source-built executables tested with the earlier CI's exact36-file/1,084,607-byte browser resources. They are separate from that run's complete ZIP sizes above and the future new CI packages; no newly measured local ZIP size is inferred. The added renderer is Windows-only. Linux/macOS feature graphs and all historical FileInfra, Tauri, core-transfer and exploratory measurements remain unchanged. There is no Node/Python/WebView app runtime; OS fonts/desktop services and an external browser still have their own costs. Callback readiness does not measure displayed frames, throughput, memory or energy.
+These are source-built executables tested with the earlier CI's exact 36-file / 1,084,607-byte browser resources. They are separate from the complete historical ZIP sizes above and current CI packages below; no newly measured local ZIP size is inferred. The added renderer is Windows-only. Linux/macOS feature graphs and all historical FileInfra, Tauri, core-transfer and exploratory measurements remain unchanged. There is no Node/Python/WebView app runtime; OS fonts/desktop services and an external browser still have their own costs. Callback readiness does not measure displayed frames, throughput, memory or energy.
+
+## Windows fallback and input CI packages
+
+[CI 44239092778 at d42048d](https://github.com/zocs/inout-next/actions/runs/44239092778) passes all six jobs on 2026-11-18 with nonoverlapping actual intervals. All five desktop targets pass locked core/host, 15 Tauri composition and 14 Slint tests, strict Clippy and optimized builds. Linux also passes 56 tool/131 Chromium cases and streamed 128 MiB/relocated 8 MiB integrity/cleanup checks; Android passes seven Kotlin cases and two actual locked arm64 release-library children. [Platform status](../platforms.md#ci) records the per-target counts and remaining gates.
+
+All nine downloaded artifact digests match GitHub's declarations. Five CLI ZIPs, five Slint ZIPs, six transitional desktop packages and the unsigned Tauri APK match this run's own **36 files / 1,084,607 bytes** of web resources. JavaScript totals **1,011,196 raw bytes** and **312,635 gzip bytes**, measured separately per file. Native ZIPs additionally pass actual ELF/PE/Mach-O, product, source/framework-notice and archive-checksum inspection. The Windows executables include the software fallback and validated native language/theme value actions.
+
+| Target | Slint executable | Slint + HTTP export + notices ZIP | CLI + HTTP export ZIP |
+| --- | ---: | ---: | ---: |
+| Linux x64 | 18,719,312 bytes / 17.85MiB | 9,012,382 bytes / 8.59MiB | 1,727,770 bytes / 1.65MiB |
+| Windows x86 | 12,997,120 bytes / 12.40MiB | 7,286,920 bytes / 6.95MiB | 1,459,789 bytes / 1.39MiB |
+| Windows x64 | 13,514,240 bytes / 12.89MiB | 7,334,321 bytes / 6.99MiB | 1,565,316 bytes / 1.49MiB |
+| macOS ARM64 | 11,642,416 bytes / 11.10MiB | 6,494,568 bytes / 6.19MiB | 1,607,703 bytes / 1.53MiB |
+| macOS Intel | 12,598,216 bytes / 12.01MiB | 6,801,162 bytes / 6.49MiB | 1,634,810 bytes / 1.56MiB |
+
+Both exact Windows ZIP executables pass default-renderer startup, Simplified/Traditional/English value and label readback, retained Ocean theme and normal close. The public CI probe starts no sharing. The separate source-built Windows10x64 checks above cover CJK-root operations and original-upload continuity; neither scope establishes a real32bit OS, standard option/IME/screen-reader, installed/offline or presented-frame result. The 6.99MiB current x64 Slint ZIP and FileInfra's 15.42MiB GUI ZIP have different features and runtime packaging; delivery size does not rank throughput, memory or energy. No new performance comparison was performed.
+
+The Linux Slint executable directly imports GLIBC through **2.35**, while this run's CLI and Tauri executables import through **2.34**. The Slint ZIP retains its OS graphics/fonts/display/dialog/clipboard and external-browser requirements. Inspection does not establish a complete transitive runtime floor, Ubuntu18.04 compatibility or macOS GUI operation. No Node/Python/WebView runtime is embedded in the Slint app.
+
+This run's transitional Tauri packages remain distinct from the Slint ZIPs:
+
+| Target / package | Bytes | MiB |
+| --- | ---: | ---: |
+| Linux x64 AppImage | 82,946,552 | 79.10 |
+| Linux x64 deb | 4,692,174 | 4.47 |
+| Windows x86 NSIS | 2,868,757 | 2.74 |
+| Windows x64 NSIS | 3,085,024 | 2.94 |
+| macOS ARM64 DMG | 4,412,380 | 4.21 |
+| macOS Intel DMG | 4,507,161 | 4.30 |
+
+Both macOS bundles succeed on their first attempt, exercising no resource-busy recovery. Debian/NSIS emitted-identity fixtures are separate from installed upgrade/rebranding acceptance; the NSIS fixtures use their own copied inputs, distinct from the distribution installer payloads. Tauri retains its system-webview and compatibility requirements. These artifacts have not replaced the released previews.
+
+The unsigned Tauri arm64 APK is **16,149,852 bytes (15.40MiB)**, with one **13,304,800-byte Rust library** and the same 36 raw web resources. Manifest checks retain `inout`, the `.preview` ID, code100001, minAPI24 and targetAPI36. Both locked compilation children exit successfully with source lockfiles unchanged; exact resources, single ABI and ELF/native ZIP16KiB alignment pass inspection. It has no signature-based installation clearance, Slint renderer, new installed-device/emulator/16KiB-runtime or store result. The signed 15.39MiB preview.2 remains a separate delivery. Source stays MIT with the included Slint royalty-free2.0 attribution and separate mobile/channel gates.
 
 ## Exploratory Rust GUI comparison
 

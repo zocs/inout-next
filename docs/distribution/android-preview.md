@@ -6,7 +6,7 @@ This release uses the transitional Tauri/System WebView host. The separate [Slin
 
 Pinned Slint Android uses native-activity and source-level IME/Back forwarding. Its included royalty-free2.0 terms permit general-purpose mobile apps with attribution; actual app input/TalkBack, persistent Service/SAF, device/API26/16KiB, F-Droid free-source/channel selection and store checks remain separate. The [Windows source fixes](../native-gui.md#windows-default-renderer-and-input) do not add a Slint APK or alter this preview's signing/installation identity.
 
-The latest [serial CI at 3d0e656](https://github.com/zocs/inout-next/actions/runs/43844556784) still builds the Tauri arm64 composition. Its inspected 36-resource APK is unsigned and has no signature-based installation clearance; its package size is recorded separately in [current CI measurements](size-and-runtime.md#slint-trial-serial-ci-packages). It does not replace the signed preview.2 download or establish a Slint Android build, new emulator/device validation or store acceptance.
+The latest [serial CI at d42048d](https://github.com/zocs/inout-next/actions/runs/44239092778) still builds the Tauri arm64 composition. Its 16,149,852-byte APK has 36 exact web resources and one 13,304,800-byte Rust library. The package is unsigned and has no signature-based installation clearance; [current CI measurements](size-and-runtime.md#windows-fallback-and-input-ci-packages) retain its separate provenance. It does not replace the signed preview.2 download or establish a Slint Android build, new emulator/device validation or store acceptance.
 
 ## Install and connect
 
