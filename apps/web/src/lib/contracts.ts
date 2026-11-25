@@ -22,7 +22,7 @@ export interface ServerContext {
   root_label: string;
   modules: string[];
   permissions: { list: boolean; download: boolean; upload: boolean; manage: boolean; rename?: boolean; delete?: boolean };
-  capabilities: { file_move: boolean; directory_move: boolean; directory_copy: boolean };
+  capabilities: { file_move: boolean; directory_move: boolean; directory_copy: boolean; inline_preview?: boolean };
   limits: { max_upload_bytes: number };
 }
 

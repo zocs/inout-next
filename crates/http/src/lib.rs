@@ -7,6 +7,7 @@ mod policy;
 mod routes;
 mod transfers;
 
+pub use assets::WebBundle;
 pub use download::{DownloadBufferError, DownloadControl, DEFAULT_DOWNLOAD_BUFFER_KIB};
 pub use policy::{KeyUpdate, PolicyControl, PolicyStatus, PolicyUpdate};
 pub use transfers::{
@@ -29,6 +30,9 @@ pub struct ServerConfig {
     pub root: PathBuf,
     pub listen: SocketAddr,
     pub web_dir: Option<PathBuf>,
+    /// Compiled-in pages. When present they are served instead of `web_dir`,
+    /// which is then never opened.
+    pub web_bundle: Option<WebBundle>,
     pub key: Option<String>,
     pub writable: bool,
     pub permissions: Option<Permissions>,
@@ -44,6 +48,7 @@ impl ServerConfig {
             root,
             listen,
             web_dir: None,
+            web_bundle: None,
             key: None,
             writable: false,
             permissions: None,
@@ -68,6 +73,10 @@ pub enum ServerError {
     Policy,
     #[error("Invalid service configuration: {0}")]
     Domain(Error),
+    #[error("The shared folder is unavailable: {0}")]
+    Root(Error),
+    #[error("The web resources are unavailable or not separate from the shared folder: {0}")]
+    Assets(Error),
     #[error("Server network operation failed")]
     Io(#[source] std::io::Error),
     #[error("Server task failed")]
@@ -149,7 +158,7 @@ struct AppState {
 
 pub async fn start(config: ServerConfig) -> Result<RunningServer, ServerError> {
     config.validate()?;
-    let store = Arc::new(FsStore::new(&config.root).map_err(ServerError::Domain)?);
+    let store = Arc::new(FsStore::new(&config.root).map_err(ServerError::Root)?);
     start_with_store(config, store).await
 }
 
@@ -221,9 +230,11 @@ fn build_router(
             }
         },
     )?;
-    let public_assets = if let Some(web_dir) = &config.web_dir {
-        Some(assets::Assets::new(
-            store.web_assets(web_dir).map_err(ServerError::Domain)?,
+    let public_assets = if let Some(bundle) = &config.web_bundle {
+        Some(bundle.clone())
+    } else if let Some(web_dir) = &config.web_dir {
+        Some(WebBundle::from_snapshot(
+            store.web_assets(web_dir).map_err(ServerError::Assets)?,
         ))
     } else {
         None

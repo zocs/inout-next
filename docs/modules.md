@@ -5,7 +5,7 @@
 - Domain: entry, relative path, permission, product and error models.
 - Storage: asynchronous `FileStore` operations and neutral streaming readers; no HTTP/native UI dependencies.
 - HTTP modules: descriptors, dependencies and route registration against shared auth/policy/storage state.
-- Web modules: provider, view, toolbar, selection-associated panel and ordinary panel contributions; shared context and typed API client.
+- Web modules: provider, view, toolbar, inspector, selection-associated panel and ordinary panel contributions; shared context and typed API client.
 - Hosts: CLI service configuration plus renderer-free `share-host` controller/session/diagnostics, consumed by Slint and transitional Tauri; no duplicated file operation implementation.
 
 The target native app uses a Rust renderer; Next.js remains the HTTP manager. [Candidate evaluation](native-gui.md) follows Slint first with egui as the fallback. `share-host` extraction is complete; its controller/session have no toolkit dependency. Slint's opt-in workspace and bounded Tokio bridge are replaceable presentation adapters. Platform picker/grant adapters remain separate from session ownership; existing Tauri packages are transitional.
@@ -37,14 +37,19 @@ Registration is compiled composition: add the descriptor/dependencies to the dom
 | `Provider` | Wraps descendants with module-owned state |
 | `View` | Folder content area |
 | `Toolbar` | Folder commands in registry order |
+| `Inspector` | Inside the selected-entry inspector, after metadata and download |
 | `SelectionPanel` | Immediately after the selected-entry inspector; supports management forms even without a selection |
 | `Panel` | General folder panels, including transfer history |
 
-`SelectionPanel` is an additive optional slot. The shell chooses contribution positions, not module IDs; a long transfer history cannot separate management actions from their selected entry. Navigation failure must not retain actionable rows belonging to a different folder.
+`Inspector` and `SelectionPanel` are additive optional slots. `FeatureModule.module?` declares the server module required by a UI contribution; otherwise its own ID is used. The registered `preview` contribution uses `module: "files"` and additionally requires `capabilities.inline_preview`. It introduces no independent server route/module. The shell chooses contribution positions; a long transfer history cannot separate management actions from their selected entry. Navigation failure must not retain actionable rows belonging to a different folder.
 
-Selection focus belongs to the shared shell lifecycle. File selection and folder Details controls identify the initiating control; explicit inspector clearing returns focus there or to a stable current-folder control if it is unavailable. Passive refresh/reconciliation and management clearing do not restore selection focus. Modules use the shared selection contract rather than looking up another feature's DOM or private state.
+Selection focus belongs to the shared shell lifecycle. `ModuleRuntime.select(entry, origin?, reveal?)` records the initiating control and optionally reveals the inspector. File selection and folder Details controls identify that origin; Details is available for independently permitted rename/delete as well as general management. Explicit inspector clearing returns focus there or to a stable current-folder control if it is unavailable. Passive refresh/reconciliation and management clearing do not restore selection focus. Modules use the shared contract rather than looking up another feature's DOM or private state.
 
 Explicit management tasks use operation-owned focus independently of selection. Cancellation returns a connected feature-owned opener; successful operations use `ModuleRuntime.focusCurrentFolder()`, while failure keeps the relevant input/Cancel actionable. The small shared task-focus helper captures ownership before disabling/removal and abandons restoration if the user selects an unrelated focus destination while waiting. Upload history owns its Transfers heading destination; notice dismissal uses the shell callback. No passive update effect or private cross-module DOM query acquires focus.
+
+Management also associates every pending task with its path, selection/creation identity and mounted form. Navigation closes old creation state; starting a new creation increments its identity. Layout-phase invalidation prevents delayed success/error/finalization from clearing a newer selection, draft, notice or busy state. Only the owning task can restore focus; an accepted operation may still refresh the listing.
+
+The shell advances `ModuleRuntime.contentRevision` only after an accepted listing. Preview identity and `FileApi` content URLs include this revision, invalidating browser media/text caches after explicit refresh even if metadata is unchanged. Language/theme updates preserve it. Text preview requests one bounded 256 KiB range; images above 32 MiB wait for explicit loading. Failed decoding/requests retain recovery/download actions, and active or unsupported formats remain downloads.
 
 The actual context includes permissions and `capabilities.file_move`, `directory_move` and `directory_copy`. Management renders rename/move/copy only when both policy and provider capability allow them; unsupported operations still fail on the server. Windows FsStore advertises no file/directory moves. Directory copy is currently unsupported on every provider.
 
@@ -62,7 +67,7 @@ Uploads use a module-owned sequential XHR queue with progress, cancellation, err
 
 This is composition through stable interfaces plus configurable availability. Native ABI plugin loading, hot-unloading active transfer modules and third-party executable plugins require a separate lifecycle/security design.
 
-The planned [network recommendation module](network-selection.md) separates platform snapshots/events, a deterministic address selector and QR rendering. It consumes the actual listener port and explicit user choice; it does not alter HTTP/file modules or running interface bindings. Missing platform metadata must produce conservative labels and recommendations. The current desktop composition only lists IPv4 LAN addresses; this selector and QR flow are not implemented.
+The [network recommendation module](network-selection.md) separates platform snapshots, deterministic endpoint ordering and QR rendering. The host exposes labelled IPv4 endpoints and Slint draws the selected LAN URL; Linux/Android classify platform facts while unknown metadata stays unknown. It consumes the actual listener port and manual selection without altering HTTP/file modules or running bindings. Change subscriptions, hotspot/recent-connection signals, successful-use feedback and cross-session choice remain planned.
 
 ## Native diagnostic extension
 
@@ -76,7 +81,7 @@ The Rust module owns temporary buffer validation, a private authentication handl
 
 The page owns first readiness. `FileManager.onReady(product)` reports the first usable context, authentication or recovery screen; `NativeHost.onReady()` reports initial native status or error, including setup before a service runs. These optional callbacks are independent of file-feature state and `HostStatus.running`. `Startup({ready,name})` owns visual dismissal and computed CSS-duration/delay cleanup with a one-second ceiling; initial/live reduced motion completes it immediately at readiness. Later navigation and service changes do not reopen it, and controls do not depend on animation completion. Product substitution needs no change to storage, feature registries or lifecycle algorithms.
 
-Slint compiles its product-aware matrix geometry and ordinary-text fallback through separate Rust/Slint presentation modules. It uses controller readiness, a bounded opacity exit and an explicit launch-time reduced-motion setting without delaying ready controls. This presentation remains independent of the session and native identity. Native OS motion detection, preference persistence and displayed-frame/assistive acceptance are pending; the browser component's CSS/DOM checks do not certify the native renderer.
+Slint compiles its product-aware matrix geometry and ordinary-text fallback through separate Rust/Slint presentation modules. It uses controller readiness, a bounded opacity exit and an explicit launch-time reduced-motion setting without delaying ready controls. This presentation remains independent of the session and native identity. Native OS motion detection and displayed-frame/assistive acceptance are pending; the browser component's CSS/DOM checks do not certify the native renderer.
 
 ## Localized HTTP presentation
 
@@ -86,7 +91,7 @@ The HTTP manager uses typed local `en`, `zh-Hans` and `zh-Hant` catalogs, withou
 
 Upload failures retain a contextual descriptor for a lost response: refresh the folder and check whether the file was saved before retrying. It rerenders in the current locale independently of ordinary connection errors; only a confirmed upload receipt marks a transfer Saved. Date formatting validates the constructed Date before invoking the cached formatter. Missing or unrepresentable timestamps use the localized Unavailable fallback without aborting file-row or selection rendering.
 
-The existing Tauri WebView host also consumes this shared presentation layer as a transitional preview. Its diagnostic panel and dictionary remain lazy. Slint uses separate typed Rust catalogs with the same three supported languages and four authored themes; locale/theme changes preserve drafts, the session and stable transfer-row models. Its preferences remain temporary, and native live-setting/diagnostic controls are pending. HTTP presentation contracts do not choose the final toolkit; Slint adoption remains subject to platform, assistive, distribution and measured-performance gates.
+The existing Tauri WebView host also consumes this shared presentation layer as a transitional preview. Its diagnostic panel and dictionary remain lazy. Slint uses separate typed Rust catalogs with the same three languages, four accents and system/light/dark appearance; preference changes preserve drafts, the session and stable transfer-row models. A separate native preferences module atomically saves validated presentation/sharing drafts without keys. Native live-setting/diagnostic controls are pending. HTTP presentation contracts do not choose the final toolkit; Slint adoption remains subject to platform, assistive, distribution and measured-performance gates.
 
 ## Planned Store Compositions
 

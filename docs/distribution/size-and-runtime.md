@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measurements record experimental checkpoints from 2026-11-15–18, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical CI and the current [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
+Measurements record experimental checkpoints from 2026-11-15–26, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical CI and the last accepted [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
 
 ## Local desktop checkpoint
 
@@ -82,7 +82,9 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 
 ## Current source web export
 
-The locally verified localization/permission integration exports 36 files totalling 1,084,605 bytes. JavaScript totals 1,011,194 raw bytes and 312,634 gzip bytes, measured separately per file. The same export passes 131 Chromium cases, including locale/theme changes during a real upload and public-write/action-visibility checks. These figures describe the current local source export; the earlier release-package measurements above retain their own exports and provenance.
+The locally verified preview/management integration exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by the native executable's embedded bundle.
+
+The earlier local localization/permission checkpoint exported 36 files / 1,084,605 bytes, with 1,011,194 raw JavaScript bytes and 312,634 per-file gzip bytes, and passed 131 Chromium cases. Its figures and the earlier release-package measurements retain their own exports and provenance.
 
 ## Historical localization/admission CI packages
 
@@ -101,9 +103,19 @@ The unsigned APK is **16,099,144 bytes**, with one 13,254,104-byte arm64 Rust li
 
 ## Functional Slint desktop trial
 
-The current opt-in Slint desktop client controls the real service without a WebView. It is separate from the published Tauri previews and the throwaway toolkit fixtures below. Local optimized Linux packaging uses the trial's own exact browser export and source/framework notices, and is verified by running outside the checkout with an unrelated working directory.
+The current opt-in Slint desktop client controls the real service without a WebView. It is separate from the published Tauri previews and the throwaway toolkit fixtures below. The redesigned local Linux x64 package uses Rust 1.100.0 and Node 26.13.1, embeds its own exact browser export and includes source/framework/qrcodegen/tempfile notices. Its executable runs outside the checkout from an unrelated working directory and shares a folder containing itself.
 
-| Local trial item | Bytes | MiB |
+| Redesigned local trial item | Bytes | MiB |
+| --- | ---: | ---: |
+| Slint executable, including browser assets | 20,185,896 | 19.25 |
+| Embedded browser export, 36 files | 1,098,089 | 1.05 |
+| Native executable + notices/usage ZIP, without duplicate `web/` | 9,339,760 | 8.91 |
+
+The ZIP's executable is byte-identical to the validated native run; its final usage and notices match the packaging source. Actual X11 checks cover language/accent/appearance choices, keyboard setup traversal, a 780×600 viewport, Chinese IME composition, invalid-port rejection, ordinary-close draft restoration and manual address copying. All 36 embedded HTTP resources match the export. The same original 2 MiB upload survives presentation changes and canceled Stop/normal-close before publication and exact disk/download/suffix verification; confirmed Stop cleans another unfinished stage and the listener. Masked-key keyboard/PRIMARY copying remains a confirmed limitation, and local system-picker selection remains unverified. This is a local functional checkpoint, with no new presented-frame, memory or throughput comparison.
+
+The earlier local completion-correction package used separate browser files:
+
+| Earlier local trial item | Bytes | MiB |
 | --- | ---: | ---: |
 | Slint native executable | 18,752,320 | 17.88 |
 | Exact static HTTP export, 36 files | 1,084,605 | 1.03 |
@@ -113,7 +125,7 @@ The normal Linux dependency graph selects winit/FemtoVG and contains no Tauri/Wr
 
 One traced launch reaches host-ready at 118.270 ms and first/ready render callbacks at 276.133/276.155 ms. These are individual callback markers before confirmed display, not cold-start, median, FPS or input-to-display results. A preceding functional Slint checkpoint was sampled for 65.34 seconds with 66 observations, a running loopback service, completed receipts, warm font/renderer caches and no GUI/transfer/accessibility observation during sampling. Median RSS/PSS/private memory was 99.45/88.24/83.32 MiB with 13 threads. No CPU-tick increase was detected at 10 ms accounting resolution. That earlier checkpoint remains separate from the current completion-correction package; neither interval establishes zero actual CPU, complete GPU memory, energy cost or an intrinsic toolkit ranking.
 
-Native interaction checks cover byte-exact relocated transfers, optional-key/public-write policy, actual folder selection/cancellation, multiple address selection/copy, external browser navigation and confirmed Stop/normal-close cleanup. Current-run receipts and canceled interruption preserve the listener/admitted body; durable history/resume and individual cancellation remain pending. Three languages/four themes and explicit startup reduced motion are implemented. Native OS motion policy, assistive/CJK input, Windows32/offline/installed operation, mobile/Apple/F-Droid distribution and matched sustained presentation measurements remain independent adoption gates. See [native evaluation](../native-gui.md) and [trial usage/licensing](../../apps/native-slint/README.md).
+The earlier local functional checkpoint covered byte-exact relocated transfers, optional-key/public-write policy, actual folder selection/cancellation, multiple address selection/copy, external browser navigation and confirmed Stop/normal-close cleanup. The redesigned Linux X11 checkpoint above verifies picker cancellation; new picker selection remains unverified. Current-run receipts and canceled interruption preserve the listener/admitted body; durable history/resume and individual cancellation remain pending. Three languages/four themes and explicit startup reduced motion are implemented. Native OS motion policy, full assistive/CJK input coverage, Windows32/offline/installed operation, mobile/Apple/F-Droid distribution and matched sustained presentation measurements remain independent adoption gates. See [native evaluation](../native-gui.md) and [trial usage/licensing](../../apps/native-slint/README.md).
 
 ## Slint trial serial CI packages
 

@@ -59,6 +59,10 @@ const messages = [
  ["The folder is not empty. Confirm removal of all files and subfolders to delete it.", "文件夹不为空。请确认删除所有文件和子文件夹。", "資料夾不是空的。請確認刪除所有檔案和子資料夾。"],
  ["The requested byte range is unavailable. Start the download again.", "请求的字节范围不可用。请重新开始下载。", "請求的位元組範圍無法使用。請重新開始下載。"],
  ["The device could not complete the storage operation. Refresh and try again.", "设备无法完成存储操作。请刷新后重试。", "裝置無法完成儲存操作。請重新整理後重試。"],
+ ["Current permissions", "当前权限", "目前權限"], ["Upload", "上传", "上傳"], ["Edit", "编辑", "編輯"], ["{0}: allowed", "{0}：允许", "{0}：允許"], ["{0}: not allowed", "{0}：不允许", "{0}：不允許"],
+ ["Preview", "预览", "預覽"], ["Preview of {0}", "{0} 的预览", "{0} 的預覽"], ["Loading preview…", "正在加载预览…", "正在載入預覽…"], ["Load preview ({0})", "加载预览（{0}）", "載入預覽（{0}）"],
+ ["No preview for this file type. Download it instead.", "此类型的文件无法预览，请下载后查看。", "此類型的檔案無法預覽，請下載後檢視。"], ["Could not load the preview. Download the file instead.", "无法加载预览，请下载文件后查看。", "無法載入預覽，請下載檔案後檢視。"],
+ ["Showing the first {0}. Download the file to read all of it.", "仅显示前 {0}。下载文件可查看全部内容。", "僅顯示前 {0}。下載檔案可檢視全部內容。"], ["This file is empty.", "此文件为空。", "此檔案是空的。"], ["View larger", "放大查看", "放大檢視"], ["Close preview", "关闭预览", "關閉預覽"],
 ] as const;
 export type MessageKey = typeof messages[number][0];
 export type Catalog = Record<MessageKey, string>;

@@ -26,6 +26,8 @@ slint = { version = "=1.18.1", default-features = false, features = ["std", "com
 rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal", "wayland"], optional = true }
 arboard = { version = "=3.7.0", default-features = false, optional = true }
 sys-locale = { version = "=0.3.2", optional = true }
+qrcodegen = "=1.8.0"
+tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 # Keep FemtoVG first. Slint's winit backend tries this renderer if Windows has
@@ -37,7 +39,6 @@ slint-build = { version = "=1.18.1", optional = true }
 
 [dev-dependencies]
 serde_json = "1"
-tempfile = "3"
 
 [profile.release]
 opt-level = 3

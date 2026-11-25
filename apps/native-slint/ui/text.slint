@@ -1,12 +1,25 @@
 export struct Labels {
     share-folder: string, intro: string, folder: string, choose-folder: string,
-    folder-hint: string, start: string, stop: string, open-browser: string,
-    copy-address: string, address: string, no-address: string, key: string,
-    key-hint: string, upload: string, manage: string, network: string,
-    port: string, port-hint: string, running: string, stopped: string,
-    busy: string, confirm-stop: string, confirm-close: string, confirm-message: string,
-    cancel: string, confirm: string, transfers: string, transfer-hint: string,
-    no-transfers: string, about: string, close-about: string, preview: string,
-    language: string, theme: string, evergreen: string, tangerine: string,
-    ocean: string, berry: string, reduce-motion: string, opening: string,
+    folder-placeholder: string, home: string, desktop: string, documents: string,
+    downloads: string, access: string, readonly: string, readonly-detail: string,
+    uploadable: string, uploadable-detail: string, manageable: string, manageable-detail: string,
+    key: string, key-hint: string, key-placeholder: string, show-key: string,
+    hide-key: string, advanced: string, network: string, port: string,
+    port-hint: string, start: string, stop: string, busy: string,
+    running: string, stopped: string, sharing-folder: string, stop-hint: string,
+    scan: string, code: string, address: string, copy-address: string,
+    open-browser: string, switch-connection: string, local-only-note: string, no-lan: string,
+    current-permissions: string, step-choose: string, step-start: string, step-scan: string,
+    confirm-stop: string, confirm-close: string, confirm-message: string, cancel: string,
+    confirm: string, transfers: string, transfer-hint: string, no-transfers: string,
+    about: string, close-about: string, preview: string, language: string,
+    theme: string, evergreen: string, tangerine: string, ocean: string,
+    berry: string, appearance: string, follow-system: string, light: string,
+    dark: string, opening: string, cut: string, copy: string,
+    paste: string, select-all: string,
+}
+
+// The current language catalog, set by the host when the language changes.
+export global Tr {
+    in property <Labels> l;
 }

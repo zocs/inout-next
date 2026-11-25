@@ -1,7 +1,10 @@
 mod capabilities;
+mod network;
 mod session;
+pub use network::{LinkKind, ShareEndpoint};
 pub use session::{
-    HostSession, Interrupt, ProblemAction, SessionCommand, SessionProblem, SessionSnapshot,
+    HostSession, Interrupt, ProblemAction, ProblemReason, SessionCommand, SessionProblem,
+    SessionSnapshot,
 };
 #[path = "diagnostics.rs"]
 pub(crate) mod diagnostics;
@@ -9,7 +12,7 @@ pub use capabilities::{HostCapabilities, StorageKind};
 use diagnostics::Diagnostics;
 pub use diagnostics::{DiagnosticReport, DiagnosticStatus};
 use serde::{Deserialize, Serialize};
-use share_http::{RunningServer, ServerConfig};
+use share_http::{RunningServer, ServerConfig, ServerError, WebBundle};
 use std::sync::Arc;
 use std::{
     net::{Ipv4Addr, SocketAddr},
@@ -48,10 +51,58 @@ pub struct HostStatus {
     pub capabilities: HostCapabilities,
 }
 
+/// Which setting a failed start points at, for hosts that localize messages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StartReason {
+    AlreadyRunning,
+    NoFolder,
+    Folder,
+    Resources,
+    Key,
+    PortInUse,
+    Port,
+    Other,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StartFailure {
+    pub reason: StartReason,
+    pub message: &'static str,
+}
+
+impl StartFailure {
+    fn new(reason: StartReason) -> Self {
+        let message = match reason {
+            StartReason::AlreadyRunning => "The service is already running",
+            StartReason::NoFolder => "Choose a folder before starting the service",
+            StartReason::Folder => "The shared folder is unavailable; choose another folder",
+            StartReason::Resources => {
+                "The web resources are missing or inside the shared folder; choose a folder that does not contain the application"
+            }
+            StartReason::Key => "The access key must not be blank",
+            StartReason::PortInUse => {
+                "The port is already in use; choose another port or use 0"
+            }
+            StartReason::Port => "The port is not available; choose another port or use 0",
+            StartReason::Other => {
+                "The service could not start; check the folder, assets and port"
+            }
+        };
+        Self { reason, message }
+    }
+}
+
+enum WebSource {
+    Directory(PathBuf),
+    Bundle(WebBundle),
+}
+
 #[derive(Default)]
 struct HostState {
     root: Option<PathBuf>,
     running: Option<RunningServer>,
+    endpoints: Vec<ShareEndpoint>,
     addresses: Vec<String>,
     active_settings: Option<ActiveSettings>,
     diagnostics: Option<Arc<Diagnostics>>,
@@ -79,7 +130,7 @@ impl HostState {
 /// Owns the service lifecycle. Serializing transitions prevents two starts or a
 /// root change from racing a listener that is still starting or shutting down.
 pub struct HostController {
-    web_dir: PathBuf,
+    web: WebSource,
     capabilities: HostCapabilities,
     state: Mutex<HostState>,
     probe_permit: Arc<Semaphore>,
@@ -87,8 +138,18 @@ pub struct HostController {
 
 impl HostController {
     pub fn new(web_dir: PathBuf) -> Self {
+        Self::with_source(WebSource::Directory(web_dir))
+    }
+
+    /// Serve pages compiled into the host. No resource directory is read, so
+    /// the shared folder may contain the application itself.
+    pub fn new_embedded(bundle: WebBundle) -> Self {
+        Self::with_source(WebSource::Bundle(bundle))
+    }
+
+    fn with_source(web: WebSource) -> Self {
         Self {
-            web_dir,
+            web,
             capabilities: HostCapabilities::default(),
             state: Mutex::new(HostState::default()),
             probe_permit: Arc::new(Semaphore::new(1)),
@@ -107,7 +168,7 @@ impl HostController {
             return Err("App storage must be separate from the application resources".into());
         }
         Ok(Self {
-            web_dir,
+            web: WebSource::Directory(web_dir),
             capabilities: HostCapabilities::app_private(),
             state: Mutex::new(HostState {
                 root: Some(root),
@@ -135,14 +196,21 @@ impl HostController {
     }
 
     pub async fn start(&self, options: StartOptions) -> Result<HostStatus, String> {
+        self.start_checked(options)
+            .await
+            .map_err(|failure| failure.message.to_owned())
+    }
+
+    /// Start, reporting which setting a failure points at.
+    pub async fn start_checked(&self, options: StartOptions) -> Result<HostStatus, StartFailure> {
         let mut state = self.state.lock().await;
         if state.running.is_some() {
-            return Err("The service is already running".into());
+            return Err(StartFailure::new(StartReason::AlreadyRunning));
         }
         let root = state
             .root
             .clone()
-            .ok_or("Choose a folder before starting the service")?;
+            .ok_or(StartFailure::new(StartReason::NoFolder))?;
         let listen = SocketAddr::from((
             if options.network {
                 Ipv4Addr::UNSPECIFIED
@@ -152,7 +220,10 @@ impl HostController {
             options.port,
         ));
         let mut config = ServerConfig::new(root, listen);
-        config.web_dir = Some(self.web_dir.clone());
+        match &self.web {
+            WebSource::Directory(path) => config.web_dir = Some(path.clone()),
+            WebSource::Bundle(bundle) => config.web_bundle = Some(bundle.clone()),
+        }
         let auth_required = options.key.is_some();
         let diagnostic_key = options.key.clone();
         config.key = options.key;
@@ -164,26 +235,38 @@ impl HostController {
         if options.manage {
             config.modules.push("manage".into());
         }
-        let running = share_http::start(config)
-            .await
-            .map_err(|error| match error {
-                share_http::ServerError::Policy => "The access key must not be blank",
-                _ => "The service could not start; check the folder, assets and port",
-            })?;
-        state.addresses = if options.network {
-            lan_addresses(running.address().port())
-        } else {
-            Vec::new()
-        };
+        let running = share_http::start(config).await.map_err(|error| {
+            StartFailure::new(match error {
+                ServerError::Policy => StartReason::Key,
+                ServerError::Root(_) => StartReason::Folder,
+                ServerError::Assets(_) => StartReason::Resources,
+                ServerError::Io(error) => match error.kind() {
+                    std::io::ErrorKind::AddrInUse => StartReason::PortInUse,
+                    std::io::ErrorKind::AddrNotAvailable | std::io::ErrorKind::PermissionDenied => {
+                        StartReason::Port
+                    }
+                    _ => StartReason::Other,
+                },
+                _ => StartReason::Other,
+            })
+        })?;
+        let port = running.address().port();
+        state.endpoints = network::endpoints(port, options.network);
+        state.addresses = state
+            .endpoints
+            .iter()
+            .filter(|endpoint| endpoint.kind != LinkKind::Loopback)
+            .map(|endpoint| endpoint.url.clone())
+            .collect();
         state.active_settings = Some(ActiveSettings {
             network: options.network,
-            port: running.address().port(),
+            port,
             uploads: options.uploads,
             manage: options.manage,
             auth_required,
         });
         state.diagnostics = Some(Diagnostics::new(
-            running.address().port(),
+            port,
             diagnostic_key,
             running.download_control(),
             self.probe_permit.clone(),
@@ -198,6 +281,7 @@ impl HostController {
             diagnostics.stop();
         }
         state.addresses.clear();
+        state.endpoints.clear();
         state.active_settings = None;
         if let Some(running) = state.running.take() {
             running.request_stop();
@@ -277,6 +361,12 @@ impl HostController {
         self.state.lock().await.status(self.capabilities)
     }
 
+    /// Labelled share addresses in recommended order while running; this
+    /// device is last. `HostStatus::addresses` lists the same LAN URLs.
+    pub async fn endpoints(&self) -> Vec<ShareEndpoint> {
+        self.state.lock().await.endpoints.clone()
+    }
+
     pub async fn transfer_control(&self) -> Option<share_http::TransferControl> {
         self.state
             .lock()
@@ -295,28 +385,6 @@ fn checked_root(root: PathBuf) -> Result<PathBuf, String> {
         return Err("Choose a folder to share".into());
     }
     Ok(root)
-}
-
-fn lan_addresses(port: u16) -> Vec<String> {
-    let mut addresses: Vec<_> = if_addrs::get_if_addrs()
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|interface| match interface.ip() {
-            std::net::IpAddr::V4(ip)
-                if !ip.is_loopback()
-                    && !ip.is_unspecified()
-                    && !ip.is_link_local()
-                    && !ip.is_multicast()
-                    && !ip.is_broadcast() =>
-            {
-                Some(format!("http://{ip}:{port}"))
-            }
-            _ => None,
-        })
-        .collect();
-    addresses.sort();
-    addresses.dedup();
-    addresses
 }
 
 /// Packaged resources are authoritative. A checked build-time repository path

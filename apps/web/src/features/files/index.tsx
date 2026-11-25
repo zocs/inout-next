@@ -23,10 +23,10 @@ function FileView({ runtime }: ModuleProps) {
         <tbody>{entries.map((entry) => <tr key={entry.path} className={runtime.selected?.path === entry.path ? "selected-row" : ""}>
           <td><button className="entry-name" title={entry.name} aria-label={t(entry.kind === "directory" ? "Open {0}" : "Select {0}", entry.name)}
             aria-pressed={entry.kind === "file" ? runtime.selected?.path === entry.path : undefined}
-            onClick={(event) => entry.kind === "directory" ? runtime.navigate(entry.path) : runtime.select(entry, event.currentTarget)}>
+            onClick={(event) => entry.kind === "directory" ? runtime.navigate(entry.path) : runtime.select(entry, event.currentTarget, event.detail > 0)}>
             {entry.kind === "directory" ? <Folder size={19} aria-hidden="true" /> : <File size={19} aria-hidden="true" />}<span>{entry.name}</span>
           </button>
-          {entry.kind === "directory" && runtime.context.permissions.manage && <button className="folder-details" aria-label={t("Select {0}", entry.name)} aria-pressed={runtime.selected?.path === entry.path} onClick={(event) => runtime.select(entry, event.currentTarget)}>{t("Details")}</button>}</td>
+          {entry.kind === "directory" && (runtime.context.permissions.manage || runtime.context.permissions.rename || runtime.context.permissions.delete) && <button className="folder-details" aria-label={t("Select {0}", entry.name)} aria-pressed={runtime.selected?.path === entry.path} onClick={(event) => runtime.select(entry, event.currentTarget)}>{t("Details")}</button>}</td>
           <td className="size-column">{formatBytes(entry.size, locale)}</td><td className="modified-column">{formatDate(entry.modified, locale)}</td>
           <td className="download-column">{entry.kind === "file" && runtime.context.permissions.download && <a className="icon-button" href={runtime.api.downloadUrl(entry.path)} download={entry.name} aria-label={t("Download {0}", entry.name)} title={t("Download {0}", entry.name)}><Download size={18} aria-hidden="true" /></a>}</td>
         </tr>)}</tbody>

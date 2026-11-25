@@ -133,6 +133,69 @@ pub fn parse_port(input: &str) -> Result<u16, InvalidPort> {
     input.parse().map_err(|_| InvalidPort)
 }
 
+/// What other devices may do. Deleting additionally needs an access key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Access {
+    ReadOnly,
+    Upload,
+    Manage,
+}
+
+impl Access {
+    pub fn from_index(index: i32) -> Self {
+        match index {
+            1 => Self::Upload,
+            2 => Self::Manage,
+            _ => Self::ReadOnly,
+        }
+    }
+
+    pub fn index(self) -> i32 {
+        match self {
+            Self::ReadOnly => 0,
+            Self::Upload => 1,
+            Self::Manage => 2,
+        }
+    }
+
+    pub fn uploads(self) -> bool {
+        self != Self::ReadOnly
+    }
+
+    pub fn manage(self) -> bool {
+        self == Self::Manage
+    }
+}
+
+/// A short size with binary multiples, as file managers show it.
+pub fn format_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    if bytes < 1024 {
+        return format!("{bytes} B");
+    }
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    // Round half up at the displayed precision, then carry into the next unit.
+    let mut shown = if value < 100.0 {
+        (value * 10.0).round() / 10.0
+    } else {
+        value.round()
+    };
+    if shown >= 1024.0 && unit < UNITS.len() - 1 {
+        shown /= 1024.0;
+        unit += 1;
+    }
+    if shown < 100.0 {
+        format!("{shown:.1} {}", UNITS[unit])
+    } else {
+        format!("{shown:.0} {}", UNITS[unit])
+    }
+}
+
 macro_rules! catalog {
     ($($key:ident => ($english:literal, $simplified:literal, $traditional:literal)),+ $(,)?) => {
         #[derive(Clone, Copy)]
@@ -157,7 +220,7 @@ catalog! {
     Address => ("Share address", "分享地址", "分享位址"),
     NoAddress => ("Start sharing to get a share address.", "开始分享后，这里会显示访问地址。", "開始分享後，這裡會顯示存取位址。"),
     Key => ("Access key", "访问口令", "存取口令"),
-    KeyHint => ("Optional. Public uploads and management are allowed; deletion requires a key.", "口令可选。可公开上传和管理文件；删除文件必须设置口令。", "口令可選。可公開上傳和管理檔案；刪除檔案必須設定口令。"),
+    KeyHint => ("Optional. Without a key, every device on the network can open this share. Deleting files always needs a key.", "可选。不设置时，同一网络中的设备都能访问；删除文件必须设置口令。", "可選。未設定時，同一網路中的裝置都能存取；刪除檔案必須設定口令。"),
     Upload => ("Allow uploads", "允许上传", "允許上傳"),
     Manage => ("Allow file management", "允许管理文件", "允許管理檔案"),
     Network => ("Allow other devices on this network", "允许同一网络中的其他设备访问", "允許同一網路中的其他裝置存取"),
@@ -208,5 +271,55 @@ catalog! {
     NoAccounting => ("Size unavailable", "大小未知", "大小未知"),
     ErrorCommand => ("Could not send this action. Wait a moment and try again.", "无法执行该操作，请稍候重试。", "無法執行此操作，請稍候再試。"),
     ErrorAssets => ("The web resources are missing. Reinstall the complete portable package.", "缺少网页资源，请重新安装完整的便携包。", "缺少網頁資源，請重新安裝完整的可攜套件。"),
+    FolderPlaceholder => ("Folder path, or ~ for your home folder", "文件夹路径，输入 ~ 表示主目录", "資料夾路徑，輸入 ~ 表示主目錄"),
+    Home => ("Home", "主目录", "主目錄"),
+    Desktop => ("Desktop", "桌面", "桌面"),
+    Documents => ("Documents", "文档", "文件"),
+    Downloads => ("Downloads", "下载", "下載"),
+    Access => ("What others can do", "其他设备可以", "其他裝置可以"),
+    ReadOnly => ("View and download", "仅查看和下载", "僅檢視和下載"),
+    ReadOnlyDetail => ("Nothing in the folder can be changed.", "不能修改文件夹中的任何内容。", "無法修改資料夾中的任何內容。"),
+    Uploadable => ("Also upload", "还可以上传", "還可以上傳"),
+    UploadableDetail => ("Others can add files. Existing files are never overwritten.", "可以添加文件，不会覆盖已有文件。", "可以新增檔案，不會覆寫既有檔案。"),
+    Manageable => ("Also manage files", "还可以管理文件", "還可以管理檔案"),
+    ManageableDetail => ("Others can create folders, rename, move and copy. Deleting needs an access key.", "可以新建文件夹、重命名、移动和复制；删除需要设置口令。", "可以新增資料夾、重新命名、移動和複製；刪除需要設定口令。"),
+    KeyPlaceholder => ("No key", "未设置", "未設定"),
+    ShowKey => ("Show", "显示", "顯示"),
+    HideKey => ("Hide", "隐藏", "隱藏"),
+    Advanced => ("Network and port", "网络和端口", "網路和連接埠"),
+    SharingFolder => ("Shared folder", "正在分享的文件夹", "正在分享的資料夾"),
+    StopHint => ("Stop sharing to choose another folder or change access.", "停止分享后可以更换文件夹或调整权限。", "停止分享後可以更換資料夾或調整權限。"),
+    Scan => ("Other devices scan the code or type the address to open it in a browser.", "其他设备扫码或输入地址，即可在浏览器中访问。", "其他裝置掃碼或輸入位址，即可在瀏覽器中存取。"),
+    Code => ("QR code", "二维码", "QR 碼"),
+    SwitchConnection => ("Other connections", "其他连接", "其他連線"),
+    LocalOnlyNote => ("This address works only on this device, so no QR code is shown.", "此地址只能在本机访问，因此不显示二维码。", "此位址只能在本機存取，因此不顯示 QR 碼。"),
+    NoLan => ("No network connection was found. Connect to Wi-Fi or a cable, then start sharing again.", "未找到可用的网络连接。连接 Wi-Fi 或网线后重新开始分享。", "找不到可用的網路連線。連接 Wi-Fi 或網路線後重新開始分享。"),
+    CurrentPermissions => ("Current permissions", "当前权限", "目前權限"),
+    StepChoose => ("Choose the folder to share.", "选择要分享的文件夹。", "選擇要分享的資料夾。"),
+    StepStart => ("Start sharing.", "开始分享。", "開始分享。"),
+    StepScan => ("Scan the code with a phone, or type the address on another computer.", "用手机扫码，或在另一台电脑上输入地址。", "用手機掃碼，或在另一台電腦上輸入位址。"),
+    Appearance => ("Appearance", "外观", "外觀"),
+    FollowSystem => ("System", "跟随系统", "跟隨系統"),
+    Light => ("Light", "浅色", "淺色"),
+    Dark => ("Dark", "深色", "深色"),
+    CutText => ("Cut", "剪切", "剪下"),
+    CopyText => ("Copy", "复制", "複製"),
+    PasteText => ("Paste", "粘贴", "貼上"),
+    SelectAll => ("Select all", "全选", "全選"),
+    LinkWifi => ("Wi-Fi", "Wi-Fi", "Wi-Fi"),
+    LinkWired => ("Wired network", "有线网络", "有線網路"),
+    LinkUnknown => ("Network connection", "网络连接", "網路連線"),
+    LinkVirtual => ("Virtual or VPN adapter", "虚拟或 VPN 网卡", "虛擬或 VPN 網路卡"),
+    LinkLoopback => ("This device only", "仅本机", "僅本機"),
+    PermBrowse => ("View and download", "查看和下载", "檢視和下載"),
+    PermUpload => ("Upload", "上传", "上傳"),
+    PermManage => ("Manage files", "管理文件", "管理檔案"),
+    PermDelete => ("Delete", "删除", "刪除"),
+    Allowed => ("allowed", "允许", "允許"),
+    NotAllowed => ("not allowed", "不允许", "不允許"),
+    ErrorResources => ("The web pages are missing or inside the shared folder. Reinstall the complete package or choose another folder.", "网页资源缺失或位于分享的文件夹内。请重新安装完整的包，或选择其他文件夹。", "網頁資源遺失或位於分享的資料夾內。請重新安裝完整套件，或選擇其他資料夾。"),
+    ErrorKey => ("The access key cannot be only spaces. Enter a key or leave it empty.", "访问口令不能只有空格。请输入口令或留空。", "存取口令不能只有空格。請輸入口令或留空。"),
+    ErrorPortInUse => ("That port is already in use. Choose another port, or use 0 to pick one automatically.", "该端口已被占用。请换一个端口，或设为 0 自动选择。", "該連接埠已被占用。請換一個連接埠，或設為 0 自動選擇。"),
+    ErrorPortUnavailable => ("That port cannot be used here. Choose a port above 1023, or use 0.", "无法使用该端口。请选择 1023 以上的端口，或设为 0。", "無法使用該連接埠。請選擇 1023 以上的連接埠，或設為 0。"),
     ReadinessError => ("Could not initialize the native host. Restart the application.", "无法初始化原生服务，请重新打开应用。", "無法初始化原生服務，請重新開啟應用程式。"),
 }

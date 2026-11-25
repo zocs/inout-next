@@ -7,8 +7,11 @@ use share_host::{HostController, SessionCommand, StartOptions};
 use share_native_slint::{
     branding::wordmark,
     bridge::{Bridge, BridgeHandle, BridgeUpdate},
-    presentation::{parse_port, text, Locale, TextKey},
+    folders,
+    preferences::{self, Preferences},
+    presentation::{parse_port, text, Access, Locale, TextKey},
     updates::Latest,
+    web,
 };
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::{
@@ -46,27 +49,72 @@ fn send(
     }
 }
 
+/// Save presentation choices and setup drafts. The access key is never saved,
+/// and a failed write leaves this session's choices in effect.
+fn remember(ui: &AppWindow, state: &ViewState, path: Option<&Path>) {
+    let Some(path) = path else {
+        return;
+    };
+    let theme = ui.global::<Theme>();
+    let _ = Preferences {
+        locale: state.locale_chosen.then_some(state.locale),
+        accent: theme.get_accent_index(),
+        appearance: theme.get_appearance(),
+        folder: ui.get_folder().to_string(),
+        port: ui.get_port().to_string(),
+        network: ui.get_network(),
+        access: Access::from_index(ui.get_access_index()),
+    }
+    .save(path);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
     let trace = std::env::var_os("INOUT_NATIVE_TRACE").is_some_and(|value| value == "1");
     let product = Product::default();
-    let locale = sys_locale::get_locales()
-        .find_map(|tag| Locale::from_tag(&tag))
-        .unwrap_or(Locale::English);
-    let resources = std::env::current_exe()?
-        .parent()
-        .ok_or_else(|| std::io::Error::other("Executable directory unavailable"))?
-        .to_path_buf();
-    let fallback = Path::new(env!("CARGO_MANIFEST_DIR")).join("../web/out");
-    let resolved = share_host::resolve_web_dir(&resources, Some(&fallback));
-    let resources_ready = resolved.is_ok();
-    let web = resolved.unwrap_or_else(|_| resources.join("web"));
+    let preferences_path = preferences::location(&product.application_id);
+    let saved = preferences_path
+        .as_deref()
+        .map(Preferences::load)
+        .unwrap_or_default();
+    let locale = saved.locale.unwrap_or_else(|| {
+        sys_locale::get_locales()
+            .find_map(|tag| Locale::from_tag(&tag))
+            .unwrap_or(Locale::English)
+    });
+    // Pages compiled into the executable need no folder beside it, so any
+    // folder can be shared, including one that contains this application.
+    let (host, resources_ready) = match web::bundle() {
+        Some(bundle) => (HostController::new_embedded(bundle), true),
+        None => {
+            let resources = std::env::current_exe()?
+                .parent()
+                .ok_or_else(|| std::io::Error::other("Executable directory unavailable"))?
+                .to_path_buf();
+            let fallback = Path::new(env!("CARGO_MANIFEST_DIR")).join("../web/out");
+            let resolved = share_host::resolve_web_dir(&resources, Some(&fallback));
+            let ready = resolved.is_ok();
+            (
+                HostController::new(resolved.unwrap_or_else(|_| resources.join("web"))),
+                ready,
+            )
+        }
+    };
     let ui = AppWindow::new()?;
-    // Read before the first frame. Preferences persistence and native OS
-    // motion-policy adapters are separate from this opt-in desktop trial.
-    ui.set_reduce_motion(
-        std::env::var_os("INOUT_NATIVE_REDUCE_MOTION").is_some_and(|value| value == "1"),
-    );
+    // Read before the first frame. Detecting the OS motion policy is a
+    // separate native adapter.
+    let reduce_motion =
+        std::env::var_os("INOUT_NATIVE_REDUCE_MOTION").is_some_and(|value| value == "1");
+    {
+        let theme = ui.global::<Theme>();
+        theme.set_reduce_motion(reduce_motion);
+        theme.set_accent_index(saved.accent);
+        theme.set_appearance(saved.appearance);
+    }
+    ui.set_folder(saved.folder.clone().into());
+    ui.set_port(saved.port.clone().into());
+    ui.set_network(saved.network);
+    ui.set_access_index(saved.access.index());
     ui.set_product_name(product.name.clone().into());
     ui.set_product_version(product.version.into());
     ui.set_product_description(product.description.into());
@@ -79,7 +127,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect::<Vec<_>>(),
         )));
     }
-    let state = Rc::new(RefCell::new(ViewState::new(locale, resources_ready, &ui)));
+    let state = Rc::new(RefCell::new(ViewState::new(
+        locale,
+        saved.locale.is_some(),
+        resources_ready,
+        folders::detect(),
+        &ui,
+    )));
+    let preferences_path: Rc<Option<PathBuf>> = Rc::new(preferences_path);
     state.borrow_mut().render(&ui, true);
     let updates = Arc::new(Latest::<BridgeUpdate>::default());
     let ready = Arc::new(AtomicBool::new(false));
@@ -112,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let weak = ui.as_weak();
     let sink_updates = updates.clone();
-    let bridge = Bridge::spawn(HostController::new(web), move |snapshot| {
+    let bridge = Bridge::spawn(host, move |snapshot| {
         if sink_updates.push(snapshot)
             && weak
                 .upgrade_in_event_loop(|ui| ui.invoke_refresh())
@@ -143,7 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         started.elapsed().as_secs_f64() * 1000.0
                     );
                 }
-                if ui.get_reduce_motion() {
+                if reduce_motion {
                     ui.set_opening_visible(false);
                 } else {
                     let weak = ui.as_weak();
@@ -167,6 +222,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let weak = ui.as_weak();
         let state = state.clone();
         let handle = handle.clone();
+        let preferences = preferences_path.clone();
         ui.on_start_sharing(move || {
             let Some(ui) = weak.upgrade() else {
                 return;
@@ -182,16 +238,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .as_ref()
                 .filter(|path| path.to_string_lossy() == display.as_str())
                 .cloned()
-                .unwrap_or_else(|| PathBuf::from(display.as_str()));
+                .unwrap_or_else(|| folders::expand(display.as_str(), folders::home().as_deref()));
             state.picker_ticket = state.picker_ticket.wrapping_add(1);
             let key = ui.get_key();
+            let access = Access::from_index(ui.get_access_index());
             let options = StartOptions {
                 network: ui.get_network(),
                 port,
-                uploads: ui.get_uploads(),
-                manage: ui.get_manage(),
+                uploads: access.uploads(),
+                manage: access.manage(),
                 key: (!key.is_empty()).then(|| key.to_string()),
             };
+            remember(&ui, &state, preferences.as_deref());
             state.local_problem = None;
             state.notice = None;
             send(
@@ -273,21 +331,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let weak = ui.as_weak();
         let state = state.clone();
+        let preferences = preferences_path.clone();
         ui.on_locale_selected(move |index| {
             if let Some(ui) = weak.upgrade() {
                 let mut state = state.borrow_mut();
                 state.locale = Locale::from_index(index);
+                state.locale_chosen = true;
                 state.render(&ui, true);
+                remember(&ui, &state, preferences.as_deref());
+            }
+        });
+    }
+    for accent in [true, false] {
+        let weak = ui.as_weak();
+        let state = state.clone();
+        let preferences = preferences_path.clone();
+        let saved = move |_: i32| {
+            if let Some(ui) = weak.upgrade() {
+                remember(&ui, &state.borrow(), preferences.as_deref());
+            }
+        };
+        if accent {
+            ui.on_accent_selected(saved);
+        } else {
+            ui.on_appearance_selected(saved);
+        }
+    }
+    {
+        let weak = ui.as_weak();
+        let state = state.clone();
+        ui.on_endpoint_selected(move |index| {
+            if let Some(ui) = weak.upgrade() {
+                state.borrow().select_endpoint(&ui, index);
             }
         });
     }
     {
         let weak = ui.as_weak();
         let state = state.clone();
-        ui.on_address_selected(move |index| {
-            if let Some(ui) = weak.upgrade() {
-                state.borrow().select_address(&ui, index);
-            }
+        ui.on_quick_folder(move |index| {
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            let mut state = state.borrow_mut();
+            let Some((_, path)) = usize::try_from(index)
+                .ok()
+                .and_then(|index| state.common.get(index).cloned())
+            else {
+                return;
+            };
+            state.picker_ticket = state.picker_ticket.wrapping_add(1);
+            ui.set_folder(path.to_string_lossy().into_owned().into());
+            state.native_folder = Some(path);
+            state.local_problem = None;
+            state.render(&ui, false);
         });
     }
     {
@@ -405,6 +502,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     let result = ui.run();
+    // Ordinary close also saves drafts that have not been used to start a run.
+    remember(&ui, &state.borrow(), preferences_path.as_deref());
     drop(bridge);
     result.map_err(Into::into)
 }

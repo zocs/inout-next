@@ -17,11 +17,11 @@ Prefix: `/api/v1`. JSON strings are UTF-8. Paths are validated root-relative str
 | Endpoint | Request / response |
 | --- | --- |
 | `GET /status` | Public `{product, auth_required, policy_revision}` |
-| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, policy_revision, auth_required, capabilities: {file_move: boolean, directory_move: boolean, directory_copy: boolean}, limits: {max_upload_bytes}}` |
+| `GET /context` | Authorized `{product, root_label, modules: string[], permissions, policy_revision, auth_required, capabilities: {file_move: boolean, directory_move: boolean, directory_copy: boolean, inline_preview: boolean}, limits: {max_upload_bytes}}` |
 | `POST /session` | JSON `{key}`; 204 and HttpOnly SameSite=Strict cookie after verification |
 | `DELETE /session` | 204, revoke session and clear cookie |
 | `GET /entries?path=` | `{path, entries: Entry[]}` |
-| `GET/HEAD /content?path=` | Attachment response with length; GET supports one byte range |
+| `GET/HEAD /content?path=&inline=1` | Attachment by default; `inline=1` or `inline=true` selects an allow-listed preview type. GET supports one byte range |
 | `PUT /content?path=` | Raw octet-stream; new file only; 201 `{entry}` |
 | `POST /directories` | JSON `{path}`; 201 `{entry}` |
 | `POST /operations` | JSON `{action: "rename" | "move" | "copy", source, destination}`; 200 `{entry}` |
@@ -31,7 +31,9 @@ Authentication may use `Authorization: Bearer <access-key>` or the issued sessio
 
 Storage capabilities are separate from permissions. The filesystem provider supplies file and directory move/rename through exclusive native rename on Linux, Android and Apple-family targets; Windows reports both move capabilities as false. [Android foreground preview.2](../docs/distribution/android-preview.md) release-APK operations are verified on an API36 x86_64/4 KiB emulator, separately from physical arm64 acceptance. Directory copy is not yet implemented. Clients hide unsupported file/directory actions while keeping the operations supported by the actual provider available. Providers must still reject unsupported operations server-side.
 
-Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and correct `Content-Length`; unsatisfiable ranges 416 with `bytes */size`; HEAD returns full metadata and zero body. Multiple ranges may be ignored in this first version. User files are attachment responses with `nosniff`; active HTML/SVG are not served as same-origin previews.
+Range behavior: full 200; satisfiable single ranges 206 with `Content-Range` and correct `Content-Length`; unsatisfiable ranges 416 with `bytes */size`; HEAD returns full metadata and zero body. Multiple ranges may be ignored in this first version. User files default to octet-stream attachments with `nosniff`.
+
+`capabilities.inline_preview` is additive; clients receiving no flag must retain downloads without issuing preview requests. With `inline=1|true`, a server-side extension allow-list serves supported raster images, audio/video and text-like files using `Content-Disposition: inline`, a specific media type (text is always `text/plain; charset=utf-8`) and `Content-Security-Policy: sandbox; default-src 'none'`. HTML/HTM/XHTML, SVG/SVGZ, PDF, extensionless and unknown files remain octet-stream attachments. The option preserves authentication, download permission, enabled modules, HEAD/range handling and transfer accounting. The browser bounds text reads to 256 KiB and requires explicit loading for images over 32 MiB; those UI limits do not alter the download API. Its optional `rev` query parameter only distinguishes refreshed content URLs and is not an ETag or a server consistency guarantee.
 
 The filesystem provider positions a range on the original opened handle; stream-only providers use a bounded forward-read fallback. Download buffers default to 128 KiB and can be tuned by a native host for subsequent requests. There is no HTTP tuning endpoint. Concurrent single-range requests are supported, but complete ETag/If-Range validation, multi-range responses and durable transfer resume are not promised.
 
@@ -52,6 +54,8 @@ Upload/download byte counts observe stream bodies, not network packet accounting
 This is a Tauri IPC contract for the local desktop/Android `main` window, separate from HTTP API v1. The external file-manager webview/browser receives no native command capability.
 
 `HostStatus`: `{root: string | null, running: boolean, managerUrl: string | null, addresses: string[], activeSettings: ActiveSettings | null, capabilities: HostCapabilities}`. Native controls can access the locally selected absolute root; HTTP responses still do not expose it. The Android UI presents app-storage copy instead of that private path.
+
+`addresses` retains its existing string-array shape and now follows deterministic endpoint order: Wi-Fi, wired, unknown, down links, virtual, with loopback handled last in the Slint session. Duplicate addresses retain their best available link classification. Linux/Android labels use platform facts; Windows/macOS may remain unknown. Slint's `SessionSnapshot.endpoints` includes interface/link labels in process; it adds no Tauri IPC command or HTTP model. Ordering is a presentation recommendation, not proof that another device can reach an address.
 
 `HostCapabilities`: `{storageKind: "folder" | "app-private", chooseFolder: boolean, openManager: boolean, foregroundOnly: boolean}`. Desktop values are `folder/true/true/false`; the Android foreground preview uses `app-private/false/false/true`. The field is additive; clients receiving older status without it use desktop defaults. These local host capabilities are distinct from `/context` storage capabilities.
 

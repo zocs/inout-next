@@ -10,7 +10,7 @@
 - [需求](docs/requirements.md) · [路线图](ROADMAP.md) · [平台状态](docs/platforms.md)
 - [架构](docs/architecture.md) · [API v1](contracts/api-v1.md) · [模块](docs/modules.md)
 - [品牌与身份](docs/branding.md) · [设计系统](DESIGN.md) · [包体积与运行依赖](docs/distribution/size-and-runtime.md)
-- [默认分享地址与二维码规划](docs/network-selection.md)
+- [分享地址与二维码](docs/network-selection.md)
 - [原生 GUI 选型与性能验收](docs/native-gui_zh.md)
 - [应用商店前期准备](docs/distribution/store-readiness.md) · [隐私数据清单](docs/distribution/privacy-data-inventory.md)
 - [签名复用与应用身份](docs/distribution/signing.md)
@@ -42,6 +42,8 @@ cargo run -p share-cli --locked -- \
 
 当前源码支持英语、简体中文、繁体中文、跟随系统语言及四种本地主题。切换语言或主题保留文件操作与传输状态。这些功能及可不设密钥的写入策略属于尚未发布的源码更新；现有 preview 下载包保留原先行为。
 
+浏览器顶部明确标注“当前权限”。允许下载时，选择文件可预览：文本最多读取 256 KiB，超过 32 MiB 的图片需主动加载，音视频使用浏览器支持的编解码器。HTML、SVG、PDF 和未知格式仍作为附件下载。刷新会重新读取选中文件，即使大小和修改时间没有改变。独立重命名或删除权限也能选择目录；旧管理请求返回后不会清掉后来选择的条目或新目录草稿。
+
 ## 试用原生桌面应用
 
 完成上面的网页导出，并安装目标系统的图形和字体构建依赖，然后执行：
@@ -50,15 +52,17 @@ cargo run -p share-cli --locked -- \
 cargo run --manifest-path apps/native-slint/Cargo.toml --locked
 ```
 
-选择目录、仅本机或局域网访问、端口和权限后启动分享。口令可选，删除需要配置口令并通过认证。可选择实际分享地址，复制或在系统浏览器打开。停止和关闭正在分享的应用需要确认；“继续分享”保留监听和已接纳的传输。本轮传输记录在停止后保留，下一次成功启动时重置。语言、主题切换保留共享和输入内容。
+通过系统选择器、常用目录快捷入口或以 `~` 开头的路径选择目录，再选择仅本机/局域网、端口和三档权限：查看/下载、同时允许上传、同时允许管理。口令可选，删除需要配置口令并通过认证。连接区域标明地址所属的连接，并绘制仅包含 URL 的二维码。Linux/Android 按系统事实保守识别接口，优先普通 Wi-Fi/有线连接，虚拟连接靠后，回环最后。可选择实际地址，复制或在系统浏览器打开。停止和关闭正在分享的应用需要确认；“继续分享”保留监听和已接纳的传输。本轮记录在停止后保留，下一次成功启动时重置。语言、主题切换保留共享和输入内容。
 
-试验支持英语、简繁中文、四种主题、原生点阵字标及跟随真实就绪状态结束的短启动动画。偏好暂不持久保存；启动前设置 `INOUT_NATIVE_REDUCE_MOTION=1` 可关闭启动动画。系统减少动态效果检测、持久记录和续传、单任务取消、二维码、实时设置及诊断控件尚待实现。Linux 的输入和布局验证不代表完整读屏或中文输入法验收；当前无障碍桥接存在明确的采用前检查项。
+试验支持英语、简繁中文、四种强调色、系统/浅色/深色外观、自绘主题控件和点阵字标。语言、外观及设置草稿会在修改呈现选项、启动和普通关闭时保存到当前用户的应用配置目录，访问密钥从不保存。`INOUT_NATIVE_PREFERENCES` 可指定另一文件，空值关闭保存；`INOUT_NATIVE_REDUCE_MOTION=1` 关闭启动动画。系统动态效果检测、网络变化订阅、热点识别、持久历史和续传、单任务取消、实时设置及诊断控件仍待实现。完整读屏、中文组合输入及掩码口令的剪贴板行为保留为采用前关卡。
+
+GUI release 构建必须先完成静态网页导出，网页会编译进程序。新原生 ZIP 不需要旁置 `web/`，可分享包含程序本身的目录。debug 和无渲染器构建允许缺少导出并保留开发资源回退；原生窗口仍不使用 WebView。
 
 优化版 ZIP 打包、系统依赖及独立的 MIT/框架许可说明见[原生试验指南](apps/native-slint/README.md)。运行包不需要构建工具；原生试验不代表安装、旧系统、移动端或商店验收完成。
 
-Windows 源码保留 FemtoVG 优先，并在 OpenGL 初始化失败时使用软件渲染后备；语言与主题控件验证原生无障碍写值。源码构建的 x86/x64 均通过 Windows10x64 实际启动、语言读回、中文目录文件操作，以及语言/主题切换和取消停止、关闭期间原上传连接的连续性检查，随后正常清理。[Windows 验证范围](docs/native-gui_zh.md#windows-默认渲染器与输入)另列真正32位系统、标准下拉选择、输入法/读屏、安装及离线体验和实际显示帧等未完成关卡。
+Windows 源码保留 FemtoVG 优先，并在 OpenGL 初始化失败时使用软件渲染后备。此前 x86/x64 试验通过 Windows10x64 实际启动、语言读回、中文目录及原上传连接跨呈现切换/取消停止的检查；这些结果早于当前自绘控件改版。[Windows 验证范围](docs/native-gui_zh.md#windows-默认渲染器与输入)分别记录旧检查点与改版控件、真正32位系统、输入法/读屏、安装及离线体验和显示帧等待验证关卡。
 
-[d42048d 的当前 Slint 试验 CI 产物](https://github.com/zocs/inout-next/actions/runs/44239092778)提供 Linux x64、Windows x86/x64 和 macOS ARM64/x64 ZIP，已包含上述 Windows 后备和写值修复。下载对应平台的 artifact 后，完整解压其中的 `inout-next-0.1.0-<target>-native-slint-trial.zip`。Windows x86/x64 完整 ZIP 为 6.95/6.99 MiB，包内精确程序均通过启动、简繁英切换、主题保留和正常关闭回归。它们仍是试验产物，与已发布的预览包分开；[当前 CI 包测量](docs/distribution/size-and-runtime.md#windows-fallback-and-input-ci-packages)保留前次检查点并记录运行依赖。
+[d42048d 的较早 Slint 试验 CI 产物](https://github.com/zocs/inout-next/actions/runs/44239092778)提供 Linux x64、Windows x86/x64 和 macOS ARM64/x64 ZIP，包含 Windows 后备和写值修复。这些包早于内嵌网页、二维码和自绘控件改版，仍需保留旁置的 `web/`。Windows x86/x64 ZIP 为 6.95/6.99 MiB，包内精确程序通过启动、简繁英切换、主题保留和正常关闭回归；它们与已发布预览分开。[包体积测量](docs/distribution/size-and-runtime.md#windows-fallback-and-input-ci-packages)保留这一历史检查点及其运行依赖。
 
 ## 过渡 Tauri 宿主
 
@@ -124,7 +128,7 @@ Android preview.2 来自 [4dd4b51 的 CI 43704226914](https://github.com/zocs/in
 
 较早的多语言与实时权限核心检查点已通过 [abeabd1 的 CI 43744797175](https://github.com/zocs/inout-next/actions/runs/43744797175)，六个目标全部串行成功。各桌面目标通过33项 Tauri 宿主测试，Linux另通过53项工具和131项浏览器测试；Android通过七项Kotlin测试、锁定依赖的arm64实际编译及APK检查。五份服务端ZIP、六份桌面包和未签名APK均与该轮已测试的36个网页资源一致。该 CI 早于宿主抽取和 Slint 试验，不能作为新原生源码的 CI 验收。[平台状态](docs/platforms.md)记录核心测试数量与尚未完成的设备验收，[体积报告](docs/distribution/size-and-runtime.md)分别记录各检查点和已发布预览的测量。
 
-Slint 集成本地通过 88 项核心/宿主、15 项 Tauri 组合、14 项 Slint、56 项工具及 131 项浏览器测试，并通过严格 Clippy 和格式检查。Linux 原生交互验证覆盖移出源码目录后的传输哈希、系统文件夹选择/取消、地址选择/复制、外部浏览器访问以及暂停上传期间的停止/正常关闭确认与清理。当前本地优化可执行文件/ZIP 为 17.88/8.79 MiB，包含精确的 36 文件浏览器导出；[体积与运行报告](docs/distribution/size-and-runtime.md)分别记录本地包的系统依赖、测量限制及 CI/发布产物。
+较早的 Slint 本地集成通过 88 项核心/宿主、15 项 Tauri、14 项 Slint、56 项工具及 131 项浏览器测试，以及严格 Clippy 和格式检查。其 Linux 交互覆盖移出源码目录后的传输哈希、系统选择器、地址复制、浏览器访问及暂停上传期间的确认/清理；可执行文件/ZIP 为 17.88/8.79 MiB，网页作为单独资源提供。[体积与运行报告](docs/distribution/size-and-runtime.md)保留这些历史测量，与当前内嵌改版、CI 和发布产物分开。
 
 ```sh
 cargo build -p share-cli --release --locked
@@ -146,4 +150,4 @@ ZIP 包含固定名称的服务程序、构建好的 `web/`、产品配置、许
 
 传输完成或取消后，磁盘上保留空的内部 `INOUTTMP` 目录，避免并发上传竞争临时目录清理。公共列表隐藏该目录，取消操作仍会移除未发布文件；进程或系统崩溃后的恢复仍待实现。
 
-公共网页资源必须经过存储提供者确认隔离，启动时生成不可变快照，上限 128 MiB、10,000 个资源文件、128 层目录，并最多扫描 100,000 个共享条目检查重叠及身份别名。过大或无法证明隔离的目录会拒绝网页启动；CLI 可省略 `--web-dir` 仅提供 API。文件系统范围下载在原句柄上定位，纯流式提供者保留向前读取支持；完整 ETag/If-Range 验证和持久续传尚未实现。部分文件系统操作同步执行，会话保存在进程内，HTTPS 反向代理的来源策略仍待设计。支持范围见[平台状态](docs/platforms.md)。
+不可变网页 bundle 上限为 128 MiB、10,000 个文件、128 层目录。目录资源拒绝根重叠、符号链接、共享内容硬链接及 Linux bind mount 别名。Linux/Android 通过有界挂载来源检查，让普通单链接资源不必扫描整个共享目录；硬链接或无法读取拓扑时保留最多 100,000 条目的身份扫描。跨设备身份的叠层文件系统无法证明底层隔离，直接拒绝；其他平台保留原有扫描。原生内嵌 bundle 不打开资源目录。目录资源过大或无法证明隔离时拒绝启动，CLI 可省略 `--web-dir` 仅提供 API。完整 ETag/If-Range、持久续传、阻塞存储优化及 HTTPS 代理来源策略仍是后续任务。

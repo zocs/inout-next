@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""Package the opt-in native desktop trial with its browser assets and notices."""
+"""Package the opt-in native desktop trial with embedded web assets and notices."""
 
 import argparse
 import json
 from pathlib import Path
 import sys
 
-from package_portable import TARGETS, runtime_inputs, write_archive
+from package_portable import TARGETS, write_archive
 from sync_product import load_product
 
 
 def native_inputs(root: Path, binary: Path, target: str) -> dict[str, tuple[bytes, int]]:
-    inputs = runtime_inputs(root, binary, target)
     windows = target.startswith("windows-")
-    server = "share-server.exe" if windows else "share-server"
     executable = "share-native-slint.exe" if windows else "share-native-slint"
-    inputs[executable] = inputs.pop(server)
+    if binary.is_symlink() or not binary.is_file():
+        raise ValueError("The native binary must be a regular file, not a symlink")
+    inputs = {executable: (binary.read_bytes(), 0o755)}
+    license_path = root / "LICENSE"
+    if license_path.is_symlink() or not license_path.is_file():
+        raise ValueError("The current LICENSE is required for packaging")
+    inputs["LICENSE"] = (license_path.read_bytes(), 0o644)
     app = root / "apps/native-slint"
     for name in ("README.md", "THIRD_PARTY.md", "LICENSES/Slint-Royalty-free-2.0.md"):
         path = app / name
@@ -25,9 +29,9 @@ def native_inputs(root: Path, binary: Path, target: str) -> dict[str, tuple[byte
     command = f".\\{executable}" if windows else f"./{executable}"
     instructions = f"""Native desktop interface trial
 
-Extract the entire archive and run {command}. Keep web/ beside the executable;
-the application resolves its browser assets from that directory, independently
-of the current working directory. Select an existing folder outside this package,
+Extract the entire archive and run {command}. Browser assets are embedded in
+the release executable; no separate web/ directory or working directory is needed.
+Select any existing folder, including one containing the application package,
 choose permissions, and start sharing. A LAN firewall must allow the selected port.
 The access key is optional. Public upload/management can be explicitly enabled;
 published deletion requires configured-key authentication. HTTP does not encrypt
@@ -39,8 +43,11 @@ graphics (or that fallback), fonts, clipboard and file-dialog services are requi
 Linux also requires the libraries
 listed in README.md. This ZIP does not establish offline/old-OS installation,
 device, signing or store acceptance. Node, Python and WebView are not app runtimes.
-Preferences are temporary. INOUT_NATIVE_REDUCE_MOTION=1 disables startup motion;
-OS motion-preference detection and saved settings are separate milestones.
+Language, accent, appearance and sharing setup drafts are saved in the
+per-user application configuration directory. The access key is never saved.
+INOUT_NATIVE_PREFERENCES selects a different preferences file; an empty value
+disables saving. INOUT_NATIVE_REDUCE_MOTION=1 disables startup motion;
+OS motion-preference detection is a separate milestone.
 Open About for Slint attribution; retain the included licences and notices.
 """
     inputs["QUICKSTART.txt"] = (instructions.encode("utf-8"), 0o644)

@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "./service";
 import { installNativeBoundary } from "./native-boundary";
@@ -38,6 +38,7 @@ test.describe("explicit public writes", () => {
 
 for (const action of ["rename", "delete"] as const) {
   test(`the ${action} permission remains independent of general management`, async ({ page, service }) => {
+    mkdirSync(join(service.root, "Projects"));
     // Only the advertised context is replaced to test contribution selection.
     // The Rust policy integration suite separately checks action authorization.
     await page.route("**/api/v1/context", async (route) => {
@@ -58,6 +59,19 @@ for (const action of ["rename", "delete"] as const) {
     await expect(page.getByRole("button", { name: "Copy", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "New folder", exact: true })).toHaveCount(0);
     await expect(page.getByText("Can edit", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Select Projects", exact: true }).click();
+    await page.getByRole("button", { name: action === "rename" ? "Rename" : "Delete", exact: true }).click();
+    if (action === "rename") {
+      await page.getByLabel("New name", { exact: true }).fill("Renamed projects");
+      await page.getByRole("button", { name: "Save name", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Open Renamed projects", exact: true })).toBeVisible();
+      expect(existsSync(join(service.root, "Renamed projects"))).toBe(true);
+    } else {
+      await page.getByRole("button", { name: "Delete permanently", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Open Projects", exact: true })).toHaveCount(0);
+    }
+    expect(existsSync(join(service.root, "Projects"))).toBe(false);
   });
 }
 

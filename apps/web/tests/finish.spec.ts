@@ -139,6 +139,78 @@ test("management selection clearing preserves the new-folder input focus", async
   await expect(page.getByRole("textbox", { name: "Folder name", exact: true })).toBeFocused();
 });
 
+test("a folder creation reply from the previous folder preserves the current unsent draft", async ({ page, service }) => {
+  mkdirSync(join(service.root, "Projects"));
+  await unlock(page, service.url, service.key);
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let arrived = () => {};
+  const started = new Promise<void>((resolve) => { arrived = resolve; });
+  await page.route("**/api/v1/directories", async (route) => {
+    const response = await route.fetch();
+    arrived();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole("button", { name: "New folder", exact: true }).click();
+    await page.getByLabel("Folder name", { exact: true }).fill("Created at root");
+    await page.getByRole("button", { name: "Create folder", exact: true }).click();
+    await started;
+    await page.getByRole("button", { name: "Open Projects", exact: true }).click();
+    await expect(page.getByRole("table", { name: "Shared files", exact: true })).toHaveAttribute("aria-busy", "false");
+    await page.getByRole("button", { name: "New folder", exact: true }).click();
+    const draft = page.getByLabel("Folder name", { exact: true });
+    await draft.fill("Unsent draft in Projects");
+    const completed = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/directories");
+    release();
+    await completed;
+    await expect(draft).toHaveValue("Unsent draft in Projects");
+    await expect(draft).toBeFocused();
+    expect(readFileSync(join(service.root, "welcome.txt"), "utf8")).toBe("Files stay on the sharing device.\n");
+    await page.getByRole("button", { name: "Create folder", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Open Unsent draft in Projects", exact: true })).toBeVisible();
+  } finally {
+    release();
+    await page.unroute("**/api/v1/directories");
+  }
+});
+
+test("a pending rename cannot clear a later selection and its edit draft", async ({ page, service }) => {
+  writeFileSync(join(service.root, "later.txt"), "A later selection.\n");
+  await unlock(page, service.url, service.key);
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let arrived = () => {};
+  const started = new Promise<void>((resolve) => { arrived = resolve; });
+  await page.route("**/api/v1/operations", async (route) => {
+    const response = await route.fetch();
+    arrived();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole("button", { name: "Select welcome.txt", exact: true }).click();
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
+    await page.getByLabel("New name", { exact: true }).fill("renamed.txt");
+    await page.getByRole("button", { name: "Save name", exact: true }).click();
+    await started;
+    await page.getByRole("button", { name: "Select later.txt", exact: true }).click();
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
+    const draft = page.getByLabel("New name", { exact: true });
+    await draft.fill("later draft.txt");
+    const completed = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/operations");
+    release();
+    await completed;
+    await expect(draft).toHaveValue("later draft.txt");
+    await expect(draft).toBeFocused();
+    await expect(page.getByRole("button", { name: "Select later.txt", exact: true })).toHaveAttribute("aria-pressed", "true");
+  } finally {
+    release();
+    await page.unroute("**/api/v1/operations");
+  }
+});
+
 test("management follows the selected inspector before twelve confirmed mobile uploads", async ({ page, service }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await unlock(page, service.url, service.key);

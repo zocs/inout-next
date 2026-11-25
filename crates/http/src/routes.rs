@@ -146,7 +146,8 @@ async fn context(
     let permissions = &policy.permissions;
     Ok(Json(
         json!({"product":state.product,"root_label":"Shared files","modules":state.registry.enabled(),
-        "capabilities":{"file_move":(permissions.manage || permissions.rename) && state.store.file_move_supported(), "directory_move":(permissions.manage || permissions.rename) && state.store.directory_move_supported(), "directory_copy":false},
+        "capabilities":{"file_move":(permissions.manage || permissions.rename) && state.store.file_move_supported(), "directory_move":(permissions.manage || permissions.rename) && state.store.directory_move_supported(), "directory_copy":false,
+        "inline_preview":state.registry.has("files") && permissions.download},
         "permissions":permissions,"policy_revision":policy.revision,"auth_required":policy.auth.required(),"limits":{"max_upload_bytes":state.max_upload_bytes}}),
     ))
 }
@@ -170,6 +171,49 @@ async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Res
 #[derive(Deserialize)]
 struct PathQuery {
     path: String,
+}
+#[derive(Deserialize)]
+struct ContentQuery {
+    path: String,
+    #[serde(default)]
+    inline: Option<String>,
+}
+/// Media types a browser may render for an explicit `inline` request. The
+/// decision uses only the final extension: scriptable documents (HTML, SVG,
+/// XHTML, PDF) and unknown names keep the octet-stream attachment. Text-like
+/// files, including markup and source code, are always inert `text/plain`.
+fn preview_type(name: &str) -> Option<&'static str> {
+    let (stem, extension) = name.rsplit_once('.')?;
+    if stem.is_empty() {
+        return None;
+    }
+    Some(match extension.to_ascii_lowercase().as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "aac" => "audio/aac",
+        "ogg" | "opus" => "audio/ogg",
+        "wav" => "audio/wav",
+        "flac" => "audio/flac",
+        "mp4" | "m4v" => "video/mp4",
+        "webm" => "video/webm",
+        "ogv" => "video/ogg",
+        "mov" => "video/quicktime",
+        "txt" | "text" | "md" | "markdown" | "log" | "json" | "jsonl" | "csv" | "tsv" | "xml"
+        | "yaml" | "yml" | "toml" | "ini" | "conf" | "cfg" | "properties" | "env" | "srt"
+        | "vtt" | "diff" | "patch" | "sql" | "sh" | "bash" | "zsh" | "fish" | "bat" | "cmd"
+        | "ps1" | "py" | "rs" | "go" | "c" | "h" | "cc" | "cpp" | "hpp" | "cs" | "java" | "kt"
+        | "kts" | "swift" | "dart" | "js" | "mjs" | "cjs" | "jsx" | "ts" | "tsx" | "css"
+        | "scss" | "less" | "vue" | "svelte" | "lua" | "rb" | "php" | "pl" | "r" | "tex"
+        | "gradle" | "slint" => "text/plain; charset=utf-8",
+        _ => return None,
+    })
 }
 fn query_path(
     query: Result<Query<PathQuery>, QueryRejection>,
@@ -196,14 +240,16 @@ async fn content(
     State(state): State<AppState>,
     headers: HeaderMap,
     method: Method,
-    query: Result<Query<PathQuery>, QueryRejection>,
+    query: Result<Query<ContentQuery>, QueryRejection>,
 ) -> Result<Response, ApiError> {
     let policy = state.policy.snapshot();
     policy.auth.authorize(&headers, false)?;
     if !policy.permissions.download {
         return Err(Error::Forbidden.into());
     }
-    let path = query_path(query, false)?;
+    let Query(query) = query.map_err(|_| Error::InvalidPath)?;
+    let path = RelativePath::parse(&query.path, false)?;
+    let inline = matches!(query.inline.as_deref(), Some("1" | "true"));
     let download_buffer = state.download_control.buffer_bytes();
     let transfer = if method == Method::HEAD {
         None
@@ -292,10 +338,24 @@ async fn content(
         http::header::CONTENT_LENGTH,
         length.to_string().parse().expect("numeric header"),
     );
+    // Inline presentation is the same authorized download with a specific
+    // inert type. A sandboxed, source-less policy applies if it is navigated.
+    let preview = inline.then(|| preview_type(&opened.entry.name)).flatten();
     headers.insert(
         http::header::CONTENT_TYPE,
-        "application/octet-stream".parse().expect("static header"),
+        preview
+            .unwrap_or("application/octet-stream")
+            .parse()
+            .expect("static header"),
     );
+    if preview.is_some() {
+        headers.insert(
+            http::header::CONTENT_SECURITY_POLICY,
+            "sandbox; default-src 'none'"
+                .parse()
+                .expect("static header"),
+        );
+    }
     headers.insert(
         http::header::ACCEPT_RANGES,
         "bytes".parse().expect("static header"),
@@ -314,9 +374,16 @@ async fn content(
         .collect();
     headers.insert(
         http::header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"download\"; filename*=UTF-8''{encoded}")
-            .parse()
-            .map_err(|_| Error::Io)?,
+        format!(
+            "{}; filename=\"download\"; filename*=UTF-8''{encoded}",
+            if preview.is_some() {
+                "inline"
+            } else {
+                "attachment"
+            }
+        )
+        .parse()
+        .map_err(|_| Error::Io)?,
     );
     if let Some((start, end)) = range {
         headers.insert(

@@ -3,8 +3,8 @@
 import { useI18n } from "@/i18n/provider";
 
 import diagnosticStyles from "@/features/diagnostics/activation.module.css";
-import { ArrowUpDown, ChevronRight, Download, Folder, LockKeyhole, LogOut, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { ArrowUpDown, Ban, Check, ChevronRight, Download, Folder, LockKeyhole, LogOut, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import productDefaults from "@/generated/product.json";
 import { featureRegistry } from "@/features/registry";
 import { ApiError, FileApi } from "@/lib/api";
@@ -27,11 +27,14 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
   const readinessReported = useRef(false);
   const [path, setPath] = useState("");
   const [listing, setListing] = useState<EntryList | null>(null);
+  const [contentRevision, setContentRevision] = useState(0);
   const [folderFailure, setFolderFailure] = useState<{ path: string; text: PresentationMessage } | null>(null);
   const [selection, setSelection] = useState<Entry | null>(null);
   const [selectionChanged, setSelectionChanged] = useState(false);
   const selectionOrigin = useRef<HTMLElement | null>(null);
   const currentFolderControl = useRef<HTMLButtonElement | null>(null);
+  const inspector = useRef<HTMLElement | null>(null);
+  const [revealRequest, setRevealRequest] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
   const [message, setMessage] = useState<Message>(null);
@@ -47,10 +50,15 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
   const folderReady = listing?.path === path && !folderError;
   const entries = folderReady ? listing.entries : [];
   const selected = folderReady ? selection : null;
-  const select = useCallback((entry: Entry | null, origin?: HTMLElement) => {
+  const select = useCallback((entry: Entry | null, origin?: HTMLElement, reveal?: boolean) => {
     selectionOrigin.current = entry ? origin ?? null : null;
     setSelection(entry); setSelectionChanged(true);
+    if (entry && reveal) setRevealRequest((value) => value + 1);
   }, []);
+  // A pointer selection brings its inspector into view when the tools sit below
+  // the list. Focus stays on the selecting control; keyboard selection, passive
+  // reconciliation and locale/theme changes never scroll.
+  useEffect(() => { if (revealRequest) inspector.current?.scrollIntoView({ block: "nearest" }); }, [revealRequest]);
   const clearSelection = useCallback(() => {
     const origin = selectionOrigin.current;
     select(null);
@@ -89,6 +97,7 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
     api.entries(path, controller.signal).then((listing) => {
       if (controller.signal.aborted) return;
       setListing(listing);
+      setContentRevision((value) => value + 1);
       setSelection((current) => current ? listing.entries.find((entry) => entry.path === current.path) ?? null : null);
     }).catch((error) => {
       if (controller.signal.aborted) return;
@@ -112,7 +121,7 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
   }
 
   const modules = useMemo(() => context ? activeModules(featureRegistry, context) : [], [context]);
-  const runtime: ModuleRuntime | null = context ? { context, api, path, entries, selected, select,
+  const runtime: ModuleRuntime | null = context ? { context, api, path, entries, contentRevision, selected, select,
     loading: loading || (!folderReady && !folderError && context.permissions.list && context.modules.includes("files")),
     navigate, refresh, notify, focusCurrentFolder } : null;
   return <>
@@ -139,7 +148,8 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
               <div className="views">{folderError ? <section className="empty-state" aria-label={t("Folder unavailable")}><h3>{t("Could not open this folder")}</h3><p role="alert">{renderMessage(folderError)}</p><button className="button button-secondary" onClick={refresh}>{t("Retry folder")}</button></section>
                 : modules.some((module) => module.View) ? <ModuleSlot modules={modules} slot="View" runtime={runtime} /> : <div className="empty-state"><h3>{t("File browsing is unavailable")}</h3><p>{t("The sharing device has not enabled file access.")}</p></div>}</div>
               <aside className="tools-column" aria-label={t("Folder tools")}>
-                {selected && <section className="selection-panel" aria-label={t("Selected entry")}><div className="panel-heading"><h3>{t("Selected entry")}</h3><button className="icon-button" aria-label={t("Clear selection")} onClick={clearSelection}><X size={16} aria-hidden="true" /></button></div><h4 title={selected.name}>{selected.name}</h4><dl><div><dt>{t("Size")}</dt><dd>{formatBytes(selected.size, locale)}</dd></div><div><dt>{t("Modified")}</dt><dd>{formatDate(selected.modified, locale)}</dd></div><div><dt>{t("Path")}</dt><dd className="entry-path">{selected.path}</dd></div></dl>
+                {selected && <section ref={inspector} className="selection-panel" aria-label={t("Selected entry")}><div className="panel-heading"><h3>{t("Selected entry")}</h3><button className="icon-button" aria-label={t("Clear selection")} onClick={clearSelection}><X size={16} aria-hidden="true" /></button></div><h4 title={selected.name}>{selected.name}</h4>
+                  <ModuleSlot modules={modules} slot="Inspector" runtime={runtime} /><dl><div><dt>{t("Size")}</dt><dd>{formatBytes(selected.size, locale)}</dd></div><div><dt>{t("Modified")}</dt><dd>{formatDate(selected.modified, locale)}</dd></div><div><dt>{t("Path")}</dt><dd className="entry-path">{selected.path}</dd></div></dl>
                   {selected.kind === "file" && context?.permissions.download && <a className="button button-secondary selection-download" href={api.downloadUrl(selected.path)} download={selected.name} aria-label={t("Download selected {0}", selected.name)}><Download size={17} aria-hidden="true" />{t("Download")}</a>}
                 </section>}
                 {folderReady && <ModuleSlot modules={modules} slot="SelectionPanel" runtime={runtime} />}
@@ -155,7 +165,27 @@ export default function FileManager({ onReady }: { onReady?: (product: Product) 
 
 export function Header({ product, context, canLock, lock, onBrandActivate, touchFriendly }: { product: Product; context?: ServerContext | null; canLock?: boolean; lock?: () => void; onBrandActivate?: (origin: HTMLButtonElement) => void; touchFriendly?: boolean }) {
   const { t } = useI18n();
-  return <header className={`app-header${touchFriendly ? " touch-controls" : ""}`}><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}><Wordmark name={product.name} /></button> : <Wordmark name={product.name} />}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions"><Preferences />{context && <span className="access-mode">{context.permissions.upload || context.permissions.manage || context.permissions.rename || context.permissions.delete ? t("Can edit") : t("Read only")}</span>}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />{t("Lock files")}</button>}</div></header>;
+  return <header className={`app-header${touchFriendly ? " touch-controls" : ""}`}><div className="brand"><ArrowUpDown size={23} aria-hidden="true" /><h1>{onBrandActivate ? <button type="button" className={diagnosticStyles.brandButton} onClick={(event) => onBrandActivate(event.currentTarget)}><Wordmark name={product.name} /></button> : <Wordmark name={product.name} />}</h1><span className="brand-description">{product.description}</span></div><div className="header-actions"><Preferences />{context && <AccessSummary permissions={context.permissions} />}{canLock && <button className="header-button" onClick={lock}><LogOut size={16} aria-hidden="true" />{t("Lock files")}</button>}</div></header>;
+}
+
+// States what this visitor may do. Each entry pairs an icon with words, so the
+// allowed/unavailable distinction never depends on color.
+function AccessSummary({ permissions }: { permissions: ServerContext["permissions"] }) {
+  const { t } = useI18n();
+  const label = useId();
+  const edit = permissions.manage || !!permissions.rename;
+  const remove = permissions.delete ?? permissions.manage;
+  const entries = [[t("Download"), permissions.download], [t("Upload"), permissions.upload], [t("Edit"), edit], [t("Delete"), remove]] as const;
+  return <div className="access-summary" role="group" aria-labelledby={label}>
+    <span id={label} className="access-label">{t("Current permissions")}</span>
+    <div className="access-readout">
+      <span className="access-mode">{permissions.upload || edit || remove ? t("Can edit") : t("Read only")}</span>
+      <ul>{entries.map(([name, allowed]) => <li key={name} data-allowed={allowed} title={t(allowed ? "{0}: allowed" : "{0}: not allowed", name)}>
+        {allowed ? <Check size={14} aria-hidden="true" /> : <Ban size={14} aria-hidden="true" />}<span aria-hidden="true">{name}</span>
+        <span className="visually-hidden">{t(allowed ? "{0}: allowed" : "{0}: not allowed", name)}</span>
+      </li>)}</ul>
+    </div>
+  </div>;
 }
 
 function Unlock({ api, product, unlocked }: { api: FileApi; product: Product; unlocked: (context: ServerContext) => void }) {

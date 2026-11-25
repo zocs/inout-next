@@ -1,10 +1,9 @@
 import { AboutSlint } from "std-widgets.slint";
-import { NativeButton } from "controls.slint";
-import { Labels } from "text.slint";
-import { NativeTheme, Body, Hint } from "theme.slint";
+import { ActionButton, ButtonKind } from "controls.slint";
+import { Tr } from "text.slint";
+import { Theme, Body, Hint } from "theme.slint";
 
 export component AboutCard inherits Rectangle {
-    in property <Labels> labels;
     in property <string> product-name;
     in property <string> product-version;
     in property <string> product-description;
@@ -12,21 +11,32 @@ export component AboutCard inherits Rectangle {
     public function focus-close() { close-button.focus(); }
     forward-focus: close-button;
     min-height: layout.min-height;
-    background: NativeTheme.surface;
-    border-radius: 14px;
+    background: Theme.surface;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: Theme.border;
+    drop-shadow-blur: 32px;
+    drop-shadow-offset-y: 12px;
+    drop-shadow-color: #00000040;
 
     layout := VerticalLayout {
         padding: 28px;
-        spacing: 16px;
-        Body { text: root.labels.about; font-size: 21px; font-weight: 650; }
+        spacing: 14px;
+        Body { text: Tr.l.about; font-size: 20px; font-weight: 650; }
         Body { text: root.product-name + " · " + root.product-version; font-weight: 600; }
         Hint { text: root.product-description; }
-        Hint { text: root.labels.preview; }
-        AboutSlint { height: 96px; }
-        close-button := NativeButton {
-            text: root.labels.close-about;
-            available: true;
-            min-height: 44px;
+        Hint { text: Tr.l.preview; }
+        // The attribution artwork is drawn for a light background.
+        Rectangle {
+            height: 104px;
+            border-radius: 10px;
+            background: #ffffff;
+            AboutSlint { height: 96px; }
+        }
+        close-button := ActionButton {
+            kind: ButtonKind.primary;
+            control-height: 44px;
+            text: Tr.l.close-about;
             activated => { root.close(); }
         }
     }

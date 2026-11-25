@@ -1,101 +1,219 @@
-import { CheckBox, LineEdit } from "std-widgets.slint";
-import { NativeButton } from "controls.slint";
-import { Labels } from "text.slint";
-import { Heading, Body, Hint } from "theme.slint";
+import { ActionButton, ButtonKind, Choice, Disclosure, TextField, Toggle } from "controls.slint";
+import { Tr } from "text.slint";
+import { Theme, Heading, Label, Body, Hint } from "theme.slint";
 
+// Choosing what to share and how, then the one primary action. While sharing
+// is active the drafts give way to a short summary and Stop.
 export component SharingSetup inherits Rectangle {
-    in property <Labels> labels;
     in property <bool> enabled;
     in property <bool> running;
     in property <bool> busy;
+    in property <string> problem;
+    in property <string> shared-folder;
+    in property <[string]> quick-folders;
     in-out property <string> folder;
     in-out property <string> port: "5000";
     in-out property <string> key;
     in-out property <bool> network: true;
-    in-out property <bool> uploads: false;
-    in-out property <bool> manage: false;
+    in-out property <int> access-index: 0;
+    in-out property <bool> advanced-open;
     callback folder-edited();
     callback choose-folder();
+    callback quick-folder(int);
     callback start-sharing();
     callback stop-sharing();
     public function focus-start() { start-button.focus(); }
     public function focus-stop() { stop-button.focus(); }
+    private property <bool> editable: root.enabled && !root.running;
 
-    min-width: 280px;
+    min-width: 340px;
     min-height: layout.min-height;
-    VerticalLayout {
-        layout := VerticalLayout {
-            spacing: 8px;
-            alignment: start;
-            Heading { text: root.labels.share-folder; }
-            Hint { text: root.labels.intro; }
-            Rectangle { height: 8px; }
-            Body { text: root.labels.folder; font-weight: 600; }
-            LineEdit {
-                text <=> root.folder;
-                enabled: root.enabled && !root.running;
-                accessible-label: root.labels.folder;
-                min-height: 42px;
-                edited => { root.folder-edited(); }
+    background: Theme.surface;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    layout := VerticalLayout {
+        padding: 24px;
+        spacing: 18px;
+        alignment: start;
+
+        if !root.running: VerticalLayout {
+            spacing: 18px;
+            VerticalLayout {
+                spacing: 4px;
+                Heading { text: Tr.l.share-folder; }
+                Hint { text: Tr.l.intro; }
             }
-            NativeButton {
-                text: root.labels.choose-folder;
-                available: root.enabled && !root.running && !root.busy;
-                min-height: 40px;
-                activated => { root.choose-folder(); }
+            VerticalLayout {
+                spacing: 8px;
+                Label { text: Tr.l.folder; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    TextField {
+                        text <=> root.folder;
+                        label: Tr.l.folder;
+                        placeholder: Tr.l.folder-placeholder;
+                        enabled: root.editable;
+                        edited => { root.folder-edited(); }
+                    }
+                    ActionButton {
+                        text: Tr.l.choose-folder;
+                        available: root.editable && !root.busy;
+                        control-height: 42px;
+                        activated => { root.choose-folder(); }
+                    }
+                }
+                if root.quick-folders.length > 0: HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    for name[index] in root.quick-folders: ActionButton {
+                        kind: ButtonKind.chip;
+                        control-height: 32px;
+                        text: name;
+                        available: root.editable && !root.busy;
+                        activated => { root.quick-folder(index); }
+                    }
+                }
             }
-            Hint { text: root.labels.folder-hint; }
-            Rectangle { height: 8px; }
-            Body { text: root.labels.key; font-weight: 600; }
-            LineEdit {
-                text <=> root.key;
-                input-type: password;
-                accessible-label: root.labels.key;
-                // The draft is not part of host snapshots or accessibility values.
-                accessible-value: "";
-                enabled: root.enabled && !root.running;
-                min-height: 42px;
+            VerticalLayout {
+                spacing: 8px;
+                Label { text: Tr.l.access; }
+                readonly := Choice {
+                    title: Tr.l.readonly;
+                    detail: Tr.l.readonly-detail;
+                    checked: root.access-index == 0;
+                    enabled: root.editable;
+                    chosen => { root.access-index = 0; }
+                    step(delta) => {
+                        if delta > 0 {
+                            root.access-index = 1;
+                            uploadable.focus();
+                        }
+                    }
+                }
+                uploadable := Choice {
+                    title: Tr.l.uploadable;
+                    detail: Tr.l.uploadable-detail;
+                    checked: root.access-index == 1;
+                    enabled: root.editable;
+                    chosen => { root.access-index = 1; }
+                    step(delta) => {
+                        if delta > 0 {
+                            root.access-index = 2;
+                            manageable.focus();
+                        } else {
+                            root.access-index = 0;
+                            readonly.focus();
+                        }
+                    }
+                }
+                manageable := Choice {
+                    title: Tr.l.manageable;
+                    detail: Tr.l.manageable-detail;
+                    checked: root.access-index == 2;
+                    enabled: root.editable;
+                    chosen => { root.access-index = 2; }
+                    step(delta) => {
+                        if delta < 0 {
+                            root.access-index = 1;
+                            uploadable.focus();
+                        }
+                    }
+                }
             }
-            Hint { text: root.labels.key-hint; }
-            CheckBox {
-                text: root.labels.upload;
-                checked <=> root.uploads;
-                enabled: root.enabled && !root.running;
-                min-height: 40px;
+            VerticalLayout {
+                spacing: 8px;
+                Label { text: Tr.l.key; }
+                TextField {
+                    text <=> root.key;
+                    label: Tr.l.key;
+                    placeholder: Tr.l.key-placeholder;
+                    secret: true;
+                    enabled: root.editable;
+                }
+                Hint { text: Tr.l.key-hint; }
             }
-            CheckBox {
-                text: root.labels.manage;
-                checked <=> root.manage;
-                enabled: root.enabled && !root.running;
-                min-height: 40px;
+            VerticalLayout {
+                spacing: 10px;
+                HorizontalLayout {
+                    alignment: start;
+                    Disclosure {
+                        text: Tr.l.advanced;
+                        open <=> root.advanced-open;
+                        enabled: root.enabled;
+                    }
+                }
+                if root.advanced-open: VerticalLayout {
+                    spacing: 10px;
+                    padding-left: 8px;
+                    Toggle {
+                        text: Tr.l.network;
+                        checked <=> root.network;
+                        enabled: root.editable;
+                    }
+                    Label { text: Tr.l.port; }
+                    HorizontalLayout {
+                        alignment: start;
+                        TextField {
+                            width: 140px;
+                            text <=> root.port;
+                            label: Tr.l.port;
+                            numeric: true;
+                            enabled: root.editable;
+                        }
+                    }
+                    Hint { text: Tr.l.port-hint; }
+                }
             }
-            CheckBox {
-                text: root.labels.network;
-                checked <=> root.network;
-                enabled: root.enabled && !root.running;
-                min-height: 40px;
+        }
+
+        if root.running: VerticalLayout {
+            spacing: 6px;
+            Label { text: Tr.l.sharing-folder; color: Theme.muted; }
+            Body {
+                text: root.shared-folder;
+                font-size: 16px;
+                font-weight: 600;
+                wrap: char-wrap;
+                accessible-label: Tr.l.sharing-folder + ": " + root.shared-folder;
             }
-            Body { text: root.labels.port; font-weight: 600; }
-            LineEdit {
-                text <=> root.port;
-                accessible-label: root.labels.port;
-                enabled: root.enabled && !root.running;
-                min-height: 42px;
+            Hint { text: Tr.l.stop-hint; }
+        }
+
+        if !root.problem.is-empty: Rectangle {
+            min-height: problem-layout.min-height;
+            background: Theme.error-bg;
+            border-radius: 10px;
+            accessible-role: text;
+            accessible-label: root.problem;
+            accessible-live-region: assertive;
+            problem-layout := VerticalLayout {
+                padding: 14px;
+                Body { text: root.problem; color: Theme.error; accessible-role: none; }
             }
-            Hint { text: root.labels.port-hint; }
-            Rectangle { height: 8px; }
-            start-button := NativeButton {
+        }
+
+        Rectangle {
+            height: 48px;
+            start-button := ActionButton {
+                width: parent.width;
+                height: parent.height;
                 visible: !root.running;
-                text: root.busy ? root.labels.busy : root.labels.start;
-                available: root.enabled && !root.busy && !root.folder.is-empty;
-                min-height: 44px;
+                kind: ButtonKind.primary;
+                control-height: 48px;
+                text: root.busy ? Tr.l.busy : Tr.l.start;
+                available: root.editable && !root.busy && !root.folder.is-empty;
                 activated => { root.start-sharing(); }
             }
-            stop-button := NativeButton {
+            stop-button := ActionButton {
+                width: parent.width;
+                height: parent.height;
                 visible: root.running;
-                text: root.labels.stop;
-                available: root.enabled && !root.busy;
-                min-height: 44px;
+                kind: ButtonKind.danger;
+                control-height: 48px;
+                text: Tr.l.stop;
+                available: root.enabled && root.running && !root.busy;
                 activated => { root.stop-sharing(); }
             }
         }

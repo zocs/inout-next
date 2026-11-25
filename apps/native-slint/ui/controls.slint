@@ -1,17 +1,790 @@
-import { Button } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Tr } from "text.slint";
 
-// Standard widget semantic activation can invoke its callback even when
-// disabled. Check application availability for every activation path while
-// keeping keyboard focus and appearance on the standard reactive binding.
-export component NativeButton inherits Button {
-    in property <bool> available;
+// A ring drawn just outside its parent while that control owns keyboard focus.
+export component FocusRing inherits Rectangle {
+    in property <bool> shown;
+    in property <color> tint: Theme.accent;
+    in property <length> corner: 8px;
+    accessible-role: none;
+    Rectangle {
+        x: -3px;
+        y: -3px;
+        width: root.width + 6px;
+        height: root.height + 6px;
+        border-radius: root.corner + 3px;
+        border-width: 2px;
+        border-color: root.shown ? root.tint : transparent;
+    }
+}
+
+export component Mark inherits Path {
+    in property <color> tint: Theme.ink;
+    in property <length> weight: 2px;
+    width: 16px;
+    height: 16px;
+    viewbox-width: 16;
+    viewbox-height: 16;
+    stroke: root.tint;
+    stroke-width: root.weight;
+    fill: transparent;
+    accessible-role: none;
+}
+
+export component CheckMark inherits Mark {
+    commands: "M 3 8.5 L 6.5 12 L 13 4.5";
+}
+
+export component CrossMark inherits Mark {
+    commands: "M 4 4 L 12 12 M 12 4 L 4 12";
+}
+
+export component Chevron inherits Mark {
+    in property <bool> open;
+    commands: root.open ? "M 4 10 L 8 6 L 12 10" : "M 4 6 L 8 10 L 12 6";
+}
+
+export enum ButtonKind { primary, secondary, quiet, danger, chip, shell }
+
+// Every activation path checks availability, including the accessibility
+// default action, which toolkits may deliver to a disabled control.
+export component ActionButton {
+    in property <string> text;
+    in property <string> description;
+    in property <bool> available: true;
+    in property <ButtonKind> kind: ButtonKind.secondary;
+    in property <length> control-height: 40px;
+    out property <bool> has-focus: scope.has-focus;
     callback activated();
-    enabled: root.available;
+
+    private property <bool> hot: touch.has-hover && root.available;
+    private property <bool> down: touch.pressed && root.available;
+    private property <length> corner: root.kind == ButtonKind.chip ? root.control-height / 2 : 8px;
+
+    min-height: root.control-height;
+    min-width: content.min-width;
+    preferred-width: content.preferred-width;
+    vertical-stretch: 0;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-description: root.description;
     accessible-enabled: root.available;
     accessible-action-default => {
         if root.available { root.activated(); }
     }
-    clicked => {
-        if root.available { root.activated(); }
+
+    plate := Rectangle {
+        border-radius: root.corner;
+        border-width: root.kind == ButtonKind.secondary || root.kind == ButtonKind.danger ? 1px : 0;
+        border-color: root.kind == ButtonKind.danger
+            ? (root.hot ? Theme.error : Theme.error.with-alpha(0.45))
+            : (root.hot ? Theme.field-border : Theme.border);
+        background: !root.available
+            ? (root.kind == ButtonKind.primary ? Theme.border
+                : root.kind == ButtonKind.shell ? Theme.shell-control.with-alpha(0.5)
+                : root.kind == ButtonKind.quiet ? transparent : Theme.sunken.with-alpha(0.6))
+            : root.kind == ButtonKind.primary ? (root.down || root.hot ? Theme.accent-strong : Theme.accent)
+            : root.kind == ButtonKind.danger ? Theme.error-bg
+            : root.kind == ButtonKind.quiet ? (root.hot ? Theme.wash : transparent)
+            : root.kind == ButtonKind.chip ? (root.hot ? Theme.wash : Theme.sunken)
+            : root.kind == ButtonKind.shell ? (root.hot ? Theme.shell-control.mix(Theme.shell-ink, 0.86) : Theme.shell-control)
+            : (root.hot ? Theme.wash : Theme.surface);
+        opacity: root.down ? 0.86 : 1;
+        animate background, border-color { duration: Theme.quick; easing: ease-out; }
+
+        FocusRing {
+            shown: root.has-focus && root.available;
+            corner: root.corner;
+            tint: root.kind == ButtonKind.shell ? Theme.shell-ink : Theme.accent;
+        }
+    }
+
+    content := HorizontalLayout {
+        padding-left: root.kind == ButtonKind.chip ? 14px : 16px;
+        padding-right: root.kind == ButtonKind.chip ? 14px : 16px;
+        alignment: center;
+        Text {
+            text: root.text;
+            font-size: root.kind == ButtonKind.chip ? 13px : 14px;
+            font-weight: root.kind == ButtonKind.chip ? 500 : 600;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+            color: !root.available ? Theme.muted
+                : root.kind == ButtonKind.primary ? Theme.on-accent
+                : root.kind == ButtonKind.danger ? Theme.error
+                : root.kind == ButtonKind.quiet ? Theme.accent
+                : root.kind == ButtonKind.shell ? Theme.shell-ink
+                : Theme.ink;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.available;
+        mouse-cursor: pointer;
+        clicked => {
+            if root.available { root.activated(); }
+        }
+    }
+
+    scope := FocusScope {
+        x: 0;
+        width: 0px;
+        enabled: root.available;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == Key.Return) && root.available {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// A single-line field. The password variant never exposes its text to
+// assistive technology and returns to masked input when focus leaves.
+export component TextField {
+    in-out property <string> text <=> input.text;
+    in property <string> label;
+    in property <string> placeholder;
+    in property <bool> enabled: true;
+    in property <bool> secret;
+    in property <bool> read-only;
+    in property <bool> numeric;
+    out property <bool> has-focus: input.has-focus;
+    callback edited(string);
+    callback accepted(string);
+    private property <bool> revealed;
+    private property <length> inset: 12px;
+
+    min-height: 42px;
+    min-width: 120px;
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    forward-focus: input;
+    accessible-role: text-input;
+    accessible-label: root.label;
+    accessible-value: root.secret ? "" : root.text;
+    accessible-placeholder-text: root.placeholder;
+    accessible-enabled: root.enabled;
+    accessible-read-only: root.read-only;
+    accessible-action-set-value(value) => {
+        if root.enabled && !root.read-only {
+            root.text = value;
+            root.edited(value);
+        }
+    }
+
+    public function select-all() { input.select-all(); }
+
+    changed has-focus => {
+        if !self.has-focus { root.revealed = false; }
+    }
+
+    Rectangle {
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: !root.enabled ? Theme.border : root.has-focus ? Theme.accent : Theme.field-border;
+        background: root.enabled ? Theme.surface : Theme.sunken.with-alpha(0.6);
+        animate border-color { duration: Theme.quick; easing: ease-out; }
+        FocusRing { shown: root.has-focus && root.enabled; }
+    }
+
+    HorizontalLayout {
+        padding-left: root.inset;
+        padding-right: root.secret ? 4px : root.inset;
+        spacing: 4px;
+        clip-box := Rectangle {
+            clip: true;
+            horizontal-stretch: 1;
+            Text {
+                x: 0;
+                width: parent.width;
+                height: parent.height;
+                vertical-alignment: center;
+                text: root.text == "" && input.preedit-text == "" ? root.placeholder : "";
+                color: Theme.muted;
+                font-size: input.font-size;
+                overflow: elide;
+                accessible-role: none;
+            }
+            ContextMenuArea {
+                enabled: root.enabled;
+                Menu {
+                    MenuItem {
+                        title: Tr.l.cut;
+                        enabled: root.enabled && !root.read-only && !root.secret;
+                        activated => { input.cut(); }
+                    }
+                    MenuItem {
+                        title: Tr.l.copy;
+                        enabled: !root.text.is-empty && !root.secret;
+                        activated => { input.copy(); }
+                    }
+                    MenuItem {
+                        title: Tr.l.paste;
+                        enabled: root.enabled && !root.read-only;
+                        activated => { input.paste(); }
+                    }
+                    MenuItem {
+                        title: Tr.l.select-all;
+                        enabled: !root.text.is-empty;
+                        activated => { input.select-all(); }
+                    }
+                }
+                input := TextInput {
+                    property <length> offset;
+                    x: min(0px, max(parent.width - self.width - self.text-cursor-width, self.offset));
+                    width: max(parent.width - self.text-cursor-width, self.preferred-width);
+                    height: 100%;
+                    vertical-alignment: center;
+                    single-line: true;
+                    font-size: 14px;
+                    enabled: root.enabled;
+                    read-only: root.read-only;
+                    color: root.enabled ? Theme.ink : Theme.muted;
+                    selection-background-color: Theme.accent;
+                    selection-foreground-color: Theme.on-accent;
+                    input-type: root.secret && !root.revealed ? InputType.password
+                        : root.numeric ? InputType.number : InputType.text;
+                    accessible-role: none;
+                    cursor-position-changed(position) => {
+                        if position.x + self.offset < 0px {
+                            self.offset = -position.x;
+                        } else if position.x + self.offset > parent.width - self.text-cursor-width {
+                            self.offset = parent.width - position.x - self.text-cursor-width;
+                        }
+                    }
+                    edited => { root.edited(self.text); }
+                    accepted => { root.accepted(self.text); }
+                }
+            }
+        }
+        if root.secret: VerticalLayout {
+            alignment: center;
+            ActionButton {
+                kind: ButtonKind.quiet;
+                control-height: 32px;
+                text: root.revealed ? Tr.l.hide-key : Tr.l.show-key;
+                available: root.enabled;
+                activated => { root.revealed = !root.revealed; }
+            }
+        }
+    }
+}
+
+// A themed choice list with the combo-box accessibility contract: a value,
+// an expand action and validated value writes.
+export component Select {
+    in property <[string]> model;
+    in property <[color]> swatches;
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <bool> on-shell;
+    in property <length> control-height: 36px;
+    in-out property <int> current-index;
+    out property <string> current-value: root.model[root.current-index];
+    out property <bool> has-focus: scope.has-focus || root.open;
+    callback selected(int);
+    private property <bool> open;
+    private property <length> item-height: 36px;
+    private property <color> ink: root.on-shell ? Theme.shell-ink : Theme.ink;
+
+    function choose(index: int) {
+        if root.enabled && index >= 0 && index < root.model.length {
+            root.current-index = index;
+            root.selected(index);
+        }
+    }
+
+    min-height: root.control-height;
+    min-width: content.min-width;
+    preferred-width: content.preferred-width;
+    vertical-stretch: 0;
+    forward-focus: scope;
+    accessible-role: combobox;
+    accessible-label: root.label;
+    accessible-value: root.current-value;
+    accessible-description: root.current-value;
+    accessible-enabled: root.enabled;
+    accessible-expandable: true;
+    accessible-expanded: root.open;
+    accessible-action-expand => {
+        if root.enabled { popup.show(); }
+    }
+    // Accept only a value that is currently offered.
+    accessible-action-set-value(value) => {
+        if !value.is-empty {
+            root.choose(value == root.model[0] ? 0
+                : value == root.model[1] ? 1
+                : value == root.model[2] ? 2
+                : value == root.model[3] ? 3
+                : value == root.model[4] ? 4
+                : value == root.model[5] ? 5 : -1);
+        }
+    }
+
+    Rectangle {
+        border-radius: 8px;
+        border-width: root.on-shell ? 0 : 1px;
+        border-color: touch.has-hover ? Theme.field-border : Theme.border;
+        background: root.on-shell
+            ? (touch.has-hover && root.enabled ? Theme.shell-control.mix(Theme.shell-ink, 0.86) : Theme.shell-control)
+            : (touch.has-hover && root.enabled ? Theme.wash : Theme.surface);
+        opacity: root.enabled ? 1 : 0.6;
+        animate background { duration: Theme.quick; easing: ease-out; }
+        FocusRing {
+            shown: scope.has-focus && root.enabled;
+            tint: root.on-shell ? Theme.shell-ink : Theme.accent;
+        }
+    }
+
+    content := HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 8px;
+        if root.swatches.length > 0: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 12px;
+                height: 12px;
+                border-radius: 6px;
+                background: root.swatches[root.current-index];
+                border-width: 1px;
+                border-color: root.ink.with-alpha(0.35);
+            }
+        }
+        Text {
+            text: root.current-value;
+            color: root.ink;
+            font-size: 13px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+            accessible-role: none;
+        }
+        VerticalLayout {
+            alignment: center;
+            Chevron { open: root.open; tint: root.on-shell ? Theme.shell-muted : Theme.muted; weight: 1.6px; width: 14px; height: 14px; }
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            scope.focus();
+            popup.show();
+        }
+    }
+
+    scope := FocusScope {
+        x: 0;
+        width: 0px;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == Key.UpArrow {
+                root.choose(max(root.current-index - 1, 0));
+                return accept;
+            }
+            if event.text == Key.DownArrow {
+                root.choose(min(root.current-index + 1, root.model.length - 1));
+                return accept;
+            }
+            if event.text == Key.Return || event.text == " " {
+                popup.show();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(root.width, 168px);
+        height: root.model.length * root.item-height + 8px;
+        close-policy: close-on-click-outside;
+        forward-focus: list-scope;
+
+        list-scope := FocusScope {
+            focus-changed-event => { root.open = self.has-focus; }
+            key-pressed(event) => {
+                if event.text == Key.UpArrow {
+                    root.choose(max(root.current-index - 1, 0));
+                    return accept;
+                }
+                if event.text == Key.DownArrow {
+                    root.choose(min(root.current-index + 1, root.model.length - 1));
+                    return accept;
+                }
+                if event.text == Key.Return || event.text == Key.Escape || event.text == " " {
+                    popup.close();
+                    return accept;
+                }
+                return reject;
+            }
+            Rectangle {
+                background: Theme.surface;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: Theme.border;
+                drop-shadow-blur: 18px;
+                drop-shadow-offset-y: 6px;
+                drop-shadow-color: #00000033;
+            }
+            VerticalLayout {
+                padding: 4px;
+                for value[index] in root.model: Rectangle {
+                    height: root.item-height;
+                    border-radius: 6px;
+                    background: index == root.current-index ? Theme.wash : option.has-hover ? Theme.sunken : transparent;
+                    accessible-role: list-item;
+                    accessible-label: value;
+                    accessible-item-selectable: true;
+                    accessible-item-selected: index == root.current-index;
+                    accessible-action-default => {
+                        root.choose(index);
+                        popup.close();
+                    }
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 8px;
+                        if root.swatches.length > 0: VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 6px;
+                                background: root.swatches[index];
+                            }
+                        }
+                        Text {
+                            text: value;
+                            color: Theme.ink;
+                            font-size: 13px;
+                            font-weight: index == root.current-index ? 600 : 400;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                            accessible-role: none;
+                        }
+                        if index == root.current-index: VerticalLayout {
+                            alignment: center;
+                            CheckMark { tint: Theme.accent; width: 14px; height: 14px; }
+                        }
+                    }
+                    option := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.choose(index);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// One option of an exclusive group, with its consequence stated beside it.
+export component Choice {
+    in property <string> title;
+    in property <string> detail;
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
+    callback chosen();
+    // Arrow keys ask the owning group to move by one option.
+    callback step(int);
+
+    min-height: max(52px, content.min-height);
+    min-width: 200px;
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    forward-focus: scope;
+    accessible-role: radio-button;
+    accessible-label: root.title;
+    accessible-description: root.detail;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled { root.chosen(); }
+    }
+
+    Rectangle {
+        border-radius: 10px;
+        border-width: root.checked ? 2px : 1px;
+        border-color: root.checked ? Theme.accent : touch.has-hover && root.enabled ? Theme.field-border : Theme.border;
+        background: root.checked ? Theme.wash : Theme.surface;
+        opacity: root.enabled ? 1 : 0.6;
+        animate background, border-color { duration: Theme.quick; easing: ease-out; }
+        FocusRing { shown: root.has-focus && root.enabled; corner: 10px; }
+    }
+
+    content := HorizontalLayout {
+        padding: 12px;
+        padding-left: 14px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border-width: root.checked ? 0 : 1.5px;
+                border-color: Theme.field-border;
+                background: root.checked ? Theme.accent : transparent;
+                Rectangle {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 3.5px;
+                    background: root.checked ? Theme.on-accent : transparent;
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.title;
+                color: Theme.ink;
+                font-size: 14px;
+                font-weight: 600;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+            Text {
+                text: root.detail;
+                color: Theme.muted;
+                font-size: 13px;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            scope.focus();
+            root.chosen();
+        }
+    }
+
+    scope := FocusScope {
+        x: 0;
+        width: 0px;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == " " || event.text == Key.Return {
+                root.chosen();
+                return accept;
+            }
+            if event.text == Key.DownArrow || event.text == Key.RightArrow {
+                root.step(1);
+                return accept;
+            }
+            if event.text == Key.UpArrow || event.text == Key.LeftArrow {
+                root.step(-1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+export component Toggle {
+    in property <string> text;
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
+    callback toggled(bool);
+
+    function flip() {
+        if root.enabled {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+
+    min-height: max(40px, content.min-height);
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    forward-focus: scope;
+    accessible-role: switch;
+    accessible-label: root.text;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { root.flip(); }
+
+    content := HorizontalLayout {
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            rail := Rectangle {
+                width: 40px;
+                height: 22px;
+                border-radius: 11px;
+                border-width: root.checked ? 0 : 1.5px;
+                border-color: Theme.field-border;
+                background: root.checked ? Theme.accent : Theme.surface;
+                opacity: root.enabled ? 1 : 0.6;
+                animate background { duration: Theme.quick; easing: ease-out; }
+                Rectangle {
+                    x: root.checked ? parent.width - self.width - 4px : 4px;
+                    y: (parent.height - self.height) / 2;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 7px;
+                    background: root.checked ? Theme.on-accent : Theme.field-border;
+                    animate x { duration: Theme.quick; easing: ease-out; }
+                }
+                FocusRing { shown: root.has-focus && root.enabled; corner: 11px; }
+            }
+        }
+        Text {
+            text: root.text;
+            color: root.enabled ? Theme.ink : Theme.muted;
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            wrap: word-wrap;
+            accessible-role: none;
+        }
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.flip(); }
+    }
+
+    scope := FocusScope {
+        x: 0;
+        width: 0px;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == " " || event.text == Key.Return {
+                root.flip();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// A row that opens or closes the section below it.
+export component Disclosure {
+    in property <string> text;
+    in-out property <bool> open;
+    in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
+
+    function flip() {
+        if root.enabled { root.open = !root.open; }
+    }
+
+    min-height: 36px;
+    min-width: content.min-width;
+    vertical-stretch: 0;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-expandable: true;
+    accessible-expanded: root.open;
+    accessible-action-default => { root.flip(); }
+    accessible-action-expand => { root.flip(); }
+
+    Rectangle {
+        border-radius: 8px;
+        background: touch.has-hover && root.enabled ? Theme.wash : transparent;
+        FocusRing { shown: root.has-focus && root.enabled; }
+    }
+
+    content := HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 12px;
+        spacing: 6px;
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            Chevron { open: root.open; tint: Theme.accent; weight: 1.8px; }
+        }
+        Text {
+            text: root.text;
+            color: Theme.accent;
+            font-size: 14px;
+            font-weight: 600;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.flip(); }
+    }
+
+    scope := FocusScope {
+        x: 0;
+        width: 0px;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == " " || event.text == Key.Return {
+                root.flip();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// A read-only statement of one permission: a mark and words, never colour alone.
+export component StateChip {
+    in property <string> text;
+    in property <string> state;
+    in property <bool> on;
+    min-height: 30px;
+    min-width: content.min-width;
+    vertical-stretch: 0;
+    horizontal-stretch: 0;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text + ": " + root.state;
+
+    Rectangle {
+        border-radius: 15px;
+        background: root.on ? Theme.wash : transparent;
+        border-width: root.on ? 0 : 1px;
+        border-color: Theme.border;
+    }
+
+    content := HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 12px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            if root.on: CheckMark { tint: Theme.accent; width: 14px; height: 14px; }
+            if !root.on: CrossMark { tint: Theme.muted; weight: 1.6px; width: 14px; height: 14px; }
+        }
+        Text {
+            text: root.text;
+            color: root.on ? Theme.ink : Theme.muted;
+            font-size: 13px;
+            font-weight: root.on ? 600 : 400;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
     }
 }

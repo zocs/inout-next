@@ -9,8 +9,10 @@ mod assets;
 mod identity;
 #[cfg(test)]
 mod lifecycle_tests;
+mod mounts;
 mod protected;
 mod reader;
+pub use assets::{MAX_ASSET_BYTES, MAX_ASSET_FILES};
 use protected::{ProtectedObjects, Protection};
 pub use reader::FileReader;
 

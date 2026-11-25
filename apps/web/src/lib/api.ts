@@ -44,11 +44,48 @@ export class FileApi {
     return this.request("/entries?path=" + encodeURIComponent(path) + "&recursive=" + recursive, { method: "DELETE" });
   }
   downloadUrl(path: string): string { return "/api/v1/content?path=" + encodeURIComponent(path); }
+  /** The same authorized download, presented inline for the server's allow-listed inert types. */
+  previewUrl(path: string, revision?: number): string {
+    // Browsers retain decoded media by URL even after its DOM node is replaced.
+    // A successful folder refresh supplies a new local cache identity.
+    return this.downloadUrl(path) + (revision === undefined ? "" : `&rev=${revision}`) + "&inline=1";
+  }
+  /** Reads at most `limit` leading bytes. Anything the server does not present as inline text is unsupported. */
+  async previewText(path: string, limit: number, signal?: AbortSignal, revision?: number): Promise<TextPreview | null> {
+    let response: Response;
+    try {
+      response = await fetch(this.previewUrl(path, revision), { headers: { range: `bytes=0-${limit - 1}` }, credentials: "same-origin", signal });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new ApiError("connection_lost", "Cannot reach the sharing device. Check the connection and try again.");
+    }
+    if (!response.ok) throw errorFromBody(await response.json().catch(() => null), response.status);
+    if (!response.headers.get("content-type")?.startsWith("text/plain") || !response.body) { await response.body?.cancel(); return null; }
+    // The bound holds even if a server ignores Range and answers with the whole file.
+    const reader = response.body.getReader();
+    const bytes = new Uint8Array(limit);
+    let length = 0, complete = false;
+    while (length < limit) {
+      const { done, value } = await reader.read();
+      if (done) { complete = true; break; }
+      const chunk = value.subarray(0, limit - length);
+      bytes.set(chunk, length); length += chunk.length;
+      if (chunk.length < value.length) break;
+    }
+    if (!complete) await reader.cancel().catch(() => undefined);
+    const total = Number(response.headers.get("content-range")?.split("/")[1]);
+    const content = bytes.subarray(0, length);
+    if (content.includes(0)) return null;
+    // Streaming mode withholds a multi-byte character cut by the byte limit.
+    return { text: new TextDecoder("utf-8").decode(content, { stream: true }), truncated: Number.isFinite(total) ? total > length : !complete };
+  }
 
   private json<T>(path: string, method: string, body: unknown): Promise<T> {
     return this.request(path, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   }
 }
+
+export interface TextPreview { text: string; truncated: boolean }
 
 export interface UploadProgress { sent: number; total: number; finalizing: boolean }
 

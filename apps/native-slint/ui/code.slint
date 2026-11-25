@@ -1,0 +1,53 @@
+import { Theme } from "theme.slint";
+
+export struct CodeModule { x: int, y: int }
+
+// A QR symbol drawn from its modules on whole logical pixels, with the
+// required four-module quiet zone inside the light plate.
+export component ShareCode inherits Rectangle {
+    in property <[CodeModule]> modules;
+    in property <int> side;
+    in property <string> label;
+    private property <length> unit: floor(min(root.width, root.height) / 1px / (root.side + 8)) * 1px;
+    private property <length> left: round((root.width - root.unit * root.side) / 2px) * 1px;
+    private property <length> top: round((root.height - root.unit * root.side) / 2px) * 1px;
+
+    background: Theme.code-plate;
+    border-radius: 14px;
+    accessible-role: image;
+    accessible-label: root.label;
+
+    for module in root.modules: Rectangle {
+        x: root.left + module.x * root.unit;
+        y: root.top + module.y * root.unit;
+        width: root.unit;
+        height: root.unit;
+        background: Theme.code-ink;
+        accessible-role: none;
+    }
+    for corner in 3: Rectangle {
+        x: root.left + (corner == 1 ? root.side - 7 : 0) * root.unit;
+        y: root.top + (corner == 2 ? root.side - 7 : 0) * root.unit;
+        width: 7 * root.unit;
+        height: 7 * root.unit;
+        border-radius: root.unit * 1.5;
+        background: Theme.code-ink;
+        accessible-role: none;
+        Rectangle {
+            x: root.unit;
+            y: root.unit;
+            width: 5 * root.unit;
+            height: 5 * root.unit;
+            border-radius: root.unit * 0.8;
+            background: Theme.code-plate;
+            Rectangle {
+                x: root.unit;
+                y: root.unit;
+                width: 3 * root.unit;
+                height: 3 * root.unit;
+                border-radius: root.unit * 0.5;
+                background: Theme.code-ink;
+            }
+        }
+    }
+}

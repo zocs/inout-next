@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,7 +46,7 @@ class NativeTrialPackagingTests(unittest.TestCase):
             "--binary", str(self.binary), "--target", target, "--output", str(output),
         ], capture_output=True, text=True, timeout=10)
 
-    def test_complete_native_archive_keeps_resources_notices_identity_and_executable_mode(self):
+    def test_complete_native_archive_keeps_notices_identity_and_executable_mode(self):
         first = Path(self.temporary.name) / "first"
         second = Path(self.temporary.name) / "second"
         result = self.package(first)
@@ -55,20 +56,27 @@ class NativeTrialPackagingTests(unittest.TestCase):
         archive = first / "renamed-0.1.0-linux-x64-native-slint-trial.zip"
         with zipfile.ZipFile(archive) as bundle:
             self.assertEqual(set(bundle.namelist()), {
-                "share-native-slint", "web/index.html", "web/_next/static/app.js",
+                "share-native-slint",
                 "LICENSE", "README.md", "QUICKSTART.txt", "product.json",
                 "THIRD_PARTY.md", "LICENSES/Slint-Royalty-free-2.0.md",
             })
-            self.assertEqual(bundle.read("web/index.html"), b"<!doctype html><title>Exact export</title>")
             self.assertEqual(bundle.read("share-native-slint"), b"Native executable fixture")
             self.assertEqual(json.loads(bundle.read("product.json")), self.product)
             self.assertEqual(bundle.read("README.md"), b"Native desktop trial usage\n")
             self.assertEqual(bundle.read("LICENSES/Slint-Royalty-free-2.0.md"), self.notice.read_bytes())
             self.assertEqual((bundle.getinfo("share-native-slint").external_attr >> 16) & 0o777, 0o755)
-            self.assertEqual((bundle.getinfo("web/index.html").external_attr >> 16) & 0o777, 0o644)
         contents = archive.read_bytes()
         self.assertEqual(contents, (second / archive.name).read_bytes())
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().split()[0], hashlib.sha256(contents).hexdigest())
+
+    def test_embedded_native_archive_does_not_require_or_publish_a_separate_export(self):
+        shutil.rmtree(self.root / "apps/web/out")
+        output = Path(self.temporary.name) / "embedded"
+        result = self.package(output)
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        with zipfile.ZipFile(output / "renamed-0.1.0-linux-x64-native-slint-trial.zip") as bundle:
+            self.assertEqual(bundle.read("share-native-slint"), b"Native executable fixture")
+            self.assertFalse(any(name.startswith("web/") for name in bundle.namelist()))
 
     def test_windows_package_uses_the_fixed_gui_binary_name(self):
         output = Path(self.temporary.name) / "windows"

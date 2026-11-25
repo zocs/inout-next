@@ -337,3 +337,51 @@ input, select { caret-color: var(--color-accent); }
   .field input, .field select, .search-field input { font-size: 16px; }
   .host-heading h2 { font-size: 26px; }
 }
+
+/* Current permissions: one labelled readout aligned with the header controls. */
+.header-actions { align-items: flex-end; }
+.access-summary { display: grid; gap: var(--space-unit); min-width: 0; max-width: 100%; }
+.access-label { font-size: 12px; color: var(--color-shell-muted); }
+.access-readout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-unit) var(--space-compact); min-height: 40px; padding: var(--space-small) var(--space-row); border: 1px solid var(--color-header-border); border-radius: var(--radius-control); }
+.access-mode { color: var(--color-surface); font-size: 13px; font-weight: 650; }
+.access-readout ul { display: flex; flex-wrap: wrap; gap: var(--space-micro) var(--space-row); margin: 0; padding: 0 0 0 var(--space-compact); list-style: none; border-left: 1px solid var(--color-header-border); }
+.access-readout li { display: inline-flex; align-items: center; gap: var(--space-unit); font-size: 12px; white-space: nowrap; color: var(--color-surface); }
+.access-readout li svg { flex: 0 0 auto; }
+.access-readout li[data-allowed="false"] { color: var(--color-shell-muted); }
+.access-readout li[data-allowed="false"] > span[aria-hidden] { text-decoration: line-through; text-decoration-thickness: 1px; }
+.touch-controls .access-readout { min-height: 48px; }
+
+/* Preview: an inert presentation of the selected file inside its inspector. */
+:root { --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.preview { display: grid; gap: var(--space-action); min-width: 0; margin-bottom: var(--space-standard); }
+.preview-label { font-size: 12px; color: var(--color-muted); }
+.preview-frame { position: relative; display: grid; place-items: center; min-width: 0; min-height: 96px; overflow: hidden; background: var(--color-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-control); }
+.preview-frame img, .preview-frame video { display: block; max-width: 100%; max-height: 260px; object-fit: contain; }
+.preview-frame audio { display: block; width: 100%; min-width: 0; }
+.preview[data-kind="audio"] .preview-frame { min-height: 54px; border: 0; background: none; }
+.preview-loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; max-width: none; padding: var(--space-compact); font-size: 12px; color: var(--color-muted); background: var(--color-secondary); }
+.preview-text { justify-self: stretch; align-self: stretch; min-width: 0; max-height: 260px; margin: 0; padding: var(--space-row) var(--space-compact); overflow: auto; background: var(--color-surface); color: var(--color-ink); font: 12px/1.55 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.preview-text:focus-visible { outline-offset: -2px; }
+.preview-note { font-size: 12px; color: var(--color-muted); }
+.preview-note.error-text { color: var(--color-error); }
+.preview-unavailable { display: flex; align-items: flex-start; gap: var(--space-action); padding: var(--space-row) var(--space-compact); background: var(--color-secondary); border-radius: var(--radius-control); }
+.preview-unavailable svg { flex: 0 0 auto; margin-top: 1px; }
+.preview-load, .preview-enlarge { width: 100%; }
+dialog.preview-dialog { width: calc(100% - 32px); max-width: 1080px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding: var(--space-section); }
+dialog.preview-dialog[open] { display: flex; flex-direction: column; gap: var(--space-detail); }
+.preview-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-compact); min-width: 0; }
+dialog.preview-dialog h2 { min-width: 0; margin: 0; font-size: 17px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-dialog-body { display: grid; justify-items: center; gap: var(--space-row); min-height: 0; overflow: auto; border-radius: var(--radius-control); background: var(--color-secondary); }
+.preview-dialog-body img { display: block; max-width: 100%; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); object-fit: contain; }
+.preview-dialog-body .preview-text { max-height: none; overflow: visible; font-size: 13px; }
+dialog.preview-dialog .preview-note { margin: 0; padding: 0 var(--space-compact) var(--space-row); justify-self: start; }
+@media (max-width: 1190px) {
+  .preview-frame img, .preview-frame video, .preview-text { max-height: 320px; }
+}
+@media (max-width: 760px) {
+  /* Lock stays beside the preferences; permissions become one compact caption row. */
+  .access-summary { order: 3; flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-unit) var(--space-row); }
+  .access-readout { min-height: 0; padding: 0; border: 0; }
+  .access-mode { font-size: 12px; }
+  dialog.preview-dialog { padding: var(--space-standard); }
+}

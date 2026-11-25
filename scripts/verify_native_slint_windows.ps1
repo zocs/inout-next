@@ -23,6 +23,8 @@ $WorkingDirectory = Join-Path ([IO.Path]::GetTempPath()) ('inout-native-startup-
 New-Item -ItemType Directory -Path $WorkingDirectory | Out-Null
 $OldTrace = [Environment]::GetEnvironmentVariable('INOUT_NATIVE_TRACE','Process')
 $OldBackend = [Environment]::GetEnvironmentVariable('SLINT_BACKEND','Process')
+$OldPreferences = [Environment]::GetEnvironmentVariable('INOUT_NATIVE_PREFERENCES','Process')
+$Preferences = Join-Path $WorkingDirectory 'native-preferences.conf'
 $Native = $null
 $ClosePosted = $false
 $Failure = $null
@@ -30,6 +32,7 @@ $Result = [ordered]@{
     result='failed'; binary=$Binary; binaryBytes=(Get-Item -LiteralPath $Binary).Length;
     binarySha256=(Get-FileHash -LiteralPath $Binary -Algorithm SHA256).Hash.ToLowerInvariant();
     expectedTitle=$ExpectedTitle; defaultRenderer=$true; unrelatedWorkingDirectory=$WorkingDirectory;
+    isolatedPreferences=$Preferences;
     measurement='controller-ready callback before presentation'; startedAt=[DateTime]::UtcNow.ToString('o')
 }
 
@@ -116,6 +119,9 @@ function Verify-OwnedChoices {
 try {
     [Environment]::SetEnvironmentVariable('INOUT_NATIVE_TRACE','1','Process')
     [Environment]::SetEnvironmentVariable('SLINT_BACKEND',$null,'Process')
+    # Choice probes and ordinary close save drafts. Keep those writes inside
+    # this audit fixture, including when the caller overrides its own prefs.
+    [Environment]::SetEnvironmentVariable('INOUT_NATIVE_PREFERENCES',$Preferences,'Process')
     $Native = Start-Process -FilePath $Binary -WorkingDirectory $WorkingDirectory -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr -PassThru
     # Retain the process handle: Windows PowerShell5 can otherwise lose its
     # exit code between an asynchronous Start-Process and WaitForExit.
@@ -175,9 +181,14 @@ try {
                 [Environment]::SetEnvironmentVariable('SLINT_BACKEND',$OldBackend,'Process')
             } catch { $Finalization.backendRestore = $_.Exception.Message }
             finally {
-                if ($null -ne $Native) {
-                    try { $Native.Dispose() }
-                    catch { $Finalization.processDispose = $_.Exception.Message }
+                try {
+                    [Environment]::SetEnvironmentVariable('INOUT_NATIVE_PREFERENCES',$OldPreferences,'Process')
+                } catch { $Finalization.preferencesRestore = $_.Exception.Message }
+                finally {
+                    if ($null -ne $Native) {
+                        try { $Native.Dispose() }
+                        catch { $Finalization.processDispose = $_.Exception.Message }
+                    }
                 }
             }
         }

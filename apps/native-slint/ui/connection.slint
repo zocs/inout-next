@@ -1,69 +1,201 @@
-import { ComboBox, LineEdit } from "std-widgets.slint";
-import { NativeButton } from "controls.slint";
-import { Labels } from "text.slint";
-import { NativeTheme, Heading, Body, Hint } from "theme.slint";
+import { ActionButton, ButtonKind, Choice, Disclosure, StateChip, TextField } from "controls.slint";
+import { CodeModule, ShareCode } from "code.slint";
+import { Tr } from "text.slint";
+import { Theme, Heading, Label, Body, Hint } from "theme.slint";
 
-export component Connection inherits Rectangle {
-    in property <Labels> labels;
+export struct EndpointRow { url: string, title: string }
+export struct PermissionChip { text: string, state: string, on: bool }
+
+component Step inherits HorizontalLayout {
+    in property <string> number;
+    in property <string> text;
+    spacing: 12px;
+    VerticalLayout {
+        alignment: start;
+        Rectangle {
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            background: Theme.wash;
+            Text {
+                text: root.number;
+                color: Theme.accent;
+                font-size: 13px;
+                font-weight: 700;
+                accessible-role: none;
+            }
+        }
+    }
+    Body { text: root.text; vertical-alignment: center; horizontal-stretch: 1; }
+}
+
+// The address other devices use: a scannable code, the address in words,
+// which connection it belongs to, and what visitors are allowed to do.
+export component SharePanel inherits Rectangle {
     in property <bool> running;
     in property <bool> enabled;
-    in property <[string]> addresses;
+    in property <[CodeModule]> code-modules;
+    in property <int> code-side;
+    in property <[EndpointRow]> endpoints;
     in property <string> selected-address;
-    in property <string> effective-settings;
-    in property <string> shared-folder;
-    in-out property <int> address-index: 0;
-    callback address-selected(int);
+    in property <string> selected-title;
+    in property <bool> local-only;
+    in property <bool> lan-missing;
+    in property <[PermissionChip]> permissions;
+    in property <string> access-summary;
+    in property <string> notice;
+    in-out property <int> endpoint-index: 0;
+    in-out property <bool> connections-open;
+    callback endpoint-selected(int);
     callback copy-address();
     callback browser-result(bool);
-    min-width: 280px;
+
+    min-width: 340px;
     min-height: layout.min-height;
-    background: NativeTheme.secondary;
-    border-radius: 12px;
+    background: Theme.surface;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: root.running ? Theme.accent.with-alpha(0.55) : Theme.border;
+    animate border-color { duration: Theme.settle; easing: ease-out; }
 
     layout := VerticalLayout {
         alignment: start;
-        padding: 22px;
-        spacing: 12px;
-        Heading {
-            text: root.running ? root.labels.running : root.labels.stopped;
+        padding: 24px;
+        spacing: 16px;
+
+        HorizontalLayout {
+            spacing: 10px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: root.running ? Theme.accent : Theme.field-border;
+                    animate background { duration: Theme.settle; easing: ease-out; }
+                }
+            }
+            Heading {
+                text: root.running ? Tr.l.running : Tr.l.stopped;
+                horizontal-stretch: 1;
+                accessible-live-region: polite;
+            }
+        }
+
+        if !root.running: VerticalLayout {
+            spacing: 14px;
+            Hint { text: Tr.l.scan; }
+            Step { number: "1"; text: Tr.l.step-choose; }
+            Step { number: "2"; text: Tr.l.step-start; }
+            Step { number: "3"; text: Tr.l.step-scan; }
+        }
+
+        if root.running && !root.local-only && root.code-side > 0: VerticalLayout {
+            spacing: 8px;
+            HorizontalLayout {
+                alignment: center;
+                ShareCode {
+                    width: 212px;
+                    height: 212px;
+                    modules: root.code-modules;
+                    side: root.code-side;
+                    label: Tr.l.code + ": " + root.selected-address;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                }
+            }
+            Hint { text: Tr.l.scan; horizontal-alignment: center; }
+        }
+
+        if root.running && root.local-only: Rectangle {
+            min-height: local-layout.min-height;
+            background: Theme.sunken;
+            border-radius: 10px;
+            local-layout := VerticalLayout {
+                padding: 14px;
+                Body { text: root.lan-missing ? Tr.l.no-lan : Tr.l.local-only-note; }
+            }
+        }
+
+        if root.running: VerticalLayout {
+            spacing: 4px;
+            Hint { text: root.selected-title; }
+            TextField {
+                text: root.selected-address;
+                label: Tr.l.address;
+                read-only: true;
+                enabled: root.enabled;
+            }
+        }
+
+        if root.running: HorizontalLayout {
+            spacing: 8px;
+            ActionButton {
+                kind: ButtonKind.primary;
+                text: Tr.l.copy-address;
+                available: root.enabled;
+                horizontal-stretch: 1;
+                activated => { root.copy-address(); }
+            }
+            ActionButton {
+                text: Tr.l.open-browser;
+                available: root.enabled;
+                horizontal-stretch: 1;
+                activated => { root.browser-result(Platform.open-url(root.selected-address)); }
+            }
+        }
+
+        if root.running && !root.notice.is-empty: Body {
+            text: root.notice;
+            color: Theme.accent;
+            font-weight: 600;
             accessible-live-region: polite;
         }
-        if root.running: Body {
-            text: root.shared-folder;
-            wrap: char-wrap;
-            accessible-label: root.labels.folder + ": " + root.shared-folder;
+
+        if root.running && root.endpoints.length > 1: VerticalLayout {
+            spacing: 8px;
+            HorizontalLayout {
+                alignment: start;
+                Disclosure {
+                    text: Tr.l.switch-connection + " (" + root.endpoints.length + ")";
+                    open <=> root.connections-open;
+                    enabled: root.enabled;
+                }
+            }
+            if root.connections-open: VerticalLayout {
+                spacing: 6px;
+                for endpoint[index] in root.endpoints: Choice {
+                    title: endpoint.title;
+                    detail: endpoint.url;
+                    checked: index == root.endpoint-index;
+                    enabled: root.enabled;
+                    chosen => { root.endpoint-selected(index); }
+                }
+            }
         }
-        if root.running: Hint { text: root.effective-settings; }
-        Rectangle { height: 8px; }
-        Body { text: root.labels.address; font-weight: 600; }
-        if !root.running: Hint { text: root.labels.no-address; }
-        if root.running: ComboBox {
-            model: root.addresses;
-            current-index <=> root.address-index;
-            accessible-label: root.labels.address;
-            accessible-description: self.current-value;
-            enabled: root.enabled;
-            min-height: 42px;
-            selected => { root.address-selected(self.current-index); }
-        }
-        if root.running: LineEdit {
-            text: root.selected-address;
-            read-only: true;
-            enabled: root.enabled;
-            accessible-label: root.labels.address;
-            min-height: 42px;
-        }
-        if root.running: NativeButton {
-            text: root.labels.copy-address;
-            available: root.enabled;
-            min-height: 40px;
-            activated => { root.copy-address(); }
-        }
-        if root.running: NativeButton {
-            text: root.labels.open-browser;
-            available: root.enabled;
-            min-height: 40px;
-            activated => { root.browser-result(Platform.open-url(root.selected-address)); }
+
+        if root.running: Rectangle { height: 1px; background: Theme.border; }
+
+        if root.running: VerticalLayout {
+            spacing: 10px;
+            accessible-role: groupbox;
+            accessible-label: Tr.l.current-permissions;
+            Label { text: Tr.l.current-permissions; accessible-role: none; }
+            for pair in 2: HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                StateChip {
+                    text: root.permissions[pair * 2].text;
+                    state: root.permissions[pair * 2].state;
+                    on: root.permissions[pair * 2].on;
+                }
+                StateChip {
+                    text: root.permissions[pair * 2 + 1].text;
+                    state: root.permissions[pair * 2 + 1].state;
+                    on: root.permissions[pair * 2 + 1].on;
+                }
+            }
+            Hint { text: root.access-summary; }
         }
     }
 }
