@@ -59,6 +59,8 @@ Permissions additionally distinguish `rename` and `delete` from general `manage`
 
 `FileStore` uses neutral readers and typed metadata/errors for list/open/upload/mkdir/move/copy/remove. It reports move support and can return proven-isolated `WebAsset` snapshots; that asset method defaults to unsupported. Injection does not open `ServerConfig.root`. Providers must keep work owned by their futures so cancellation releases readers, unpublished stages and resources. FsStore closes a child inspection capability before parent-relative nonrecursive deletion, preserving Windows directory-handle semantics. Platform/provider limits are in [platforms](platforms.md).
 
+FsStore retains valid unrelated `nsfs` namespace handles as opaque mount roots without disabling filesystem-resource isolation. An active, nested or covered opaque mount within the shared/public subtrees rejects the snapshot. Bind, layered-origin and bounded hard-link checks remain provider responsibilities.
+
 An opened download exposes `FileReader`, which preserves optional seeking on its original handle. HTTP ranges call its positioning operation; an asynchronous stream-only provider can retain forward reading without implementing a filesystem path or reopening one. Upload readers keep their existing neutral streaming interface.
 
 The shared HTTP `DownloadControl` validates 16–128 KiB buffers in 16 KiB steps, defaulting to 128 KiB. Hosts receive a clone from the running service. Each GET captures the setting once, so active transfers retain their starting buffer. This application-side control does not add a public HTTP tuning route or per-byte monitoring.

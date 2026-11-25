@@ -1,7 +1,7 @@
 //! Compare Linux filesystem subtrees, including bind mounts of individual files.
-//! Layered origins across device identities are rejected: identity walks cannot
-//! prove that their underlying content is separate. Other unavailable topology
-//! requires the bounded identity walk.
+//! Layered origins across device identities and relevant opaque origins are
+//! rejected: identity walks cannot prove their backing content separate. Other
+//! unavailable topology requires the bounded identity walk.
 use cap_std::fs::Dir;
 use share_domain::Error;
 
@@ -41,7 +41,8 @@ mod linux {
     struct Mount {
         id: u64,
         device: (u64, u64),
-        root: PathBuf,
+        // nsfs roots are namespace handles, not comparable filesystem paths.
+        root: Option<PathBuf>,
         point: PathBuf,
         layered: bool,
     }
@@ -98,6 +99,36 @@ mod linux {
         Ok(path)
     }
 
+    fn mount_root(bytes: &[u8], filesystem: &[u8]) -> Result<Option<PathBuf>, Error> {
+        if filesystem != b"nsfs" {
+            return decode_path(bytes).map(Some);
+        }
+        if bytes.starts_with(b"/") {
+            decode_path(bytes)?;
+        } else {
+            let separator = bytes
+                .iter()
+                .position(|byte| *byte == b':')
+                .ok_or(Error::Unsupported)?;
+            if !matches!(
+                &bytes[..separator],
+                b"cgroup" | b"ipc" | b"mnt" | b"net" | b"pid" | b"time" | b"user" | b"uts"
+            ) {
+                return Err(Error::Unsupported);
+            }
+            let inode = bytes[separator..]
+                .strip_prefix(b":[")
+                .and_then(|suffix| suffix.strip_suffix(b"]"))
+                .ok_or(Error::Unsupported)?;
+            if number(inode)? == 0 {
+                return Err(Error::Unsupported);
+            }
+        }
+        // A valid nsfs record elsewhere must not invalidate the mount table.
+        // When relevant, this opaque origin still cannot authorize a snapshot.
+        Ok(None)
+    }
+
     fn parse(table: &[u8]) -> Result<Vec<Mount>, Error> {
         if table.len() as u64 > MAX_TABLE_BYTES || !table.ends_with(b"\n") {
             return Err(Error::Unsupported);
@@ -130,7 +161,7 @@ mod linux {
             mounts.push(Mount {
                 id,
                 device: (major, minor),
-                root: decode_path(fields[3])?,
+                root: mount_root(fields[3], fields[separator + 1])?,
                 point: decode_path(fields[4])?,
                 // Layered filesystems can show an underlying file under a new
                 // device ID. nlink/device/inode comparison cannot rule that out.
@@ -178,21 +209,21 @@ mod linux {
             .map_err(|_| Error::Unsupported)?;
         let mut result = vec![Origin {
             device: active.device,
-            path: active.root.join(relative),
+            path: active.root.as_ref().ok_or(Error::Forbidden)?.join(relative),
             layered: active.layered,
         }];
-        // Include every nested mount conservatively, even a covered mount.
+        // Include every nested/covered mount, including at this exact path.
         // This also covers bind-mounted regular files without extra tree I/O.
-        result.extend(
-            mounts
-                .iter()
-                .filter(|mount| mount.point != path && mount.point.starts_with(path))
-                .map(|mount| Origin {
-                    device: mount.device,
-                    path: mount.root.clone(),
-                    layered: mount.layered,
-                }),
-        );
+        for mount in mounts
+            .iter()
+            .filter(|mount| mount.id != id && mount.point.starts_with(path))
+        {
+            result.push(Origin {
+                device: mount.device,
+                path: mount.root.as_ref().ok_or(Error::Forbidden)?.clone(),
+                layered: mount.layered,
+            });
+        }
         result.sort_unstable();
         result.dedup();
         Ok(result)
@@ -273,6 +304,80 @@ mod linux {
             ));
             assert!(origins(&mounts, 2, Path::new("/share")).is_err());
             assert!(origins(&mounts, 99, Path::new("/assets")).is_err());
+        }
+
+        #[test]
+        fn unrelated_nsfs_mounts_do_not_disable_comparable_origins() {
+            for namespace in ["cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"] {
+                let table = format!(
+                    "1 0 8:1 / / rw - ext4 /dev/sda rw\n4 1 0:4 {namespace}:[4026531833] /namespaces/handle rw - nsfs nsfs rw\n"
+                );
+                let mounts = parse(table.as_bytes()).unwrap();
+                let shared = origins(&mounts, 1, Path::new("/share")).unwrap();
+                let public = origins(&mounts, 1, Path::new("/assets")).unwrap();
+                assert!(!overlap(&shared, &public));
+                assert!(!layered_origins_uncertain(&shared, &public));
+
+                let aliased = format!(
+                    "{table}5 1 8:1 /share/private /assets/exposed rw - ext4 /dev/sda rw\n"
+                );
+                let mounts = parse(aliased.as_bytes()).unwrap();
+                assert!(overlap(
+                    &origins(&mounts, 1, Path::new("/share")).unwrap(),
+                    &origins(&mounts, 1, Path::new("/assets")).unwrap()
+                ));
+
+                let layered = format!("{table}5 1 0:5 / /assets/exposed rw - overlay overlay rw\n");
+                let mounts = parse(layered.as_bytes()).unwrap();
+                assert!(layered_origins_uncertain(
+                    &origins(&mounts, 1, Path::new("/share")).unwrap(),
+                    &origins(&mounts, 1, Path::new("/assets")).unwrap()
+                ));
+            }
+        }
+
+        #[test]
+        fn nsfs_origins_touching_either_subtree_cannot_prove_separation() {
+            for (point, subtree) in [
+                ("/share/namespace", "/share"),
+                ("/assets/namespace", "/assets"),
+                ("/share", "/share"),
+                ("/assets", "/assets"),
+            ] {
+                for root in ["net:[4026531833]", "/"] {
+                    let table = format!(
+                        "1 0 8:1 / / rw - ext4 /dev/sda rw\n4 1 0:4 {root} {point} rw - nsfs nsfs rw\n"
+                    );
+                    let mounts = parse(table.as_bytes()).unwrap();
+                    assert!(matches!(
+                        origins(&mounts, 4, Path::new(point)),
+                        Err(Error::Forbidden)
+                    ));
+                    // Even a covered mount at the exact subtree path keeps the
+                    // proof conservative when another mount ID is active.
+                    assert!(matches!(
+                        origins(&mounts, 1, Path::new(subtree)),
+                        Err(Error::Forbidden)
+                    ));
+                }
+            }
+        }
+
+        #[test]
+        fn malformed_or_non_nsfs_synthetic_roots_cannot_prove_separation() {
+            for invalid in [
+                b"1 0 0:4 net:[4026531833] /outside rw - ext4 dev rw\n".as_slice(),
+                b"1 0 0:4 relative /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 unknown:[4026531833] /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 net:[letters] /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 net:[0] /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 net:[18446744073709551616] /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 net:[1]/../private /outside rw - nsfs nsfs rw\n",
+                b"1 0 0:4 net:[1] relative rw - nsfs nsfs rw\n",
+                b"1 0 0:4 /../private /outside rw - nsfs nsfs rw\n",
+            ] {
+                assert!(parse(invalid).is_err());
+            }
         }
 
         #[test]

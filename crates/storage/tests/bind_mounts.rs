@@ -24,6 +24,15 @@ fn public_assets_reject_layered_aliases_with_distinct_device_ids() {
     );
 }
 
+#[test]
+#[ignore = "requires Linux unprivileged user/mount namespaces and mount(8)"]
+fn unrelated_nsfs_mount_does_not_force_a_walk_of_the_share() {
+    in_namespace(
+        "unrelated_nsfs_mount_does_not_force_a_walk_of_the_share",
+        exercise_namespace_mounts,
+    );
+}
+
 fn in_namespace(test: &str, fixture: fn(&Path)) {
     const CHILD: &str = "INOUT_ASSET_MOUNT_FIXTURE";
     if let Some(directory) = std::env::var_os(CHILD) {
@@ -45,6 +54,45 @@ fn in_namespace(test: &str, fixture: fn(&Path)) {
         String::from_utf8_lossy(&result.stderr),
     );
     // The child namespace is gone before TempDir removes any fixture paths.
+}
+
+fn exercise_namespace_mounts(parent: &Path) {
+    let share = parent.join("share");
+    let assets = parent.join("assets");
+    fs::create_dir(&share).unwrap();
+    fs::create_dir(&assets).unwrap();
+    fs::write(assets.join("index.html"), b"trusted index").unwrap();
+    // A fallback identity walk exceeds the real depth bound with few entries.
+    let mut deep = share.clone();
+    for _ in 0..131 {
+        deep.push("d");
+        fs::create_dir(&deep).unwrap();
+    }
+
+    let unrelated = parent.join("unrelated-namespace");
+    fs::write(&unrelated, b"").unwrap();
+    bind(Path::new("/proc/self/ns/net"), &unrelated);
+    let table = fs::read_to_string("/proc/self/mountinfo").unwrap();
+    let record = table
+        .lines()
+        .find(|line| line.split(' ').nth(4) == unrelated.to_str())
+        .expect("namespace fixture must appear in the actual mount table");
+    assert!(record.contains(" - nsfs nsfs "));
+    assert!(record.split(' ').nth(3).unwrap().starts_with("net:["));
+
+    let store = FsStore::new(&share).unwrap();
+    let files = store
+        .web_assets(&assets)
+        .expect("an unrelated nsfs mount must not force a shared identity walk");
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].path, "index.html");
+    assert_eq!(files[0].bytes, b"trusted index");
+
+    // An opaque origin in the share cannot authorize the public snapshot.
+    let related = share.join("namespace");
+    fs::write(&related, b"").unwrap();
+    bind(Path::new("/proc/self/ns/net"), &related);
+    assert!(matches!(store.web_assets(&assets), Err(Error::Forbidden)));
 }
 
 fn overlay(lower: &Path, destination: &Path, scratch: &Path) {

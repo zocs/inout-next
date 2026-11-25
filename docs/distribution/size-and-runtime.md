@@ -82,7 +82,7 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 
 ## Current source web export
 
-The locally verified preview/management integration exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by the native executable's embedded bundle.
+The locally verified preview/management integration at `77abf6f` exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by that checkpoint's native executable. The subsequent `nsfs` storage repair preserves the web sources/export; it does not repeat this browser or GUI runtime acceptance.
 
 The earlier local localization/permission checkpoint exported 36 files / 1,084,605 bytes, with 1,011,194 raw JavaScript bytes and 312,634 per-file gzip bytes, and passed 131 Chromium cases. Its figures and the earlier release-package measurements retain their own exports and provenance.
 
@@ -103,7 +103,7 @@ The unsigned APK is **16,099,144 bytes**, with one 13,254,104-byte arm64 Rust li
 
 ## Functional Slint desktop trial
 
-The current opt-in Slint desktop client controls the real service without a WebView. It is separate from the published Tauri previews and the throwaway toolkit fixtures below. The redesigned local Linux x64 package uses Rust 1.100.0 and Node 26.13.1, embeds its own exact browser export and includes source/framework/qrcodegen/tempfile notices. Its executable runs outside the checkout from an unrelated working directory and shares a folder containing itself.
+The current opt-in Slint desktop client controls the real service without a WebView. It is separate from the published Tauri previews and the throwaway toolkit fixtures below. The redesigned local Linux x64 package at `77abf6f` uses Rust 1.100.0 and Node 26.13.1, embeds its own exact browser export and includes source/framework/qrcodegen/tempfile notices. Its executable runs outside the checkout from an unrelated working directory and shares a folder containing itself. The following package/runtime figures retain that checkpoint; the `nsfs` repair's rebuilt executable has separate bytes and no additional GUI runtime acceptance.
 
 | Redesigned local trial item | Bytes | MiB |
 | --- | ---: | ---: |
