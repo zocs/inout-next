@@ -40,6 +40,8 @@ Slint 的 Android 后端实现了 InputConnection 和输入组合状态处理，
 
 两项实际 AppWindow 回归与原有22项测试一同通过：启用 GUI 时24项，关闭 GUI 时22项，两种配置另分别执行8独立进程×32轮偏好夹具；格式、严格 all-target Clippy 和锁定依赖的优化构建通过。新的 Linux X11 运行通过独立剪贴板读取和真实 HTTP 认证，验证掩码/显示状态下的 C/X、有效鼠标选区和替换粘贴，并覆盖普通目录剪切/Unicode粘贴、只读地址 Copy/PRIMARY、Rime目录预编辑/提交及掩码口令提交，以及正常关闭和自有资源清理。[新本地可执行文件](distribution/size-and-runtime.md#local-native-clipboard-correction)与下方历史包分别记录，旧包不含这次修正。
 
+修正源码也通过本地固定 Rust 1.99.1 编译检查，覆盖 Linux 有／无 GUI、Windows MSVC x86/x64 和 macOS Intel/ARM64 的应用及回归目标，并通过独立 Linux 优化构建。这些检查没有执行回归或 GUI。新的七成员本地 ZIP 包含此前已通过 X11 验证的同一 Rust 1.100.0 程序及当前说明、许可；仅编译的程序、包内容检查与既有目标运行证据各自保留范围。
+
 点击“显示”后，已测试的 AT-SPI 接口可读取显示文本，内部空值敏感标记不代表系统无障碍隐藏保证。停止服务保留当前窗口的口令草稿，普通关闭不把它写入偏好文件。新的 GTK portal 返回选择错误、没有 URI，原目录草稿保持不变，选择验收仍未完成。Windows/macOS/Wayland 剪贴板与输入、超出无界面回归范围的按住输入/失焦、更广输入法/辅助设备、安装及实机行为仍需分别验证。
 
 此前本地 Linux 功能程序为18,752,320字节（17.88MiB），ZIP为9,216,822字节（8.79MiB），另含36文件/1,084,605字节网页导出。新GUI发布构建内嵌有界网页导出，缺少 `index.html` 或 `_next` 会失败；新原生ZIP不重复打包网页，可在任意工作目录运行并分享包所在的父目录。CLI/Tauri仍使用各自资源布局。运行依赖目标系统图形、字体、显示及桌面服务，不捆绑系统库，也不需要运行时Node/Python/WebView。[体积报告](distribution/size-and-runtime.md)分别记录各检查点。项目源码继续MIT，[第三方说明](../apps/native-slint/THIRD_PARTY.md)包含Slint条款和qrcodegen/tempfile/windows-sys声明。F-Droid自由源码/渠道、Apple分发及移动接入仍是独立关卡。

@@ -120,6 +120,8 @@ python3 scripts/verify_runtime.py --mib 128
 
 最新的 [da7a770 CI](https://github.com/zocs/inout-next/actions/runs/45864654594) 通过 Linux、Android、Windows x86/x64 和 macOS x64。两个 Windows 目标均通过原有线程及独立进程偏好保存回归、严格 Clippy、构建、包检查，以及包内 Slint 程序的启动、语言、主题和正常关闭检查。macOS arm64 因托管 runner 容量不足，在获得执行机器前被取消，因此整轮结果仍为失败，完整六目标验收尚未完成。这些产物早于当前剪贴板修正。[平台状态](docs/platforms.md#ci)记录各目标的实际验证范围。
 
+包含剪贴板修正的源码已通过本地 Rust 1.99.1 全目标编译检查：Linux 有／无 GUI、Windows MSVC x86/x64、macOS Intel/ARM64，以及独立 Linux 优化构建。这些检查会编译回归目标，但不执行测试。[新的本地 Linux ZIP](docs/distribution/size-and-runtime.md#local-native-clipboard-correction)包含已通过 X11 验证的同一 Rust 1.100.0 程序；编译器兼容、包内容检查和目标运行结果各自保留实际范围。
+
 Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主和前台生命周期检查。实际 release APK 已用于认证 HTTP 操作、浏览器上传/下载、监听关闭、重启文件保留及 Activity 生命周期测试；模拟器结果与真机、商店验收分别记录。此前使用完整文件校验的核心对比测量了 128 KiB 缓冲及原句柄 Range 定位，并与旧引擎、FileInfra 实际发布的 dufs 对照。[体积与运行报告](docs/distribution/size-and-runtime.md) 同时记录下载耗时、多连接峰值内存和本机缓存采样边界；这些结果尚不能代表 GUI 或物理局域网性能。
 
 [桌面检查点 c004d68](https://github.com/zocs/inout-next/actions/runs/43649949553) 已按顺序通过全部五个目标。下载后的五份 CLI ZIP、六份原生包已核对程序架构及本轮测试的全部 35 个网页资源，Debian 包与 Windows 安装器的生成身份检查也已通过。产物验证与安装、真机、离线运行及签名验收分别记录。
