@@ -82,7 +82,7 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 
 ## Current source web export
 
-The latest [CI at386005d](https://github.com/zocs/inout-next/actions/runs/45837200172) exports **36 files / 1,098,091 bytes**, with **1,020,555 raw JavaScript bytes** and **315,543 gzip bytes**, measured separately per file. Its Linux browser suite passes146 cases with no skipped, unexpected or flaky results. The Linux and Android artifacts below match that exact export; this is a separate build from the local checkpoint.
+The latest [CI at da7a770](https://github.com/zocs/inout-next/actions/runs/45864654594) exports **36 files / 1,098,091 bytes**, with **1,020,555 raw JavaScript bytes** and **315,543 gzip bytes**, measured separately per file. Its Linux browser suite passes146 cases with no skipped, unexpected or flaky results. The accepted Linux, Windows x86/x64, macOS x64 and Android artifacts below match that exact export; this is a separate build from the local checkpoint.
 
 The locally verified preview/management integration at `77abf6f` exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by that checkpoint's native executable. The local `nsfs` storage repair preserves this export; its later CI uses the separate build measured above, with no additional native GUI runtime acceptance.
 
@@ -210,7 +210,26 @@ The unsigned Tauri arm64 APK is **16,149,852 bytes (15.40MiB)**, with one **13,3
 
 ## Embedded source CI packages
 
-[CI45837200172 at386005d](https://github.com/zocs/inout-next/actions/runs/45837200172) succeeds on Linux and Android, then still fails Windows x86 concurrent preference saving after closing staged handles; Windows x64 is cancelled and macOS skipped. Its three executed jobs do not overlap. These measurements describe the accepted Linux and unsigned Android artifacts from that run, before the subsequent Windows process-coordination repair. All five produced artifact envelopes have verified GitHub API digests. They do not replace the published previews.
+### Current embedded source checkpoint
+
+[CI45864654594 at da7a770](https://github.com/zocs/inout-next/actions/runs/45864654594) succeeds on Linux, Android, Windows x86/x64 and macOS x64. macOS arm64 is cancelled before acquiring a hosted runner because of capacity constraints, so the run ends in failure and complete six-target acceptance remains pending. The five executed jobs do not overlap. All eight produced artifact envelopes have verified GitHub API digests; no macOS arm64 package exists for this run. These packages do not replace the published previews.
+
+| Target | CLI ZIP bytes | Server bytes | Slint ZIP bytes | Slint executable bytes | Transitional Tauri package bytes |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Linux x64 | 1,752,662 | 4,089,424 | 9,122,352 | 20,178,128 | AppImage82,987,512; deb4,737,374 |
+| Windows x86 | 1,469,046 | 2,391,552 | 7,361,903 | 14,397,952 | NSIS2,880,076 |
+| Windows x64 | 1,574,725 | 2,988,544 | 7,437,184 | 14,994,944 | NSIS3,093,686 |
+| macOS x64 | 1,647,494 | 3,475,544 | 6,895,482 | 14,001,168 | DMG4,519,558 |
+
+All four Slint archives have seven members, omit duplicate `web/` and contain every exact path and original payload from the36file/1,098,091byte export in their executable bytes. CLI/Tauri resources and ELF/PE/Mach-O architectures pass inspection. Both exact Windows Slint executables pass default-renderer startup, Simplified/Traditional/English readback, retained theme and normal close; NSIS identity uses a separate rendered/copy-input fixture. macOS x64 creates its DMG on the first attempt. No macOS GUI, full Windows input/IME/clipboard, real32bit OS, installed/offline or signing clearance follows.
+
+Linux passes146 Chromium cases and streamed128MiB/relocated8MiB CLI integrity, public listing, empty staging and Ctrl-C cleanup, with RSS growth3,088,384bytes (2.95MiB) and1,998,848bytes (1.91MiB). These CLI probes do not measure native GUI presentation or matched performance.
+
+The unsigned Tauri arm64 APK is **16,213,704 bytes (15.46MiB)**, with one **13,365,056-byte Rust library** and the same36web resources. Its SHA-256 is `7e8f38dbd6b152e897e4b1dad2deb7c7ab3ab6cae8aced7df6d6b754ebeb75b1`. Seven Kotlin cases, two actual locked release-library builds, unchanged source locks and exact manifest/resources/single-ABI/ELF/native ZIP16KiB alignment pass. It has no v1 signature entries or APK signing block, and establishes no new device,16KiB runtime, signing, Slint mobile or store acceptance.
+
+### Prior embedded source checkpoint
+
+[CI45837200172 at386005d](https://github.com/zocs/inout-next/actions/runs/45837200172) succeeds on Linux and Android, then still fails Windows x86 concurrent preference saving after closing staged handles; Windows x64 is cancelled and macOS skipped. Its three executed jobs do not overlap. The following measurements describe that run's accepted Linux and unsigned Android artifacts, before the Windows process-coordination repair. All five produced artifact envelopes have verified GitHub API digests.
 
 | Linux x64 item | Bytes | MiB |
 | --- | ---: | ---: |

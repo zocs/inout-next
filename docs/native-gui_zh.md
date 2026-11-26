@@ -32,7 +32,7 @@ Slint 的 Android 后端实现了 InputConnection 和输入组合状态处理，
 
 `77abf6f` 自绘控件检查点通过22项原生测试、锁定调试/发布构建及严格Clippy，HTTP管理器通过146项Chromium测试，覆盖相同元数据预览替换、大图显式加载、媒体播放和过期管理回复。该检查点的Linux X11客户端已实际验证三种语言、四种强调色、系统/明/暗选择、设置控件的键盘遍历、权限预设、关于窗口关闭、780×600窗口内同高的36像素标题控件、非法端口拒绝及Rime中文输入组合。普通关闭和重启保留未启动的草稿，口令不保存。移出源码目录的程序能分享包含自身的目录，36份内嵌网页资源逐字节一致；同一原始2MiB上传在外观变化及取消停止/正常关闭期间保持原连接，最终发布并通过磁盘与下载校验。确认停止清理另一份未完成暂存文件并释放监听。系统选择器的取消已验证，本地GTK环境中的选择仍未通过验收。这些本地检查不替代其他平台、安装/离线和完整辅助设备验收。
 
-`nsfs` 存储修补后，本地Linux通过115项核心/宿主、22项原生和15项Tauri测试、严格Clippy及锁定CLI/原生构建，三个真实命名空间回归覆盖bind、OverlayFS及`nsfs`。随后[386005d CI](https://github.com/zocs/inout-next/actions/runs/45837200172)通过Linux115/22/15项测试、61项Python、146项Chromium及Android未签名锁定构建/包检查。关闭暂存句柄后，Windows x86的并发偏好保存仍失败，Windows x64取消，macOS跳过。后续源码修补在完整写入并关闭各自的独占暂存文件后，按已打开目录的身份协调Windows进程间的原子替换，Windows验证仍待完成。该CI的七成员Linux原生ZIP和内嵌资源通过字节检查；上述GUI运行仍属于`77abf6f`检查点。[本轮测量](distribution/size-and-runtime.md#embedded-source-ci-packages)不增加原生GUI、设备或安装验收。
+`nsfs` 存储修补后，本地Linux通过115项核心/宿主、22项原生和15项Tauri测试、严格Clippy及锁定CLI/原生构建，三个真实命名空间回归覆盖bind、OverlayFS及`nsfs`。[da7a770 CI](https://github.com/zocs/inout-next/actions/runs/45864654594)通过Linux115/22/15项测试、61项Python、146项Chromium及Android未签名锁定构建/包检查。Windows x86/x64各通过99项核心/宿主、22项原生、15项Tauri、严格Clippy、构建及线程和独立进程偏好回归；macOS x64通过105/22/15项测试及包检查。四份七成员Slint ZIP均通过内嵌资源精确字节检查，两个Windows包内程序也通过默认渲染器启动、简繁英读回、主题保留和正常关闭。macOS arm64因托管容量不足，未获得runner就被取消，完整六目标验收仍待完成。上述更广泛的Linux GUI运行仍属于`77abf6f`检查点；[本轮测量](distribution/size-and-runtime.md#embedded-source-ci-packages)不增加macOS GUI、完整目标输入、设备或安装验收。
 
 锁定的AccessKit AT-SPI适配缺少EditableText，并把禁用按钮报告为可用；只读地址也缺少Enabled/Sensitive状态，但实际选中和复制已验证。直接响应式状态和应用动作保护阻止禁用动作，完整读屏、更广的字体/输入法覆盖和各平台动态效果偏好仍需单独验收。
 
