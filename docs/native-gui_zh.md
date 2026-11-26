@@ -32,7 +32,7 @@ Slint 的 Android 后端实现了 InputConnection 和输入组合状态处理，
 
 `77abf6f` 自绘控件检查点通过22项原生测试、锁定调试/发布构建及严格Clippy，HTTP管理器通过146项Chromium测试，覆盖相同元数据预览替换、大图显式加载、媒体播放和过期管理回复。该检查点的Linux X11客户端已实际验证三种语言、四种强调色、系统/明/暗选择、设置控件的键盘遍历、权限预设、关于窗口关闭、780×600窗口内同高的36像素标题控件、非法端口拒绝及Rime中文输入组合。普通关闭和重启保留未启动的草稿，口令不保存。移出源码目录的程序能分享包含自身的目录，36份内嵌网页资源逐字节一致；同一原始2MiB上传在外观变化及取消停止/正常关闭期间保持原连接，最终发布并通过磁盘与下载校验。确认停止清理另一份未完成暂存文件并释放监听。系统选择器的取消已验证，本地GTK环境中的选择仍未通过验收。这些本地检查不替代其他平台、安装/离线和完整辅助设备验收。
 
-`nsfs` 存储修补后，本地Linux通过115项核心/宿主、22项原生和15项Tauri测试、严格Clippy及锁定CLI/原生构建，三个真实命名空间回归覆盖bind、OverlayFS及`nsfs`。重建的原生可执行文件有独立字节，上述GUI运行和包测量仍属于`77abf6f`检查点。该版本的[CI失败](https://github.com/zocs/inout-next/actions/runs/45690499369)后，当前源码的跨平台验收仍待完成。
+`nsfs` 存储修补后，本地Linux通过115项核心/宿主、22项原生和15项Tauri测试、严格Clippy及锁定CLI/原生构建，三个真实命名空间回归覆盖bind、OverlayFS及`nsfs`。随后[78457fd CI](https://github.com/zocs/inout-next/actions/runs/45783944321)通过Linux115/22/15项测试、61项Python、146项Chromium及Android未签名锁定构建/包检查。Windows x86在并发偏好保存中失败，Windows x64取消，macOS跳过。后续源码修补在原子替换前关闭已完整写入的暂存句柄，Windows验证仍待完成。该CI的七成员Linux原生ZIP和内嵌资源通过字节检查；上述GUI运行仍属于`77abf6f`检查点。[本轮测量](distribution/size-and-runtime.md#embedded-source-ci-packages)不增加原生GUI、设备或安装验收。
 
 锁定的AccessKit AT-SPI适配缺少EditableText，并把禁用按钮报告为可用；只读地址也缺少Enabled/Sensitive状态，但实际选中和复制已验证。直接响应式状态和应用动作保护阻止禁用动作，完整读屏、更广的字体/输入法覆盖和各平台动态效果偏好仍需单独验收。
 
@@ -58,7 +58,7 @@ x86/x64 源码构建各通过14项原生测试、严格Clippy和锁定Rust/MSVC�
 
 [d42048d 的 CI 44239092778](https://github.com/zocs/inout-next/actions/runs/44239092778)于2026-11-18通过 Linux x64、Android arm64 打包、Windows x86/x64 和 macOS ARM64/x64，六项任务的实际区间没有重叠。各桌面目标通过14项 Slint、15项 Tauri 组合测试、严格 Clippy 和优化构建。[平台状态](platforms.md#ci)记录核心测试数量及 Linux、浏览器和 Android 检查。已核对九份产物的下载校验值；五份 Slint 试验 ZIP、五份 CLI ZIP、六份过渡桌面包和未签名 Tauri APK，均匹配本轮精确的36文件 / 1,084,607字节浏览器导出。
 
-本轮 CI 的 Linux Slint 可执行文件为18,719,312字节（17.85MiB），完整试验 ZIP 为9,012,382字节（8.59MiB），直接 GLIBC 导入最高为2.35。Windows x86/x64 完整 ZIP 为7,286,920/7,334,321字节（6.95/6.99MiB）。[当前各平台测量](distribution/size-and-runtime.md#windows-fallback-and-input-ci-packages)保留前次3d0e656测量，并与上方本地功能包、下方初测程序分别记录。已核对实际 PE/Mach-O 架构及许可文件；两份 Windows 包内程序均通过默认渲染启动、简繁英读回、Ocean主题保留和正常关闭。macOS GUI运行及完整 Linux 依赖下限仍未验证。Android 继续构建未签名 Tauri，尚无 Slint APK。安装及离线体验、真正32位系统、完整输入和无障碍、移动端/商店许可与持续显示性能仍是正式采用前的关卡。
+该历史 CI 的 Linux Slint 可执行文件为18,719,312字节（17.85MiB），完整试验 ZIP 为9,012,382字节（8.59MiB），直接 GLIBC 导入最高为2.35。Windows x86/x64 完整 ZIP 为7,286,920/7,334,321字节（6.95/6.99MiB）。[历史各平台测量](distribution/size-and-runtime.md#windows-fallback-and-input-ci-packages)保留前次3d0e656测量，并与上方本地功能包、78457fd部分完成的CI及下方初测程序分别记录。已核对实际 PE/Mach-O 架构及许可文件；两份 Windows 包内程序均通过默认渲染启动、简繁英读回、Ocean主题保留和正常关闭。macOS GUI运行及完整 Linux 依赖下限仍未验证。Android 继续构建未签名 Tauri，尚无 Slint APK。安装及离线体验、真正32位系统、完整输入和无障碍、移动端/商店许可与持续显示性能仍是正式采用前的关卡。
 
 ## 已完成的 Linux 初步测量
 

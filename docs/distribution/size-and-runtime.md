@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measurements record experimental checkpoints from 2026-11-15–26, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical CI and the last accepted [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
+Measurements record experimental checkpoints from 2026-11-15–26, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) and the latest [partial embedded-source CI](#embedded-source-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
 
 ## Local desktop checkpoint
 
@@ -82,7 +82,9 @@ The built-in native test separately caps reads at 64 MiB and provides a local ti
 
 ## Current source web export
 
-The locally verified preview/management integration at `77abf6f` exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by that checkpoint's native executable. The subsequent `nsfs` storage repair preserves the web sources/export; it does not repeat this browser or GUI runtime acceptance.
+The later [CI at78457fd](https://github.com/zocs/inout-next/actions/runs/45783944321) exports **36 files / 1,098,091 bytes**, with **1,020,555 raw JavaScript bytes** and **315,543 gzip bytes**, measured separately per file. Its Linux browser suite passes146 cases with no skipped, unexpected or flaky results. The Linux and Android artifacts below match that exact export; this is a separate build from the local checkpoint.
+
+The locally verified preview/management integration at `77abf6f` exports **36 files totalling 1,098,089 bytes**. JavaScript totals **1,020,553 raw bytes** and **315,532 gzip bytes**, measured separately per file. The same export passes **146 Chromium cases**, including obsolete management replies, independent directory permissions and refresh of same-metadata content. Every exported resource is also served byte-for-byte by that checkpoint's native executable. The local `nsfs` storage repair preserves this export; its later CI uses the separate build measured above, with no additional native GUI runtime acceptance.
 
 The earlier local localization/permission checkpoint exported 36 files / 1,084,605 bytes, with 1,011,194 raw JavaScript bytes and 312,634 per-file gzip bytes, and passed 131 Chromium cases. Its figures and the earlier release-package measurements retain their own exports and provenance.
 
@@ -205,6 +207,24 @@ This run's transitional Tauri packages remain distinct from the Slint ZIPs:
 Both macOS bundles succeed on their first attempt, exercising no resource-busy recovery. Debian/NSIS emitted-identity fixtures are separate from installed upgrade/rebranding acceptance; the NSIS fixtures use their own copied inputs, distinct from the distribution installer payloads. Tauri retains its system-webview and compatibility requirements. These artifacts have not replaced the released previews.
 
 The unsigned Tauri arm64 APK is **16,149,852 bytes (15.40MiB)**, with one **13,304,800-byte Rust library** and the same 36 raw web resources. Manifest checks retain `inout`, the `.preview` ID, code100001, minAPI24 and targetAPI36. Both locked compilation children exit successfully with source lockfiles unchanged; exact resources, single ABI and ELF/native ZIP16KiB alignment pass inspection. It has no signature-based installation clearance, Slint renderer, new installed-device/emulator/16KiB-runtime or store result. The signed 15.39MiB preview.2 remains a separate delivery. Source stays MIT with the included Slint royalty-free2.0 attribution and separate mobile/channel gates.
+
+## Embedded source CI packages
+
+[CI45783944321 at78457fd](https://github.com/zocs/inout-next/actions/runs/45783944321) succeeds on Linux and Android, then fails Windows x86 concurrent preference saving; Windows x64 is cancelled and macOS skipped. Its three executed jobs do not overlap. These measurements describe the accepted Linux and unsigned Android artifacts from that run, before the subsequent preference-handle repair. All five produced artifact envelopes have verified GitHub API digests. They do not replace the published previews.
+
+| Linux x64 item | Bytes | MiB |
+| --- | ---: | ---: |
+| CLI + static web ZIP | 1,752,632 | 1.67 |
+| Server executable | 4,089,424 | 3.90 |
+| Native Slint ZIP, embedded resources and notices | 9,121,628 | 8.70 |
+| Slint executable | 20,178,000 | 19.24 |
+| Transitional Tauri AppImage | 82,987,512 | 79.14 |
+| Transitional Tauri deb | 4,737,388 | 4.52 |
+| Web export,36files | 1,098,091 | 1.05 |
+
+The native ZIP has seven members and omits duplicate `web/`. Every exact export path and original payload is present in the executable's bytes; this inspection is separate from HTTP serving or a GUI launch. CLI and Tauri resource layouts, executable ELF architecture, notices and emitted identity pass inspection. Slint directly imports GLIBC through2.35 and Tauri through2.34; full transitive dependency and old-distribution runtime floors remain open. Linux verifies streamed128MiB and relocated8MiB CLI integrity, suffix/public listing, empty staging and Ctrl-C cleanup; RSS grows2,387,968bytes (2.28MiB) and1,515,520bytes (1.45MiB) respectively. These CLI probes add no native GUI, presented-frame or matched-performance result.
+
+The unsigned Tauri arm64 APK is **16,213,836 bytes (15.46MiB)**, with one **13,365,144-byte Rust library** and the same36resources/1,098,091bytes. Its SHA-256 is `17d444e1138edbe29239d41d0f417ff47d972198c2806ab170b15544441818de`. Seven Kotlin cases, two actual locked release-library builds, unchanged source locks and exact manifest/resources/single-ABI/ELF/native ZIP16KiB alignment pass. The package has no v1 signature entries or APK signing block. It establishes no new device,16KiB runtime, signing, installed/offline, Slint mobile or store acceptance. Windows/macOS produce no newly accepted packages; their historical measurements above retain their named source scope.
 
 ## Exploratory Rust GUI comparison
 

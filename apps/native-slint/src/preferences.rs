@@ -136,9 +136,11 @@ impl Preferences {
         let mut staged = tempfile::NamedTempFile::new_in(directory)?;
         staged.write_all(self.serialize().as_bytes())?;
         staged.flush()?;
+        // Close before publication so another Windows writer can replace the
+        // destination without encountering this writer's still-open handle.
         staged
+            .into_temp_path()
             .persist(path)
-            .map(|_| ())
             .map_err(|error| error.error)
     }
 }

@@ -116,7 +116,7 @@ python3 scripts/verify_runtime.py --mib 128
 
 浏览器测试使用真实 Rust 服务和文件系统，原生命令边界模拟与实际设备测试分别记录。可在 `apps/web` 中运行 `npx playwright install --with-deps chromium` 安装测试浏览器，或通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已有 Chromium。
 
-最新的 [77abf6f CI](https://github.com/zocs/inout-next/actions/runs/45690499369) 在两个 Linux 存储隔离测试中失败，后续平台任务跳过，没有生成新包。后续 `nsfs` 修补已通过本地 Linux 单元和真实挂载命名空间回归，当前源码的跨平台验收仍待完成。
+最新的 [78457fd CI](https://github.com/zocs/inout-next/actions/runs/45783944321) 通过 Linux 和 Android，随后在 Windows x86 的并发偏好保存回归中失败。Windows x64 被取消，macOS 跳过。当前源码在原子替换前关闭每份偏好暂存文件；该修补的 Windows 验证和完整六目标验收仍待完成。[平台状态](docs/platforms.md#ci)记录已通过的检查及其边界。
 
 Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主和前台生命周期检查。实际 release APK 已用于认证 HTTP 操作、浏览器上传/下载、监听关闭、重启文件保留及 Activity 生命周期测试；模拟器结果与真机、商店验收分别记录。此前使用完整文件校验的核心对比测量了 128 KiB 缓冲及原句柄 Range 定位，并与旧引擎、FileInfra 实际发布的 dufs 对照。[体积与运行报告](docs/distribution/size-and-runtime.md) 同时记录下载耗时、多连接峰值内存和本机缓存采样边界；这些结果尚不能代表 GUI 或物理局域网性能。
 
