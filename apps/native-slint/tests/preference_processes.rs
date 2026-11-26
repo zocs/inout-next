@@ -49,8 +49,9 @@ impl Drop for Writer {
     }
 }
 
-fn spawn(path: &Path, index: usize) -> io::Result<Writer> {
+fn spawn(directory: &Path, path: &Path, index: usize) -> io::Result<Writer> {
     let mut child = Command::new(std::env::current_exe()?)
+        .current_dir(directory)
         .arg("--writer")
         .arg(path)
         .arg(index.to_string())
@@ -120,12 +121,12 @@ fn main() -> io::Result<()> {
     let path = directory.path().join("prefs.conf");
     let mut writers: Vec<_> = (0..PROCESSES)
         .map(|index| {
-            let path = if index.is_multiple_of(2) {
-                path.clone()
-            } else {
-                directory.path().join(".").join("prefs.conf")
+            let path = match index % 3 {
+                0 => path.clone(),
+                1 => directory.path().join(".").join("prefs.conf"),
+                _ => PathBuf::from("prefs.conf"),
             };
-            spawn(&path, index)
+            spawn(directory.path(), &path, index)
         })
         .collect::<io::Result<_>>()?;
     for _ in 0..ROUNDS {

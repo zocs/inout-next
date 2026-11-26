@@ -25,6 +25,12 @@ pub(super) struct Guard {
 
 impl Guard {
     pub(super) fn acquire(directory: &Path) -> io::Result<Self> {
+        // A bare preferences filename has an empty parent meaning this cwd.
+        let directory = if directory.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            directory
+        };
         let directory = OpenOptions::new()
             .access_mode(FILE_READ_ATTRIBUTES)
             .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
