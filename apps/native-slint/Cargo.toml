@@ -16,6 +16,11 @@ name = "share-native-slint"
 path = "src/main.rs"
 required-features = ["gui"]
 
+[[test]]
+name = "preference_processes"
+path = "tests/preference_processes.rs"
+harness = false
+
 [dependencies]
 share-domain = { path = "../../crates/domain" }
 share-host = { path = "../../crates/host" }
@@ -30,6 +35,7 @@ qrcodegen = "=1.8.0"
 tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 # Keep FemtoVG first. Slint's winit backend tries this renderer if Windows has
 # no suitable OpenGL driver, including basic-display and virtual-machine hosts.
 slint = { version = "=1.18.1", default-features = false, features = ["renderer-software"], optional = true }

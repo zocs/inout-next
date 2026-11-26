@@ -6,7 +6,7 @@ The Slint 1.18.1 desktop trial uses the **Slint Royalty-free Desktop, Mobile, an
 
 Slint offers [GPL, royalty-free and commercial alternatives](https://github.com/slint-ui/slint/blob/v1.18.1/LICENSE.md). The included royalty-free2.0 terms also permit general-purpose mobile applications with the required attribution; mobile use alone does not require changing the app's MIT source licence. A future F-Droid/store composition must still choose compatible distribution terms and satisfy actual dependency/source-build and channel requirements. The project's MIT source and stable app/signing identities are preserved.
 
-Native composition pins Slint/slint-build 1.18.1, winit/FemtoVG/accessibility and the Windows-only Slint software fallback, rfd 0.17.2 (MIT), arboard 3.7.0 (MIT OR Apache-2.0) and sys-locale 0.3.2 (MIT OR Apache-2.0). Slint default features are disabled; Qt, WebView, Node, Python and the mobile Skia composition are not application runtimes in this desktop build. Rust/Tokio and the existing HTTP/storage modules retain their own dependency licences. System fonts are used rather than redistributed font files.
+Native composition pins Slint/slint-build 1.18.1, winit/FemtoVG/accessibility and the Windows-only Slint software fallback, rfd 0.17.2 (MIT), arboard 3.7.0 (MIT OR Apache-2.0), sys-locale 0.3.2 (MIT OR Apache-2.0) and Windows-only windows-sys 0.61.2 (MIT OR Apache-2.0). Slint default features are disabled; Qt, WebView, Node, Python and the mobile Skia composition are not application runtimes in this desktop build. Rust/Tokio and the existing HTTP/storage modules retain their own dependency licences. System fonts are used rather than redistributed font files.
 
 The dot-matrix glyphs reuse the project's local branding geometry. Slint's retained toolkit components and About widget keep their own notices/attribution. This document describes this composition, not a complete store submission or dependency-source-build certification.
 
@@ -67,4 +67,32 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+```
+
+## windows-sys 0.61.2
+
+Windows preference publication uses windows-sys for directory identity and kernel mutex APIs. The crate is distributed under MIT OR Apache-2.0. This distribution includes its MIT notice:
+
+```text
+    MIT License
+
+    Copyright (c) Microsoft Corporation.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE
 ```

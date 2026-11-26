@@ -8,6 +8,9 @@ use std::{
 const FILE: &str = "native-preferences.conf";
 const MAX_BYTES: u64 = 16 * 1024;
 
+#[cfg(windows)]
+mod publication;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Preferences {
     /// `None` follows the system language.
@@ -128,6 +131,7 @@ impl Preferences {
     /// Publish one complete setup from an exclusively created sibling file.
     /// Concurrent instances may replace each other's complete documents, but
     /// never share a staged file or remove another instance's work.
+    /// Windows processes coordinate replacement per directory with a bounded wait.
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let directory = path
             .parent()
@@ -136,12 +140,12 @@ impl Preferences {
         let mut staged = tempfile::NamedTempFile::new_in(directory)?;
         staged.write_all(self.serialize().as_bytes())?;
         staged.flush()?;
-        // Close before publication so another Windows writer can replace the
-        // destination without encountering this writer's still-open handle.
-        staged
-            .into_temp_path()
-            .persist(path)
-            .map_err(|error| error.error)
+        let staged = staged.into_temp_path();
+        // Windows replacements can conflict even after all stages have closed.
+        // Coordinate publication across app processes, keeping each stage owned.
+        #[cfg(windows)]
+        let _publication = publication::Guard::acquire(directory)?;
+        staged.persist(path).map_err(|error| error.error)
     }
 }
 
