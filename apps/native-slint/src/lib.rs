@@ -1,6 +1,8 @@
 pub mod branding;
 pub mod bridge;
 pub mod folders;
+#[cfg(feature = "gui")]
+pub mod input_clipboard;
 pub mod preferences;
 pub mod presentation;
 pub mod qr;

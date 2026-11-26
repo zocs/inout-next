@@ -54,7 +54,9 @@ cargo run --manifest-path apps/native-slint/Cargo.toml --locked
 
 通过系统选择器、常用目录快捷入口或以 `~` 开头的路径选择目录，再选择仅本机/局域网、端口和三档权限：查看/下载、同时允许上传、同时允许管理。口令可选，删除需要配置口令并通过认证。连接区域标明地址所属的连接，并绘制仅包含 URL 的二维码。Linux/Android 按系统事实保守识别接口，优先普通 Wi-Fi/有线连接，虚拟连接靠后，回环最后。可选择实际地址，复制或在系统浏览器打开。停止和关闭正在分享的应用需要确认；“继续分享”保留监听和已接纳的传输。本轮记录在停止后保留，下一次成功启动时重置。语言、主题切换保留共享和输入内容。
 
-试验支持英语、简繁中文、四种强调色、系统/浅色/深色外观、自绘主题控件和点阵字标。语言、外观及设置草稿会在修改呈现选项、启动和普通关闭时保存到当前用户的应用配置目录，访问密钥从不保存。`INOUT_NATIVE_PREFERENCES` 可指定另一文件，空值关闭保存；`INOUT_NATIVE_REDUCE_MOTION=1` 关闭启动动画。系统动态效果检测、网络变化订阅、热点识别、持久历史和续传、单任务取消、实时设置及诊断控件仍待实现。完整读屏、中文组合输入及掩码口令的剪贴板行为保留为采用前关卡。
+试验支持英语、简繁中文、四种强调色、系统/浅色/深色外观、自绘主题控件和点阵字标。语言、外观及设置草稿会在修改呈现选项、启动和普通关闭时保存到当前用户的应用配置目录，访问密钥从不保存。停止分享后口令草稿仍在当前窗口内存中，普通关闭会丢弃它。`INOUT_NATIVE_PREFERENCES` 可指定另一文件，空值关闭保存；`INOUT_NATIVE_REDUCE_MOTION=1` 关闭启动动画。系统动态效果检测、网络变化订阅、热点识别、持久历史和续传、单任务取消、实时设置及诊断控件仍待实现。
+
+当前源码阻止口令字段通过复制、剪切及 PRIMARY 选区导出文本，点击“显示”后仍保留保护，同时保留选区编辑、粘贴和组合输入。新的 Linux X11 检查已验证剪贴板原值、剪切或替换粘贴后的真实认证、普通地址复制，以及目录和口令字段的 Rime 输入。“显示”会呈现口令，已测试的无障碍接口也能读取显示文本。完整读屏、更多字体/输入法及 Windows/macOS/Wayland 输入行为仍是采用前关卡，具体见[原生验证范围](docs/native-gui_zh.md)。
 
 GUI release 构建必须先完成静态网页导出，网页会编译进程序。新原生 ZIP 不需要旁置 `web/`，可分享包含程序本身的目录。debug 和无渲染器构建允许缺少导出并保留开发资源回退；原生窗口仍不使用 WebView。
 
@@ -116,7 +118,7 @@ python3 scripts/verify_runtime.py --mib 128
 
 浏览器测试使用真实 Rust 服务和文件系统，原生命令边界模拟与实际设备测试分别记录。可在 `apps/web` 中运行 `npx playwright install --with-deps chromium` 安装测试浏览器，或通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已有 Chromium。
 
-最新的 [da7a770 CI](https://github.com/zocs/inout-next/actions/runs/45864654594) 通过 Linux、Android、Windows x86/x64 和 macOS x64。两个 Windows 目标均通过原有线程及独立进程偏好保存回归、严格 Clippy、构建、包检查，以及包内 Slint 程序的启动、语言、主题和正常关闭检查。macOS arm64 因托管 runner 容量不足，在获得执行机器前被取消，因此整轮结果仍为失败，完整六目标验收尚未完成。[平台状态](docs/platforms.md#ci)记录各目标的实际验证范围。
+最新的 [da7a770 CI](https://github.com/zocs/inout-next/actions/runs/45864654594) 通过 Linux、Android、Windows x86/x64 和 macOS x64。两个 Windows 目标均通过原有线程及独立进程偏好保存回归、严格 Clippy、构建、包检查，以及包内 Slint 程序的启动、语言、主题和正常关闭检查。macOS arm64 因托管 runner 容量不足，在获得执行机器前被取消，因此整轮结果仍为失败，完整六目标验收尚未完成。这些产物早于当前剪贴板修正。[平台状态](docs/platforms.md#ci)记录各目标的实际验证范围。
 
 Android 扩展增加了真实资源/索引、Kotlin 文件系统、私有宿主和前台生命周期检查。实际 release APK 已用于认证 HTTP 操作、浏览器上传/下载、监听关闭、重启文件保留及 Activity 生命周期测试；模拟器结果与真机、商店验收分别记录。此前使用完整文件校验的核心对比测量了 128 KiB 缓冲及原句柄 Range 定位，并与旧引擎、FileInfra 实际发布的 dufs 对照。[体积与运行报告](docs/distribution/size-and-runtime.md) 同时记录下载耗时、多连接峰值内存和本机缓存采样边界；这些结果尚不能代表 GUI 或物理局域网性能。
 

@@ -250,6 +250,13 @@ export component TextField {
                     input-type: root.secret && !root.revealed ? InputType.password
                         : root.numeric ? InputType.number : InputType.text;
                     accessible-role: none;
+                    key-pressed(event) => {
+                        if root.secret && event.modifiers.control
+                            && (event.text == "c" || event.text == "C" || event.text == "x" || event.text == "X") {
+                            return accept;
+                        }
+                        return reject;
+                    }
                     cursor-position-changed(position) => {
                         if position.x + self.offset < 0px {
                             self.offset = -position.x;

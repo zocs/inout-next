@@ -36,7 +36,11 @@ Slint 的 Android 后端实现了 InputConnection 和输入组合状态处理，
 
 锁定的AccessKit AT-SPI适配缺少EditableText，并把禁用按钮报告为可用；只读地址也缺少Enabled/Sensitive状态，但实际选中和复制已验证。直接响应式状态和应用动作保护阻止禁用动作，完整读屏、更广的字体/输入法覆盖和各平台动态效果偏好仍需单独验收。
 
-Linux X11运行已确认掩码口令的限制：Ctrl+C、Ctrl+X和PRIMARY选区可以把明文口令放入桌面剪贴板，自定义上下文菜单的复制限制没有覆盖这些路径。Slint 1.18.1需要在输入层完整修正，同时保留选择和输入法；仅拦截键盘快捷键不能解决PRIMARY。这项仍是正式采用关卡，本轮本地证据不代表Windows/macOS剪贴板行为已验证。
+当前源码在已选择的平台边界保护剪贴板导出，并在工具包执行剪切删除之前拦截秘密字段的复制/剪切。掩码和显示状态都保留原有 Default/PRIMARY 数据及可编辑选区，粘贴和组合输入继续可用。适配器使用固定1.18.1输入元数据，保留现有后端/渲染器选择及 Windows 软件后备，不清除剪贴板、不缓存口令文本。
+
+两项实际 AppWindow 回归与原有22项测试一同通过：启用 GUI 时24项，关闭 GUI 时22项，两种配置另分别执行8独立进程×32轮偏好夹具；格式、严格 all-target Clippy 和锁定依赖的优化构建通过。新的 Linux X11 运行通过独立剪贴板读取和真实 HTTP 认证，验证掩码/显示状态下的 C/X、有效鼠标选区和替换粘贴，并覆盖普通目录剪切/Unicode粘贴、只读地址 Copy/PRIMARY、Rime目录预编辑/提交及掩码口令提交，以及正常关闭和自有资源清理。[新本地可执行文件](distribution/size-and-runtime.md#local-native-clipboard-correction)与下方历史包分别记录，旧包不含这次修正。
+
+点击“显示”后，已测试的 AT-SPI 接口可读取显示文本，内部空值敏感标记不代表系统无障碍隐藏保证。停止服务保留当前窗口的口令草稿，普通关闭不把它写入偏好文件。新的 GTK portal 返回选择错误、没有 URI，原目录草稿保持不变，选择验收仍未完成。Windows/macOS/Wayland 剪贴板与输入、超出无界面回归范围的按住输入/失焦、更广输入法/辅助设备、安装及实机行为仍需分别验证。
 
 此前本地 Linux 功能程序为18,752,320字节（17.88MiB），ZIP为9,216,822字节（8.79MiB），另含36文件/1,084,605字节网页导出。新GUI发布构建内嵌有界网页导出，缺少 `index.html` 或 `_next` 会失败；新原生ZIP不重复打包网页，可在任意工作目录运行并分享包所在的父目录。CLI/Tauri仍使用各自资源布局。运行依赖目标系统图形、字体、显示及桌面服务，不捆绑系统库，也不需要运行时Node/Python/WebView。[体积报告](distribution/size-and-runtime.md)分别记录各检查点。项目源码继续MIT，[第三方说明](../apps/native-slint/THIRD_PARTY.md)包含Slint条款和qrcodegen/tempfile/windows-sys声明。F-Droid自由源码/渠道、Apple分发及移动接入仍是独立关卡。
 

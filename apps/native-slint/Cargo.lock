@@ -4271,6 +4271,9 @@ name = "share-native-slint"
 version = "0.1.0"
 dependencies = [
  "arboard",
+ "i-slint-backend-selector",
+ "i-slint-backend-testing",
+ "i-slint-core",
  "qrcodegen",
  "rfd",
  "serde_json",

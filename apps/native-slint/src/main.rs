@@ -8,6 +8,7 @@ use share_native_slint::{
     branding::wordmark,
     bridge::{Bridge, BridgeHandle, BridgeUpdate},
     folders,
+    input_clipboard::InputClipboardPlatform,
     preferences::{self, Preferences},
     presentation::{parse_port, text, Access, Locale, TextKey},
     updates::Latest,
@@ -100,6 +101,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         }
     };
+    let backend = i_slint_backend_selector::create_backend()?;
+    slint::platform::set_platform(Box::new(InputClipboardPlatform::new(backend)))?;
     let ui = AppWindow::new()?;
     // Read before the first frame. Detecting the OS motion policy is a
     // separate native adapter.
