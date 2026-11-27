@@ -1,6 +1,6 @@
 # Package size and runtime
 
-Measurements record experimental checkpoints from 2026-11-15–26, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) and the latest [partial embedded-source CI](#embedded-source-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
+Measurements record experimental checkpoints from 2026-11-15–27, with desktop-package comparisons against [FileInfra 0.5.13](https://github.com/zocs/FileInfra/releases/tag/v0.5.13). Sizes use MiB (1,048,576 bytes). Archive size, uncompressed executable size, system dependencies and process memory are different quantities. Local builds, historical [Windows fallback/input CI packages](#windows-fallback-and-input-ci-packages) and the latest [partial embedded-source CI](#embedded-source-ci-packages) retain separate provenance. [Desktop preview.1](preview.md) and [Android preview.2](android-preview.md) distribute their earlier verified CI packages; no stable release is published yet.
 
 ## Local desktop checkpoint
 
@@ -14,6 +14,19 @@ The Linux x64 desktop checkpoint uses Rust 1.99.1 and Node 26.13.1. Its export a
 | CLI + static web ZIP | 1,721,866 | 1.64 |
 
 The export grew by 22,310 bytes compared with the earlier 32-file export. The CLI and pages deliver no Python or Node runtime. The native executable excludes external webview libraries and is not an AppImage-size measurement. An older local native executable has insufficient build provenance for attributing growth specifically to diagnostics or branding; total native diagnostics memory and startup frame times remain unmeasured.
+
+## Local CLI symbol stripping
+
+The 2026-11-27 Linux x64 comparison uses Rust 1.100.0 and identical CLI/HTTP/storage source. The root workspace adds only `strip = "symbols"` to its release profile and removes the unused HTTP middleware dependency. Existing Cargo optimization and unwind defaults apply; native workspaces have their own profiles.
+
+| Release executable | Bytes | MiB |
+| --- | ---: | ---: |
+| Before symbol stripping | 4,081,128 | 3.89 |
+| Stripped current CLI | 2,900,520 | 2.77 |
+
+The reduction is 1,180,608 bytes, or **28.9%**. ELF inspection confirms removal of the static symbol table. Each exact executable passes help, public-page/status access, unauthorized rejection, authenticated listing, full/HEAD/Range downloads, upload and download/disk hashes, and Ctrl-C normal exit with listener release. This is a local executable-size and functional comparison; existing CI archives and older-OS/other-target readiness keep their recorded scope. It does not measure transfer speed, process memory or package savings. Stripped builds provide less symbolic backtrace detail; use an unstripped or debug build for diagnosis.
+
+All three Rust lockfiles remove only `tower-http 0.7.1` and its now-unreachable `http-range-header 0.4.2`, preserving every surviving package version/checksum. The Tauri composition retains its separately required `tower-http 0.6.11`.
 
 ## Published CLI delivery
 

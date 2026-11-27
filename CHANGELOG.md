@@ -2,6 +2,7 @@
 
 ## Unreleased — Slint native desktop trial and reusable host
 
+- Strip CLI release symbols through the root workspace profile and remove the HTTP library's unused `tower-http 0.7.1` dependency. Reconcile all three Rust lockfiles without package upgrades, preserving Tauri's separate required middleware version. Local Linux x64 executables shrink from 3.89 to 2.77 MiB and pass authenticated upload/download, Range and normal-shutdown checks with default panic unwinding.
 - Embed validated static browser assets in GUI release builds and require a complete export at build time. Native ZIPs omit the redundant resource directory and can share a folder containing the program. Typed folder/resource/key/port errors replace generic startup failures.
 - Restore public-resource isolation for Linux bind mounts and reject cross-device layered filesystem origins. Use bounded mount metadata for ordinary singly linked resources; hard links and unavailable topology retain the bounded shared-identity scan.
 - Accept valid `nsfs` namespace-handle roots outside the shared/resource subtrees without invalidating the entire mount table. Reject opaque mounts within either subtree, including covered mounts at its exact path; preserve bind, layered-filesystem and hard-link isolation.

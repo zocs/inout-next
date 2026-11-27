@@ -142,6 +142,8 @@ python3 scripts/package_portable.py --binary target/release/share-server \
   --target linux-x64 --output .local/packages
 ```
 
+CLI release builds strip symbols using the root workspace profile and retain Cargo's default unwinding behavior. The unused HTTP middleware dependency has been removed. A local Linux x64 comparison reduces the executable from 3.89 to 2.77 MiB; [measurements and runtime checks](docs/distribution/size-and-runtime.md#local-cli-symbol-stripping) keep this separate from existing CI packages. Use an unstripped or debug build when symbolic backtraces are needed.
+
 The ZIP contains the stable server binary, built `web/`, product metadata, license and usage instructions; it excludes private keys and build tools. Native bundles and portable CLI packages have separate runtime requirements.
 
 ## Store distribution preparation

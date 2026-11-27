@@ -2,7 +2,7 @@
 
 The runtime is an independently implemented Rust file service. Next.js exports static HTTP/browser assets. Renderer-free `share-host` supplies the application controller, diagnostics and session. The opt-in Slint desktop trial renders without WebView; existing Tauri desktop/Android compositions remain transitional. Node builds the web UI and Python supports configuration/packaging/verification; neither is a delivered file-server runtime or request handler.
 
-The [technology direction](../ROADMAP.md#technology-direction) retains Rust/axum/hyper/Tokio and plans Vite + React for the browser build. That migration, immutable-asset compression/cache, blocking-storage and size/portability changes are queued work with separate storage, browser and package acceptance gates. The diagram below describes the current implementation.
+The [technology direction](../ROADMAP.md#technology-direction) retains Rust/axum/hyper/Tokio and plans Vite + React for the browser build. The root workspace strips CLI release symbols while retaining default panic unwinding; `share-http` no longer declares the unused middleware dependency. Further profile tuning, browser migration, immutable-asset compression/cache, blocking-storage and portability work have separate acceptance gates. The diagram below describes the current implementation.
 
 ```mermaid
 flowchart TB

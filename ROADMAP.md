@@ -40,7 +40,7 @@ Rust remains the implementation language for the domain, storage, HTTP and host 
 - **Public-asset delivery.** Add negotiated compression and cache validators to the immutable bundle, inside its existing bounds. File downloads and allow-listed inline previews retain uncompressed Range behavior. Directory resources reject bind aliases and cross-device layered origins; embedded native resources avoid that directory proof.
 - **Blocking storage work.** Move synchronous upload writes, durability flushes and large listings off async workers, preserving future-owned cancellation and unpublished-stage cleanup. This matters most for the two-worker native bridge and slow removable or mobile storage.
 - **Download CPU.** Consider a lower-copy read path only when target-device profiling shows a CPU limit.
-- **Delivered size and dependencies.** Strip symbols from the CLI release build, evaluate further release-profile settings by measurement, and remove unused dependencies.
+- **Delivered size and dependencies.** CLI release symbol stripping and unused HTTP middleware removal are implemented, with a local Linux x64 executable reduction of 28.9% and authenticated transfer/normal-shutdown checks. [Measurements](docs/distribution/size-and-runtime.md#local-cli-symbol-stripping) keep existing packages separate. Evaluate further release-profile settings and dependency changes by measurement.
 - **Portability tooling.** Evaluate a static musl CLI and a pinned-glibc cross-link for the Ubuntu18.04/glibc2.27 and LinuxARM64 goals. These change build tooling only and need real target runs.
 
 ## 2. Desktop distribution and compatibility

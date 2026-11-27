@@ -142,6 +142,8 @@ python3 scripts/package_portable.py --binary target/release/share-server \
   --target linux-x64 --output .local/packages
 ```
 
+CLI release 使用根工作区配置剥离符号，保留 Cargo 默认的 panic 展开行为，并移除 HTTP 库未使用的中间件依赖。本地 Linux x64 对照中程序从 3.89 降到 2.77 MiB；[测量与运行检查](docs/distribution/size-and-runtime.md#local-cli-symbol-stripping)和现有 CI 包分别记录。需要带符号的错误回溯时使用未剥离或 debug 构建。
+
 ZIP 包含固定名称的服务程序、构建好的 `web/`、产品配置、许可证和运行说明，不包含密钥或构建工具。运行 CLI ZIP 与运行 Tauri 桌面包的依赖不同。
 
 ## 从初期准备应用商店
